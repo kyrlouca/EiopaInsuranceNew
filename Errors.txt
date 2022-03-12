@@ -1,0 +1,91 @@
+
+cell Dim : s2c_dim:CE(*)  OR Dim s2c_dim:NF(*[XB;33;3])  OR  s2c_dim:NF(AC3)
+
+fact Dims: MET(s2md_met:ei2426)|s2c_dim:CE(AB:x2)|s2c_dim:NF(AC3)
+
+
+MET(s2md_met:ei1549)|s2c_dim:FN(*)|s2c_dim:LX(s2c_GA:NO)|s2c_dim:PO(*[466;3225;0])|s2c_dim:RT(s2c_RT:x150)
+MET(s2md_met:ei1549)|s2c_dim:FN%|s2c_dim:LX(s2c_GA:NO)|s2c_dim:PO%|s2c_dim:RT(s2c_RT:x150)"
+
+
+
+
+
+cell
+CellID = 6607
+TableID = 105
+cell.NoOpenDPS = "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+DatapointSignature = "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:LG(*[285;873;0])|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+
+
+table mappings
+[4] = ("R0040C0100", "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)")
+
+
+Table
+Ydim
+s2c_dim:LG(*[285;873;0])
+
+
+var yDimsClean = yDimsNew.Select(dim => Regex.Replace(dim, @"\(\*(.*?)\)", "(*)")).ToList();  //s2c_dim:LG(*[GA_18;x0;0])=>s2c_dim:LG(*)
+
+
+
+
+-----------------
+Table 
+TableCode = "S.06.02.01.01"
+ZDimVal = "s2c_dim:SU(s2c_MC:x168)"
+YDimVal = "s2c_dim:MP(*)|s2c_dim:NF(*)|s2c_dim:UI(*)|s2c_dim:XA(*)"
+
+
+Mappings 
+[2] = ("C0060", "MET(s2md_met:ei2426)")
+
+
+
+From CELL
+TableID = 71
+CellID = 5024
+NoOpenDPS = "MET(s2md_met:ei2426)|s2c_dim:MP(*)|s2c_dim:NF(*)|s2c_dim:SU(s2c_MC:x168)|s2c_dim:UI(*)|s2c_dim:XA(*)"
+
+--------------------
+cell
+TableID = 105
+CellID = 6607
+NoOpenDPS = "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+
+Table
+ZDimVal = null
+YDimVal = "s2c_dim:LG(*[285;873;0])"
+
+mappings
+[4] = ("R0040C0100", "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)")
+
+--------------
+***
+cell
+NoOpenDPS =     "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+cellSignature = "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+
+table isOpen
+TableID = 105
+TableCode = "S.12.02.01.02"
+TableYDimVal = "s2c_dim:LG(*[285;873;0])"
+ZDimVal = null
+
+[4] = ("R0040C0100", "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x109)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)")
+[5] = ("R0040C0150", "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x172)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)")
+
+Cell Signature Build from 
+
+
+mappings
+[0] = "s2c_dim:LG(*[285;873;0])" =>[0] = "s2c_dim:LG(*)"
+mappingsSignature = "MET(s2md_met:mi363)|s2c_dim:BL(s2c_LB:x53)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:LG(*)|s2c_dim:MT(s2c_AP:x21)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:VL(s2c_VM:x9)"
+
+------------------------------------------------------------
+Duplicate Key
+fact = "R0260", "C0170", "-207.20", "S.19.01.01.02"
+TextValue = "-207.20"
+CellID = 10221

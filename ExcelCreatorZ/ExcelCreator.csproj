@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <RuntimeIdentifier>win7-x64</RuntimeIdentifier>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <StartupObject>ExcelCreatorNs.Program</StartupObject>
+    <RootNamespace>ExcelCreatorNs</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NPOI" Version="2.5.5" />
+    <PackageReference Include="Serilog" Version="2.10.0" />
+    
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    
+    <PackageReference Include="SharpZipLib" Version="1.3.2" />
+    
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
+    <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
+    <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
+    <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
+    <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
+    <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
+  </ItemGroup>
+
+</Project>

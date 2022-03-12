@@ -1,0 +1,115 @@
+﻿using System;
+using ConfigurationNs;
+using Microsoft.Data.SqlClient;
+using Dapper;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Linq;
+using Validations;
+using GeneralUtilsNs;
+using HelperInsuranceFunctions;
+
+namespace ValidationCall
+{
+    public class Program
+    {
+
+        public static int Main(string[] args)
+
+        {
+#if (DEBUG)
+            if (1 == 1)
+            {
+
+                var solvencyVer = "IU250";
+                var configObject = Configuration.GetInstance(solvencyVer).Data;
+                using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
+                var sqlLatestDoc = "select top 1 doc.InstanceId, PensionFundId from DocInstance doc order by doc.InstanceId desc";
+
+                (var docId, var fundIdDg) = connectionPension.QuerySingleOrDefault<(int, int)>(sqlLatestDoc, new { });
+
+                //var validator = new DocumentValidator(fundId, docId, 0);  //the third argument to test a specific rule
+                //1005 empty
+                //4382 simple with filter
+                //6656 val several  but same
+                //6760 match
+                //6442 emtpy
+                //6611 empty if then
+                //6702  no scope and  row col
+                //6707 no scope and row
+                //6729 sum with row and col
+                //6699 sum and filter with two terms
+                //6768 to check ftdv (in filter)
+                //6933 fallback
+
+
+                //var validatorDg = new DocumentValidator(solvencyVer, docIdDg);
+
+
+
+
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 3141);//min(max
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 849 , 862); //sum without snn
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 929); /sum with snn
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 1005); //simple empty
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4382); //simple filter
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4392); //ftdv                
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4925); //nilled
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4627); //ExDimVal
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4282); //ExDimVal with value
+                //3147
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4397);//open table without sum
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 4934); //open table refers to single
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 994);// sum of a closed table
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
+                docId = 8666;//altius
+                docId = 8669; //cosmos                
+                docId = 8667;//grawe
+                docId = 8670;//defence
+
+                docId = 8681;//SMuaeAnnual 965
+                
+                docId = 8674;//CosmosQ
+                docId = 8673;//hydraQ
+
+                var validatorDg = new DocumentValidator(solvencyVer, docId, 868);
+                //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
+
+                validatorDg.CreateModuleAndDocumentRules();
+                var x = validatorDg.ValidateDocument();
+
+                return 1;
+            }
+
+#endif
+
+
+            if (args.Length == 2)
+            {
+                //.\ValidationCaller.exe "TEST250" 6038
+                //.\ValidationCaller.exe "IU250" 8668
+                var solvencyVersion = args[0].Trim();                  
+                var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;                
+                var validator = new DocumentValidator(solvencyVersion, docIdx); //creates Document rules 
+                validator.CreateModuleAndDocumentRules();
+                var xDg = validator.ValidateDocument();  // parses and checks each rule 
+                return 1;
+            }
+            else
+            {
+                var message = @".\ValidationCaller solvencyVersion DocumentId";
+                Console.WriteLine(message);
+                return 0;
+            }
+
+            return 1;
+
+        }
+
+
+
+        //public enum FnTypes { Val, Sum, Matches, Abs, Max, Min, Cnt, Err };
+
+
+    }
+}
