@@ -21,7 +21,7 @@ namespace ValidationCall
             if (1 == 1)
             {
 
-                var solvencyVer = "IU250";
+                var solvencyVer = "IU260";
                 var configObject = Configuration.GetInstance(solvencyVer).Data;
                 using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
                 var sqlLatestDoc = "select top 1 doc.InstanceId, PensionFundId from DocInstance doc order by doc.InstanceId desc";
@@ -72,7 +72,10 @@ namespace ValidationCall
                 docId = 8674;//CosmosQ
                 docId = 8673;//hydraQ
 
-                var validatorDg = new DocumentValidator(solvencyVer, docId, 868);
+                docId = 8686; //cnp
+                docId = 8685; //uinversal//4822
+                
+                var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
 
                 validatorDg.CreateModuleAndDocumentRules();

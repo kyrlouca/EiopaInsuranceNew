@@ -95,6 +95,7 @@ namespace XbrlReader
             if (args.Length == 7)
             {
 
+
                 //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl
                 //.\XbrlReader.exe "IU250" 1 1 1 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"
                 //.\XbrlReader.exe "IU250" 1 1 1 2021 3 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl"

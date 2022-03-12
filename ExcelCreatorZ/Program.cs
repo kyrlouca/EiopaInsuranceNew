@@ -22,8 +22,8 @@ namespace ExcelCreatorNs
 #endif
             if (args.Length == 4)
             {
-                //.\ExcelCreator "IU250" 99 6075 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\CNP Insurance - Annual 2020Prev.xlsx"
-                //.\ExcelCreator "IU250" 99 6075 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ExcelCreated\universal2021Q3.xlsx"
+                //.\ExcelCreator "IU260" 99 8685 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\UniversalQ4.xlsx"
+                
                 //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ExcelCreated\hudra2.xlsx
                 var solvencyVersion = args[0].Trim();
                 var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;

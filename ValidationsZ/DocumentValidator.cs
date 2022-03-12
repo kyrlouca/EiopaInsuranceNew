@@ -142,6 +142,148 @@ namespace Validations
 
         }
 
+
+        private int EvaluteSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
+        {
+
+            var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
+            switch (term.FunctionType)
+            {
+                case FunctionTypes.NILLED:
+
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+
+                    var termLetterNilled = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
+                    var termValueNilled = allTerms.FirstOrDefault(term => term.Letter == termLetterNilled);
+                    term.IsMissing = false; //the term isMissing should always be false since we testing for missing terms
+                    term.BooleanValue = termValueNilled.IsMissing || string.IsNullOrWhiteSpace(termValueNilled.TextValue);
+                    break;
+                case FunctionTypes.EMPTY:
+
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+
+                    var termLetter = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
+                    var termValue = allTerms.FirstOrDefault(term => term.Letter == termLetter);
+                    term.IsMissing = false; //the term cannot be missing since we testing for missing terms
+                    term.BooleanValue = termValue.IsMissing || string.IsNullOrWhiteSpace(termValue.TextValue);
+                    break;
+                case FunctionTypes.ISFALLBACK:
+                    //TermText = "isfallback(X0)"=> get the value of X0 from Ruleterms list                      
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+
+                    var termLetterFB = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
+                    termValue = allTerms.FirstOrDefault(term => term.Letter == termLetterFB);
+                    term.IsMissing = false; //the result of the function will be true if the term is missing
+                    term.BooleanValue = termValue.IsMissing || string.IsNullOrWhiteSpace(termValue.TextValue);
+                    break;
+                case FunctionTypes.MIN:
+                    //TermText = min(2,X1+3,X2)                                        
+                    var allTermsDict = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));
+                    var minTermsStr = GeneralUtils.GetRegexSingleMatch(@"min\((.*)\)", term.TermText).Split(",");
+
+                    var minValArray = minTermsStr.Select(term => Eval.Execute<double>(term, allTermsDict));
+                    var minVal = minValArray.Min();
+
+                    term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                    term.IsMissing = false;
+                    term.DecimalValue = Convert.ToDecimal(minVal);
+                    break;
+                case FunctionTypes.MAX:
+                    //TermText = max(xx,X1,X2)
+                    var allTermsDictM = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));
+                    //var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"\((.*?)\)", term.TermText).Split(",");
+
+                    var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"max\((.*)\)", term.TermText).Split(",");
+
+                    var maxValArray = maxTermsStr.Select(term => Eval.Execute<double>(term, allTermsDictM));
+                    var maxVal = maxValArray.Max();
+
+                    term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                    term.IsMissing = false;
+                    term.DecimalValue = Convert.ToDecimal(maxVal);
+                    break;
+                case FunctionTypes.MATCHES:
+                    //"matches(X0,\"^..((71)|(75)|(8.)|(95))$\")"=> "^..((71)|(75)|(8.)|(95))$"
+                    //matches(ftdv({S.06.02.01.02,c0290},"s2c_dim:UI"),"^CAU/(ISIN/.*)|(INDEX/.*)"))	
+
+                    var test = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText);
+                    var termText = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2].Value;
+                    var termParts = termText.Split(",");
+
+                    if (termParts.Length != 2)
+                    {
+                        term.BooleanValue = true;
+                        break;
+                    }
+
+                    var termLetterM = termParts[0];
+                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
+                    var pattern = termParts[1].Replace("\"", ""); //
+                    pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
+                    var val = valueTerm.TextValue;
+                    term.IsMissing = valueTerm.IsMissing;
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+                    term.BooleanValue = Regex.IsMatch(valueTerm.TextValue, pattern);
+                    break;
+                case FunctionTypes.SUM:
+                    var termLetterS = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
+                    var sumTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterS);
+                    var isOpenTableSum = IsOpenTable(ConfigObject, sumTerm.TableCode);
+                    if (!isOpenTableSum || !sumTerm.TermText.ToUpper().Contains("SNNN"))
+                    {
+                        term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                        term.DecimalValue = FunctionForSumTermForCloseTableNew(sumTerm);
+                    }
+                    else
+                    {
+                        term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);
+
+
+                    };
+
+                    break;
+                case FunctionTypes.FTDV:
+                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
+                    term.IsMissing = false;
+                    term.TextValue = FunctionForFtdvValue(allTerms, term);
+                    break;
+                case FunctionTypes.EXDIMVAL:
+                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
+                    term.IsMissing = false;
+                    term.TextValue = FunctionForExDimVal(allTerms, term);
+                    break;
+                case FunctionTypes.EXP:
+                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
+                    term.IsMissing = false;
+                    term.DecimalValue = FunctionForExp(allTerms, term);
+                    break;
+                default:
+
+                    Console.WriteLine("");
+                    break;
+            }
+            return 0;
+        }
+
+        private int EvaluatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
+        {
+            //var dbValue = EvaluateTermFunction(term);
+            if (plainTerm.IsSum)
+            {
+                //sum terms for either closed or open tables will be evaluated later as functions
+                //make it numeric to avoid rejection of rule
+                plainTerm.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                return 0;
+            }
+            var dbValue = plainTerm.TableCode == rule.ScopeTableCode
+                ? GetCellValueFromOneSheetDb(ConfigObject, plainTerm.TableCode, rule.SheetId, plainTerm.Row, plainTerm.Col)
+                : GetCellValueFromDbNew(ConfigObject, DocumentId, plainTerm.TableCode, plainTerm.Row, plainTerm.Col);
+            plainTerm.AssignDbValues(dbValue);
+            return 0;
+        }
+
+
         public bool ValidateDocument(int selecteRule = 0)
         {
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -834,146 +976,6 @@ namespace Validations
 
         }
 
-        private int EvaluteSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
-        {
-
-            var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
-            switch (term.FunctionType)
-            {
-                case FunctionTypes.NILLED:
-
-                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
-
-                    var termLetterNilled = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
-                    var termValueNilled = allTerms.FirstOrDefault(term => term.Letter == termLetterNilled);
-                    term.IsMissing = false; //the term isMissing should always be false since we testing for missing terms
-                    term.BooleanValue = termValueNilled.IsMissing || string.IsNullOrWhiteSpace(termValueNilled.TextValue);
-                    break;
-                case FunctionTypes.EMPTY:
-
-                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
-
-                    var termLetter = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
-                    var termValue = allTerms.FirstOrDefault(term => term.Letter == termLetter);
-                    term.IsMissing = false; //the term cannot be missing since we testing for missing terms
-                    term.BooleanValue = termValue.IsMissing || string.IsNullOrWhiteSpace(termValue.TextValue);
-                    break;
-                case FunctionTypes.ISFALLBACK:
-                    //TermText = "isfallback(X0)"=> get the value of X0 from Ruleterms list                      
-                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
-
-                    var termLetterFB = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
-                    termValue = allTerms.FirstOrDefault(term => term.Letter == termLetterFB);
-                    term.IsMissing = false; //the result of the function will be true if the term is missing
-                    term.BooleanValue = termValue.IsMissing || string.IsNullOrWhiteSpace(termValue.TextValue);
-                    break;
-                case FunctionTypes.MIN:
-                    //TermText = min(2,X1+3,X2)                                        
-                    var allTermsDict = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));
-                    var minTermsStr = GeneralUtils.GetRegexSingleMatch(@"min\((.*)\)", term.TermText).Split(",");
-
-                    var minValArray = minTermsStr.Select(term => Eval.Execute<double>(term, allTermsDict));
-                    var minVal = minValArray.Min();
-
-                    term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                    term.IsMissing = false;
-                    term.DecimalValue = Convert.ToDecimal(minVal);
-                    break;
-                case FunctionTypes.MAX:
-                    //TermText = max(xx,X1,X2)
-                    var allTermsDictM = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));
-                    //var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"\((.*?)\)", term.TermText).Split(",");
-
-                    var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"max\((.*)\)", term.TermText).Split(",");
-
-                    var maxValArray = maxTermsStr.Select(term => Eval.Execute<double>(term, allTermsDictM));
-                    var maxVal = maxValArray.Max();
-
-                    term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                    term.IsMissing = false;
-                    term.DecimalValue = Convert.ToDecimal(maxVal);
-                    break;
-                case FunctionTypes.MATCHES:
-                    //"matches(X0,\"^..((71)|(75)|(8.)|(95))$\")"=> "^..((71)|(75)|(8.)|(95))$"
-                    //matches(ftdv({S.06.02.01.02,c0290},"s2c_dim:UI"),"^CAU/(ISIN/.*)|(INDEX/.*)"))	
-
-                    var test = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText);
-                    var termText = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2].Value;
-                    var termParts = termText.Split(",");
-
-                    if (termParts.Length != 2)
-                    {
-                        term.BooleanValue = true;
-                        break;
-                    }
-
-                    var termLetterM = termParts[0];
-                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
-                    var pattern = termParts[1].Replace("\"", ""); //
-                    pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
-                    var val = valueTerm.TextValue;
-                    term.IsMissing = valueTerm.IsMissing;
-                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
-                    term.BooleanValue = Regex.IsMatch(valueTerm.TextValue, pattern);
-                    break;
-                case FunctionTypes.SUM:
-                    var termLetterS = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
-                    var sumTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterS);
-                    var isOpenTableSum = IsOpenTable(ConfigObject, sumTerm.TableCode);
-                    if (!isOpenTableSum || !sumTerm.TermText.ToUpper().Contains("SNNN"))
-                    {
-                        term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForSumTermForCloseTableNew(sumTerm);
-                    }
-                    else
-                    {
-                        term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);
-
-
-                    };
-
-                    break;
-                case FunctionTypes.FTDV:
-                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
-                    term.IsMissing = false;
-                    term.TextValue = FunctionForFtdvValue(allTerms, term);
-                    break;
-                case FunctionTypes.EXDIMVAL:
-                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
-                    term.IsMissing = false;
-                    term.TextValue = FunctionForExDimVal(allTerms, term);
-                    break;
-                case FunctionTypes.EXP:
-                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
-                    term.IsMissing = false;
-                    term.DecimalValue = FunctionForExp(allTerms, term);
-                    break;
-                default:
-
-                    Console.WriteLine("");
-                    break;
-            }
-            return 0;
-        }
-
-        private int EvaluatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
-        {
-            //var dbValue = EvaluateTermFunction(term);
-            if (plainTerm.IsSum)
-            {
-                //sum terms for either closed or open tables will be evaluated later as functions
-                //make it numeric to avoid rejection of rule
-                plainTerm.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                return 0;
-            }
-            var dbValue = plainTerm.TableCode == rule.ScopeTableCode
-                ? GetCellValueFromOneSheetDb(ConfigObject, plainTerm.TableCode, rule.SheetId, plainTerm.Row, plainTerm.Col)
-                : GetCellValueFromDbNew(ConfigObject, DocumentId, plainTerm.TableCode, plainTerm.Row, plainTerm.Col);
-            plainTerm.AssignDbValues(dbValue);
-            return 0;
-        }
-
         private TemplateSheetFact FindKeyFactInRowOfMasterTable(string keyDim, string tableCode, string row)
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -1028,7 +1030,10 @@ namespace Validations
 	                    AND fact.Col = @keyCol
                         AND fact.TextValue = @KeyFactValue
                     ";
-            var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlKeyFact, new { DocumentId, tableCode, KeyCol, keyFactValue });
+
+            //Very strange becauese we may have more than one !! Take the first anyway !!!
+            //var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlKeyFact, new { DocumentId, tableCode, KeyCol, keyFactValue });
+            var fact = connectionInsurance.QueryFirstOrDefault<TemplateSheetFact>(sqlKeyFact, new { DocumentId, tableCode, KeyCol, keyFactValue });
 
             return fact?.Row ?? "";
         }
@@ -1321,7 +1326,7 @@ namespace Validations
 
                     UpdateTermRowCol(filterTerm, tempFilterRule.ScopeTableCode, ScopeRangeAxis.Rows, sumFact.Row);
                 }
-                //evaluate the filter RULE to decide when to add the row
+                //evaluate the filter RULE to decide when to add the row@@ add the ruleId tot the temp
                 EvaluateRuleAndFilterTermsNew(tempFilterRule);
                 if(  (bool)RuleStructure.AssertExpressionNew(0, tempFilterRule.SymbolFinalFormula, tempFilterRule.RuleTerms))
                 {
