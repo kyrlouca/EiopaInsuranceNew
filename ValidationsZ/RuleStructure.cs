@@ -416,7 +416,7 @@ namespace Validations
 
 
 
-            if (!fixedSymbolExpression.Contains("(") && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && !string.IsNullOrEmpty(parseExp.operatorUsed))
+            if (!fixedSymbolExpression.Contains("(") && fixedSymbolExpression.IndexOfAny(new char[] {'+','-','*','/' }) >-1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && !string.IsNullOrEmpty(parseExp.operatorUsed))
             {
                 //do not use EVAL to compare numbers because of fractional differences. Allow for 0.01%
                 var leftNum = Convert.ToDouble(Eval.Execute(parseExp.leftOperand, dicx));
