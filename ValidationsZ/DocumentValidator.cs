@@ -72,9 +72,10 @@ namespace Validations
 
             //CreateErrorDocument the Error Document even if doc does not exist
             CreateErrorDocument();
+            CreateModuleAndDocumentRules();
         }
 
-        public bool CreateModuleAndDocumentRules()
+        private bool CreateModuleAndDocumentRules()
         {
 
             ///****** Read the Module Rules and Construct the Document Rules             
@@ -112,7 +113,7 @@ namespace Validations
             var plainTerms = rule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList(); // {S.06.02.01.01,c0170,snnn} for terms like these we cannot get a  direct db value
             plainTerms.ForEach(term => EvaluatePlainTerm(rule, term));
 
-            //evaluate function T Terms ** T terms exist only for nested functions
+            //***FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
             //"T" terms  are the inner nested terms and  should be evaluated first T = max(Z1)
             var functionTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
             functionTerms.ForEach(term => EvaluteSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
@@ -284,112 +285,6 @@ namespace Validations
         }
 
 
-        public bool ValidateDocument(int selecteRule = 0)
-        {
-            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-
-            var errorCounter = 0;
-            var warningCounter = 0;
-            var rulesCounter = 0;
-
-            //todo updateSheet needs to update fact with IsConversionError
-            var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
-            if (!isFactValuesValid)
-            {
-                //updates document as error but keeps finding errors                
-            }
-
-
-            var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
-
-            if (HasEmptySheets(DocumentId))
-            {
-                //retrun
-            }
-
-            if (selecteRule > 0)
-            {
-                DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == selecteRule).ToList();
-            }
-            Console.WriteLine($"Started Rule Validation doc:{DocumentId}");
-            foreach (var rule in DocumentRules)
-            {
-                Console.WriteLine($"ruleId:{rule.ValidationRuleId}");
-                //Console.Write($"{rule.ValidationRuleId}");
-                if (rule.RuleTerms.Any(term => term.DataTypeOfTerm == DataTypeMajorUU.UnknownDtm && !term.IsFunctionTerm))
-                {
-                    //when creating Document rules from Module rules we used the scope 
-                    //the scope was expanded by adding on the range and some   rules for non-existent rows/columns were created
-                    //the terms for these rules have an unknown datatype
-                    continue;
-                }
-                rulesCounter = +1;
-                var isRuleValid = rule.ValidateTheRule();
-
-                if (!isRuleValid)
-                {
-                    var isError = rule.ValidationRuleDb.Severity == "Error";
-                    var isWarning = rule.ValidationRuleDb.Severity == "Warning";
-                    errorCounter = isError ? errorCounter + 1 : errorCounter;
-                    warningCounter = isWarning ? warningCounter + 1 : warningCounter;
-
-                    var errorTerms = rule.RuleTerms.Select(term => term.TextValue).ToArray();
-                    var errorValue = string.Join("---", errorTerms);
-
-
-                    var errorRule = new ERROR_Rule
-                    {
-                        RuleId = rule.ValidationRuleId,
-                        ErrorDocumentId = DocumentId,
-                        Scope = GeneralUtils.TruncateString(rule.ScopeString, 800),
-                        TableBaseFormula = GeneralUtils.TruncateString(rule.TableBaseFormula, 990),
-                        Filter = GeneralUtils.TruncateString(rule.FilterFormula, 990),
-                        SheetId = 0,
-                        SheetCode = rule.ScopeTableCode,
-                        RowCol = rule.ScopeRowCol,
-                        RuleMessage = GeneralUtils.TruncateString(rule.ValidationRuleDb.ErrorMessage, 2490),
-                        IsWarning = isWarning,
-                        IsError = isError,
-                        IsDataError = false,
-                        Row = "",
-                        Col = "",
-                        DataValue = GeneralUtils.TruncateString(errorValue, 490),
-                        DataType = ""
-
-                    };
-
-                    CreateRuleError(errorRule);
-                    //Log.Error("Invalid Rule");
-                }
-
-            }
-            Log.Information($"Number of Validation Rules:{rulesCounter}");
-            Log.Information($"Number of Validation ERRORS: {errorCounter}, Warnings:{warningCounter}");
-
-
-            var sqlCountErrors = @"
-                select 
-                    sum(case when er.IsError=1 then 1 else 0 end) as sErr,
-                    sum(case when er.IsWarning=1 then 1 else 0 end) as wErr,
-                    sum(case when er.IsDataError=1 then 1 else 0 end) as dErr
-                    from ERROR_Rule er    
-                  where er.ErrorDocumentId=@documentId
-                ";
-
-            (var severeErrors, var warningErrors, var dataErrors) = connectionPension.QuerySingleOrDefault<(int, int, int)>(sqlCountErrors, new { DocumentId });
-            var totalErrors = severeErrors + dataErrors;
-            var isDocumentValid = totalErrors == 0;
-
-            var sqlUpdate = @"update ERROR_Document set IsDocumentValid=@isDocumentValid, errorCounter=@eCounter, WarningCounter=@wCounter where ErrorDocumentId=@documentId";
-            connectionPension.Execute(sqlUpdate, new { isDocumentValid, eCounter = totalErrors > 0, wCounter = warningErrors > 0, DocumentId });
-
-            var status = (totalErrors == 0) ? "V" : "E";
-            var sqlUpdateStatus = @" update DocInstance set Status=@status where InstanceId =@documentId";
-            connectionPension.Execute(sqlUpdateStatus, new { DocumentId, status });
-
-            return isDocumentValid;
-        }
-
         private int CreateModuleRules()
         {
             //** Read the validation Rules from the Database and construct Module Rules for the corresponding Module            
@@ -475,16 +370,31 @@ namespace Validations
             {
                 if (sheet.IsOpenTable)
                 {
-                    //For open tables, create one Document rule per row, do not use the scope 
-                    var sqlDistinctRowsById = @"       
+                    if (rule.RuleTerms.Any(term => term.IsSum))
+                    {
+                        rowCols = scopeDetails.ScopeRowCols;
+                        if (rowCols.Count == 0)
+                        {
+                            //Add one fake rowCol just to copy the module rule as a document rule
+                            rowCols.Add("NONE");
+                        }
+
+                    }
+                    else
+                    {
+
+
+                        //For open tables, create one Document rule per row, do not use the scope 
+                        var sqlDistinctRowsById = @"       
                         SELECT DISTINCT fact.Row
                         FROM TemplateSheetFact fact
                         JOIN TemplateSheetInstance sheet ON sheet.TemplateSheetId = fact.TemplateSheetId
                         WHERE  sheet.TemplateSheetId = @sheetId and sheet.InstanceId=@documentId;
                         ";
 
-                    var rows = connectionEiopa.Query<string>(sqlDistinctRowsById, new { DocumentId, sheetId = sheet.TemplateSheetId }).ToList();
-                    rowCols = rows;
+                        var rows = connectionEiopa.Query<string>(sqlDistinctRowsById, new { DocumentId, sheetId = sheet.TemplateSheetId }).ToList();
+                        rowCols = rows;
+                    }
                     Console.Write("o");
                 }
                 else
@@ -500,12 +410,13 @@ namespace Validations
                     rowCols = scopeDetails.ScopeRowCols;
                     if (rowCols.Count == 0)
                     {
+                        //Add one fake rowCol just to copy the module rule as a document rule
                         rowCols.Add("NONE");
                     }
 
                 }
 
-                //Create a new rule for each rowCol (can be either a row or col. for open tables one rule for each row)
+                //Create a new rule for each rowCol (can be either a row or col. for open tables one rule for each row unless they have a sum term)
                 //the axis is taken from the scope unless it is an open table which is row 
                 foreach (var rowCol in rowCols)
                 {
@@ -518,7 +429,9 @@ namespace Validations
 
                     newRule.ScopeRowCol = rowCol;
                     newRule.ScopeTableCode = scopeDetails.TableCode;
-                    var scopeAxis = sheet.IsOpenTable ? ScopeRangeAxis.Rows : scopeDetails.ScopeAxis;
+
+                    var isSum = rule.RuleTerms.Any(term => term.IsSum);
+                    var scopeAxis = sheet.IsOpenTable && !isSum ? ScopeRangeAxis.Rows : scopeDetails.ScopeAxis;
                     newRule.SetApplicableAxis(scopeAxis); //set the rule's axis
 
                     //the updated rows or cols depending on the scope. However, for open linked tables find the foreign key
@@ -1466,6 +1379,113 @@ namespace Validations
             var res = Math.Pow(value, powerNominator / powerDenominator);
             
             return (decimal) res;
+        }
+
+
+        public bool ValidateDocument(int selecteRule = 0)
+        {
+            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            var errorCounter = 0;
+            var warningCounter = 0;
+            var rulesCounter = 0;
+
+            //todo updateSheet needs to update fact with IsConversionError
+            var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
+            if (!isFactValuesValid)
+            {
+                //updates document as error but keeps finding errors                
+            }
+
+
+            var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
+
+            if (HasEmptySheets(DocumentId))
+            {
+                //retrun
+            }
+
+            if (selecteRule > 0)
+            {
+                DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == selecteRule).ToList();
+            }
+            Console.WriteLine($"Started Rule Validation doc:{DocumentId}");
+            foreach (var rule in DocumentRules)
+            {
+                Console.WriteLine($"ruleId:{rule.ValidationRuleId}");
+                //Console.Write($"{rule.ValidationRuleId}");
+                if (rule.RuleTerms.Any(term => term.DataTypeOfTerm == DataTypeMajorUU.UnknownDtm && !term.IsFunctionTerm))
+                {
+                    //when creating Document rules from Module rules we used the scope 
+                    //the scope was expanded by adding on the range and some   rules for non-existent rows/columns were created
+                    //the terms for these rules have an unknown datatype
+                    continue;
+                }
+                rulesCounter = +1;
+                var isRuleValid = rule.ValidateTheRule();
+
+                if (!isRuleValid)
+                {
+                    var isError = rule.ValidationRuleDb.Severity == "Error";
+                    var isWarning = rule.ValidationRuleDb.Severity == "Warning";
+                    errorCounter = isError ? errorCounter + 1 : errorCounter;
+                    warningCounter = isWarning ? warningCounter + 1 : warningCounter;
+
+                    var errorTerms = rule.RuleTerms.Select(term => term.TextValue).ToArray();
+                    var errorValue = string.Join("---", errorTerms);
+
+
+                    var errorRule = new ERROR_Rule
+                    {
+                        RuleId = rule.ValidationRuleId,
+                        ErrorDocumentId = DocumentId,
+                        Scope = GeneralUtils.TruncateString(rule.ScopeString, 800),
+                        TableBaseFormula = GeneralUtils.TruncateString(rule.TableBaseFormula, 990),
+                        Filter = GeneralUtils.TruncateString(rule.FilterFormula, 990),
+                        SheetId = 0,
+                        SheetCode = rule.ScopeTableCode,
+                        RowCol = rule.ScopeRowCol,
+                        RuleMessage = GeneralUtils.TruncateString(rule.ValidationRuleDb.ErrorMessage, 2490),
+                        IsWarning = isWarning,
+                        IsError = isError,
+                        IsDataError = false,
+                        Row = "",
+                        Col = "",
+                        DataValue = GeneralUtils.TruncateString(errorValue, 490),
+                        DataType = ""
+
+                    };
+
+                    CreateRuleError(errorRule);
+                    //Log.Error("Invalid Rule");
+                }
+
+            }
+            Log.Information($"Number of Validation Rules:{rulesCounter}");
+            Log.Information($"Number of Validation ERRORS: {errorCounter}, Warnings:{warningCounter}");
+
+
+            var sqlCountErrors = @"
+                select 
+                    sum(case when er.IsError=1 then 1 else 0 end) as sErr,
+                    sum(case when er.IsWarning=1 then 1 else 0 end) as wErr,
+                    sum(case when er.IsDataError=1 then 1 else 0 end) as dErr
+                    from ERROR_Rule er    
+                  where er.ErrorDocumentId=@documentId
+                ";
+
+            (var severeErrors, var warningErrors, var dataErrors) = connectionPension.QuerySingleOrDefault<(int, int, int)>(sqlCountErrors, new { DocumentId });
+            var totalErrors = severeErrors + dataErrors;
+            var isDocumentValid = totalErrors == 0;
+
+            var sqlUpdate = @"update ERROR_Document set IsDocumentValid=@isDocumentValid, errorCounter=@eCounter, WarningCounter=@wCounter where ErrorDocumentId=@documentId";
+            connectionPension.Execute(sqlUpdate, new { isDocumentValid, eCounter = totalErrors > 0, wCounter = warningErrors > 0, DocumentId });
+
+            var status = (totalErrors == 0) ? "V" : "E";
+            var sqlUpdateStatus = @" update DocInstance set Status=@status where InstanceId =@documentId";
+            connectionPension.Execute(sqlUpdateStatus, new { DocumentId, status });
+
+            return isDocumentValid;
         }
 
 

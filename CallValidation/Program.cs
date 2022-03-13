@@ -75,10 +75,10 @@ namespace ValidationCall
                 docId = 8686; //cnp
                 docId = 8685; //uinversal//4822, 4427
                 
-                var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
+                var validatorDg = new DocumentValidator(solvencyVer, docId, 3914);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
 
-                validatorDg.CreateModuleAndDocumentRules();
+                //validatorDg.CreateModuleAndDocumentRules();
                 var x = validatorDg.ValidateDocument();
 
                 return 1;
@@ -94,7 +94,7 @@ namespace ValidationCall
                 var solvencyVersion = args[0].Trim();                  
                 var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;                
                 var validator = new DocumentValidator(solvencyVersion, docIdx); //creates Document rules 
-                validator.CreateModuleAndDocumentRules();
+                //validator.CreateModuleAndDocumentRules();
                 var xDg = validator.ValidateDocument();  // parses and checks each rule 
                 return 1;
             }
