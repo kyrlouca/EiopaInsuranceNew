@@ -73,7 +73,7 @@ namespace ValidationCall
                 docId = 8673;//hydraQ
 
                 docId = 8686; //cnp
-                docId = 8685; //uinversal//4822
+                docId = 8685; //uinversal//4822, 4427
                 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
