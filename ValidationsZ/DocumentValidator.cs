@@ -310,7 +310,7 @@ namespace Validations
                 join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
             WHERE
-                (ex.ExpressionType is null or ex.ExpressionType <> 'NotImplementedInXBRL' or ex.ExpressionType <> 'NotImplementedInKYR')
+                ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL'  and ex.ExpressionType <> 'NotImplementedInKYR')
                 and ValidationCode  like '%BV%'
 	            and vrs.ModuleID = @ModuleId
             ORDER BY vr.ValidationRuleID
