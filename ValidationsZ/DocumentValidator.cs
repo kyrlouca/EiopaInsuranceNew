@@ -1221,15 +1221,17 @@ namespace Validations
             decimal factSum = 0;
             foreach (var sumFact in sumfacts)
             {
-                var tempFilterRule = new RuleStructure(filterFormula, "")
+                var fakeFilterRule = new RuleStructure(filterFormula, "")
                 {
                     ScopeTableCode = sumFact.TableCodeDerived,
-                    SheetId = sumFact.TemplateSheetId
+                    SheetId = sumFact.TemplateSheetId,
+                    //ValidationRuleId=-sumTerm.rulu
+                    
                 };
 
                 //Create a RULE for filter formula                
                 //--update each term of the rule with a ROW                
-                var filterPlainTerms = tempFilterRule.RuleTerms.Where(term => !term.IsFunctionTerm);
+                var filterPlainTerms = fakeFilterRule.RuleTerms.Where(term => !term.IsFunctionTerm);
                 foreach (var filterTerm in filterPlainTerms)
                 {
                     //****************************
@@ -1237,11 +1239,11 @@ namespace Validations
                     //  rule 929, term = sum({S.06.02.01.01,c0170,snnn})	
                     //  filter = matches({S.06.02.01.02,c0290},"^..((91)|(92)|(94)|(99))$") and ({S.06.02.01.01,c0090}=[s2c_LB:x91])                                        
 
-                    UpdateTermRowCol(filterTerm, tempFilterRule.ScopeTableCode, ScopeRangeAxis.Rows, sumFact.Row);
+                    UpdateTermRowCol(filterTerm, fakeFilterRule.ScopeTableCode, ScopeRangeAxis.Rows, sumFact.Row);
                 }
                 //evaluate the filter RULE to decide when to add the row@@ add the ruleId tot the temp
-                EvaluateRuleAndFilterTermsNew(tempFilterRule);
-                if(  (bool)RuleStructure.AssertExpressionNew(0, tempFilterRule.SymbolFinalFormula, tempFilterRule.RuleTerms))
+                EvaluateRuleAndFilterTermsNew(fakeFilterRule);
+                if(  (bool)RuleStructure.AssertExpressionNew(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
                     factSum += sumFact.NumericValue;
                 }
