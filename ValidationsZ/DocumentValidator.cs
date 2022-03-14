@@ -294,6 +294,7 @@ namespace Validations
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
             //validationScope will provide tableId
 
+            
             var sqlSelectModuleRules = @"
             SELECT 
 		        vr.ValidationRuleID
@@ -309,8 +310,8 @@ namespace Validations
 		        vValidationRuleSet vrs
                 join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
-            WHERE
-                ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL'  and ex.ExpressionType <> 'NotImplementedInKYR')
+            WHERE 1=1
+                and (ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL'  and  ex.ExpressionType <> 'NotImplementedInKYR') )                
                 and ValidationCode  like '%BV%'
 	            and vrs.ModuleID = @ModuleId
             ORDER BY vr.ValidationRuleID
