@@ -659,7 +659,7 @@ namespace Validations
                 var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
                 if (!(bool)isIfPartTrue)
                 {
-                    return false;
+                    return true;
                 }
                 var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
                 return isThenPartValid;
