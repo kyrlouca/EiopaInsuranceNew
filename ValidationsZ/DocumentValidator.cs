@@ -473,26 +473,26 @@ namespace Validations
                 // 1. find the key of the row
                 // 2. find the row of based on the key value
                 // same for filter 
-                term.Row = rowCol;
+               
                 var isOpenTbl = IsOpenTable(ConfigObject, term.TableCode);
-                if (isOpenTbl && term.TableCode != scopeTableCode)
-                {
-                    var tableRel = GetOpenTableMaster(term.TableCode);
-                    if (tableRel.FK_TableCode is null)
+                if (isOpenTbl)
+                {                    
+                    if(term.TableCode == scopeTableCode)
                     {
-                        term.Row = rowCol;  //the term is the master NOT the linked child 
+                        term.Row = rowCol;
                     }
                     else
                     {
-                        //the term belogns to a table which is a linked child (like S.06.02.01.02 which is the child of S.06.02.01.01)
-                        //Need to find the linked row                        
+                        var tableRel = GetOpenTableMaster(term.TableCode);
                         var keyFact1 = FindKeyFactInRowOfMasterTable(tableRel.FK_TableDim, scopeTableCode, rowCol);
                         var frow = FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);
                         term.Row = frow;
                     }
-
                 }
-                
+                else
+                {
+                    term.Row = rowCol;
+                }                
             }
 
 

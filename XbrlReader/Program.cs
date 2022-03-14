@@ -83,7 +83,7 @@ namespace XbrlReader
 
             var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
 
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 11, 2021, 4,med260);
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 11, 2021, 4,Euro260E);
             _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 

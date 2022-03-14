@@ -75,7 +75,7 @@ namespace ValidationCall
                 docId = 8686; //cnp
                 docId = 8685; //uinversal//4822, 4427,4407
                 
-                var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
+                var validatorDg = new DocumentValidator(solvencyVer, docId, 2872);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
 
                 //validatorDg.CreateModuleAndDocumentRules();
