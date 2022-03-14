@@ -344,7 +344,7 @@ namespace Validations
                     IsValidRule = true;
                     return IsValidRule;
                 }
-                var isFilterValid = AssertExpressionNew(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
+                var isFilterValid = AssertExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
 
 
                 if (isFilterValid is null || !(bool)isFilterValid)
@@ -355,7 +355,7 @@ namespace Validations
                 }
             }
 
-            var isValidRuleUntyped = AssertExpressionNew(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
+            var isValidRuleUntyped = AssertExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
             return isValidRule;
 
@@ -363,7 +363,7 @@ namespace Validations
             //return IsValidRule;
         }
 
-        public static object AssertExpressionNew(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        public static object AssertExpressionOld(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //todo rule ID not necessary as parameter
             var fixedSymbolExpression = FixExpression(symbolExpression);
@@ -412,17 +412,14 @@ namespace Validations
             }
 
 
-            var parseExp = ParseExpr(fixedSymbolExpression);
-
-
-
-            if (!fixedSymbolExpression.Contains("(") && fixedSymbolExpression.IndexOfAny(new char[] {'+','-','*','/' }) >-1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && !string.IsNullOrEmpty(parseExp.operatorUsed))
+            var (isAlgebraExpression, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
+            if (isAlgebraExpression && !fixedSymbolExpression.Contains("(") && fixedSymbolExpression.IndexOfAny(new char[] { '+', '-', '*', '/' }) > -1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && !string.IsNullOrEmpty(operatorUsed))
             {
-                //do not use EVAL to compare numbers because of fractional differences. Allow for 0.01%
-                var leftNum = Convert.ToDouble(Eval.Execute(parseExp.leftOperand, dicx));
-                var rightNum = Convert.ToDouble(Eval.Execute(parseExp.rightOperand, dicx));
+                //cannot use EVAL to compare numbers because of fractional differences. Allow for 0.01%
+                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
+                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
 
-                var res = CompareNumbers(parseExp.operatorUsed, 0.1, leftNum, rightNum);
+                var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
                 return res;
             }
 
@@ -443,21 +440,105 @@ namespace Validations
         }
 
 
-        static (string leftOperand, string operatorUsed, string rightOperand) ParseExpr(string expression)
+
+        public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        {
+            //todo rule ID not necessary as parameter            
+            
+            var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+
+            //populate dicx with numeric, text, and boolean values accordingly
+            var dicx = new Dictionary<string, object>();
+            var expressionTerms = ruleTerms.Where(rt => allTerms.Contains(rt.Letter));
+            foreach (var term in expressionTerms)
+            {
+                object val;
+                if (term.IsMissing)
+                {
+                    val = term.DataTypeOfTerm switch
+                    {
+                        DataTypeMajorUU.BooleanDtm => false,
+                        DataTypeMajorUU.StringDtm => "",
+                        DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
+                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(0.00),
+                        _ => term.TextValue,
+                    };
+                }
+                else
+                {
+                    val = term.DataTypeOfTerm switch
+                    {
+                        DataTypeMajorUU.BooleanDtm => term.BooleanValue,
+                        DataTypeMajorUU.StringDtm => term.TextValue,
+                        DataTypeMajorUU.DateDtm => term.DateValue,
+                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
+                        _ => term.TextValue,
+                    };
+                }
+                dicx.Add(term.Letter, val);
+            }
+
+            //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
+            var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
+            if (!symbolExpression.Contains("(") && symbolExpression.IndexOfAny(new char[] { '+', '-', '*', '/' }) > -1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && isAlgebraig)
+            {
+                //do not use EVAL to compare numbers because of fractional differences. Allow for 0.01%
+                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
+                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
+
+                var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
+                return res;
+            }
+
+
+            try
+            {
+                var resx = Eval.Execute(symbolExpression, dicx);
+                return resx;
+            }
+            catch (Exception e)
+            {
+                var mess = e.Message;
+                Console.WriteLine(mess);
+                Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                throw;
+
+            }
+        }
+
+
+        static (bool isIfExpression, string ifExpression, string thenExpression) SplitIfThenElse(string stringExpression)
+        {
+            //split if then expression            
+            //if(A) then B=> A, B            
+
+            var rgxIfThen = @"if\s*\((.*)\)\s*then(.*)";
+            var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxIfThen, stringExpression);
+            if (terms.Count != 3)
+            {
+                return (false, "", "");
+            }
+            return (true, terms[1], terms[2]);
+        }
+
+
+        static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssion(string expression)
         {
             if (string.IsNullOrEmpty(expression))
-                return ("", "", "");
+            {
+                return (false, "", "", "");
+            }
+
             var reg = @"(.*)\s*([<>=])=\s*(.*)";
             var parts = GeneralUtils.GetRegexSingleMatchManyGroups(reg, expression);
-
             if (parts.Count == 4)
             {
                 var left = parts[1];
                 var op = parts[2];
                 var right = parts[3];
-                return (left, op, right);
+                return (true, left, op, right);
             }
-            return ("", "", "");
+            return (false, "", "", "");
 
         }
 
@@ -466,21 +547,16 @@ namespace Validations
             var qt = @"""";
             var fixedExpression = symbolExpression;
             //convert if then statements to an expression
-            //and change the symbles not=> !, and =>&& , etc
-            //if(A) then B=> !A OR AB
-            //if (not($X0)) then not($X1) => not(not($X0))||(not($X0)&& not($X1))
+            //and change the symbles not=> !, and =>&& , etc            
 
-            var rgxFix1 = @"if\s*\((.*)\)\s*then(.*)";
-            var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxFix1, fixedExpression);
-            if (terms.Count == 3)
-            {
-                //fixedExpression = @$"not({terms[1]})||({terms[1]}&&{terms[2]})";
-                fixedExpression = @$"not({terms[1]})||({terms[1]}&&({terms[2]}))";
-            }
-
-            //fixedExpression = ReplaceFunctionWithLetter(fixedExpression, @"empty\((.*?)\)", "isObjectNull");
-            //fixedExpression = fixedExpression.Replace("empty", "string.IsNullOrEmpty");
-            //fixedExpression = fixedExpression.Replace("isfallback", "string.IsNullOrEmpty");
+            //var rgxFix1 = @"if\s*\((.*)\)\s*then(.*)";
+            //var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxFix1, fixedExpression);
+            //if (terms.Count == 3)
+            //{
+            //    //fixedExpression = @$"not({terms[1]})||({terms[1]}&&{terms[2]})";
+            //    fixedExpression = @$"not({terms[1]})||({terms[1]}&&({terms[2]}))";
+            //}
+            
 
             fixedExpression = fixedExpression.Replace("=", "==");
             fixedExpression = fixedExpression.Replace("!==", "!=");
@@ -539,17 +615,6 @@ namespace Validations
             }
         }
 
-        static string ReplaceFunctionWithLetter(string originalString, string regex, string functionName)
-        {
-            if (originalString is null)
-                return "";
-
-            var rx = new Regex(regex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            var val = rx.Matches(originalString)
-                .Aggregate(originalString, (currValue, match) => currValue.Replace(match.Groups[0].Value, $"{functionName}({match.Groups[1].Value})"));
-            return val;
-        }
-
 
         static public bool CompareNumbers(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
         {
@@ -570,6 +635,39 @@ namespace Validations
             return res;
         }
 
+        static public object AssertExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        {
+            //1. fix  the expression to make it ready for Eval 
+            //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
+
+            var fixedSymbolExpression = FixExpression(symbolExpression);
+            fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
+
+            if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
+            {
+                return null;
+            }
+            if (ruleTerms.Count == 0)
+            {
+                return null;
+            }
+
+
+            var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
+            if (isIfExpressionType)
+            {
+                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
+                if (!(bool)isIfPartTrue)
+                {
+                    return false;
+                }
+                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
+                return isThenPartValid;
+            }
+
+            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
+            return isWholeValid;
+        }
 
     }
 }

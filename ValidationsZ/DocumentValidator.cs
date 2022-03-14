@@ -1243,7 +1243,7 @@ namespace Validations
                 }
                 //evaluate the filter RULE to decide when to add the row@@ add the ruleId tot the temp
                 EvaluateRuleAndFilterTermsNew(fakeFilterRule);
-                if(  (bool)RuleStructure.AssertExpressionNew(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
+                if(  (bool)RuleStructure.AssertExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
                     factSum += sumFact.NumericValue;
                 }
