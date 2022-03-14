@@ -485,8 +485,7 @@ namespace Validations
                     {
                         var tableRel = GetOpenTableMaster(term.TableCode);
                         var keyFact1 = FindKeyFactInRowOfMasterTable(tableRel.FK_TableDim, scopeTableCode, rowCol);
-                        var frow = FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);
-                        term.Row = frow;
+                        term.Row= keyFact1 is null? "" : FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);                         
                     }
                 }
                 else
@@ -892,6 +891,10 @@ namespace Validations
 
         private TemplateSheetFact FindKeyFactInRowOfMasterTable(string keyDim, string tableCode, string row)
         {
+            if(keyDim is null)
+            {
+                return null;
+            }
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
