@@ -365,7 +365,7 @@ namespace Validations
             var sheetsUsingTheRule = connectionEiopa.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId, scopeDetails.TableCode }).ToList();
             var rowCols = new List<string>();
 
-            Console.WriteLine($"rule:{rule.ValidationRuleId}");
+            Console.WriteLine($"\nrule:{rule.ValidationRuleId}");
             foreach (var sheet in sheetsUsingTheRule)
             {
                 if (sheet.IsOpenTable)
@@ -395,7 +395,7 @@ namespace Validations
                         var rows = connectionEiopa.Query<string>(sqlDistinctRowsById, new { DocumentId, sheetId = sheet.TemplateSheetId }).ToList();
                         rowCols = rows;
                     }
-                    Console.Write("o");
+                    //Console.Write("s");
                 }
                 else
                 {
@@ -415,7 +415,7 @@ namespace Validations
                     }
 
                 }
-
+                Console.Write("s");
                 //Create a new rule for each rowCol (can be either a row or col. for open tables one rule for each row unless they have a sum term)
                 //the axis is taken from the scope unless it is an open table which is row 
                 foreach (var rowCol in rowCols)
