@@ -94,7 +94,7 @@ namespace Validations
             foreach (var rule in DocumentRules)
             {
                 //Console.WriteLine(".");
-                Console.Write($"{rule.ValidationRuleId}");
+                Console.Write($"\n{rule.ValidationRuleId}");
                 EvaluateRuleAndFilterTermsNew(rule);
             }
 
@@ -105,7 +105,7 @@ namespace Validations
         {
 
 
-            Console.WriteLine($"Eval Rule terms:{rule.ValidationRuleId}");
+            //Console.Write($"");
 
 
 
@@ -425,7 +425,7 @@ namespace Validations
                     var newRule = rule.Clone();
                     newRule.ConfigObject = ConfigObject;
                     newRule.DocumentId = DocumentId;
-                    newRule.SheetId = sheet.TemplateSheetId;
+                     newRule.SheetId = sheet.TemplateSheetId;
 
                     newRule.ScopeRowCol = rowCol;
                     newRule.ScopeTableCode = scopeDetails.TableCode;
