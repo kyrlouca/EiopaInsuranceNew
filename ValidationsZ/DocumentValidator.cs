@@ -505,8 +505,7 @@ namespace Validations
             var sqlSelect = @"
                 SELECT
                   tk.TableCode
-                 ,tk.TableCodeKeyDim
-                 ,tk.FK_TableCode
+                 ,tk.TableCodeKeyDim                 
                  ,tk.FK_TableDim
                 FROM dbo.mTableKyrKeys tk
                 WHERE tk.TableCode = @tableCode
@@ -643,7 +642,7 @@ namespace Validations
             foreach (var sheet in openSheets)
             {
 
-                var sqlTblKyr = @"SELECT  tk.TableCode ,tk.TableCodeKeyDim ,tk.FK_TableCode ,tk.FK_TableDim FROM dbo.mTableKyrKeys tk WHERE tk.TableCode = @tableCode";
+                var sqlTblKyr = @"SELECT  tk.TableCode ,tk.TableCodeKeyDim ,tk.FK_TableDim FROM dbo.mTableKyrKeys tk WHERE tk.TableCode = @tableCode";
                 var tblKyr = connectionEiopa.QuerySingle<MTableKyrKeys>(sqlTblKyr, new { sheet.TableCode });
                 if (string.IsNullOrEmpty(tblKyr.TableCodeKeyDim))
                 {
