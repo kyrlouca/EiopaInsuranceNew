@@ -478,9 +478,10 @@ namespace Validations
                 dicx.Add(term.Letter, val);
             }
 
+            //@@@
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
-            if (!symbolExpression.Contains("(") && symbolExpression.IndexOfAny(new char[] { '+', '-', '*', '/' }) > -1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && isAlgebraig)
+            if (!symbolExpression.Contains("(") && !(symbolExpression.IndexOfAny(new char[] { '&', '|', '!'}) > -1) && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && isAlgebraig)
             {
                 //do not use EVAL to compare numbers because of fractional differences. Allow for 0.01%
                 var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));

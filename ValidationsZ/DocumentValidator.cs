@@ -453,7 +453,7 @@ namespace Validations
         public void UpdateTermRowCol(RuleTerm term, string scopeTableCode, ScopeRangeAxis scopeAxis, string rowCol)
         {
             //PF.04.03.24.01 (r0040;0050;0060;0070;0080) 
-
+            //if both row and col are present do not update anything
             if (!string.IsNullOrEmpty(term.Row) && !string.IsNullOrEmpty(term.Col))
             {
                 return;
@@ -483,9 +483,10 @@ namespace Validations
                     }
                     else
                     {
-                        var tableRel = GetOpenTableMaster(term.TableCode);
-                        var keyFact1 = FindKeyFactInRowOfMasterTable(tableRel.FK_TableDim, scopeTableCode, rowCol);
-                        term.Row= keyFact1 is null? "" : FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);                         
+                        var linkingDetails = GetLinkingDim(term.TableCode);
+                        var factInMaster = FindFactInRowOfMasterTable(linkingDetails.FK_TableDim, scopeTableCode, rowCol);
+                        //term.Row = keyFact1 is null ? "" : FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);
+                        term.Row = factInMaster is null ? "" : FindRowUsingForeignKeyInDetailTbl(linkingDetails.FK_TableDim, term.TableCode, factInMaster.TextValue);
                     }
                 }
                 else
@@ -497,7 +498,7 @@ namespace Validations
 
         }
 
-        private MTableKyrKeys GetOpenTableMaster(string tableCode)
+        private MTableKyrKeys GetLinkingDim(string tableCode)
         {
 
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
@@ -889,7 +890,7 @@ namespace Validations
 
         }
 
-        private TemplateSheetFact FindKeyFactInRowOfMasterTable(string keyDim, string tableCode, string row)
+        private TemplateSheetFact FindFactInRowOfMasterTable(string keyDim, string tableCode, string row)
         {
             if(keyDim is null)
             {
@@ -923,6 +924,7 @@ namespace Validations
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
+            //since dim is "UI" => find the col "C0040" for example
             var sqKeyColumn = @"	
                         SELECT 
                         map.DYN_TAB_COLUMN_NAME	   as columnCode	   	  
