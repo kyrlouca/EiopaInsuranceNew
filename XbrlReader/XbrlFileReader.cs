@@ -42,7 +42,9 @@ namespace XbrlReader
         public int ApplicableQuarter { get; private set; }
         public string FileName { get; private set; }
 
+        
         public string ModuleCode { get; private set; }
+
         public MModule Module { get; private set; }
         public int DocumentId { get; internal set; }
 
@@ -73,7 +75,7 @@ namespace XbrlReader
         {
             Console.WriteLine("ONLY for testing XbrlData");
             return;
-        }
+        } 
 
         public XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
@@ -83,6 +85,7 @@ namespace XbrlReader
             CurrencyBatchId = currencyBatchId;
             UserId = userId;
             FundId = fundId;
+            ModuleCode = moduleCode;
             ApplicableYear = applicableYear;
             ApplicableQuarter = applicableQuarter;
             FileName = fileName;
@@ -95,12 +98,27 @@ namespace XbrlReader
 
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
 
-            Module = GetModule(moduleCode);
+            Module = GetModule(ModuleCode);
             if (Module is null)
             {
-                var message = $"invalid Module code {moduleCode}";
+                var message = $"Invalid Module code {ModuleCode}";
                 Log.Error(message);
                 Console.WriteLine(message);
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.INFO.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
                 return;
             }
 
@@ -108,15 +126,31 @@ namespace XbrlReader
             
             if(existingDoc is not null)
             {
-                var isLoadedStatus = Regex.IsMatch(@"[LE]", existingDoc.Status );
-                if (!isLoadedStatus)
+                var isLoadedDocument = Regex.IsMatch(@"[LE]", existingDoc.Status );
+                if (!isLoadedDocument)
                 {
                     var message = $"Document already exists: instanceId: {existingDoc.InstanceId} status :{existingDoc.Status}";
                     Log.Error(message);
                     Console.WriteLine(message);
+                    
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = FundId,
+                        ModuleCode = ModuleCode,
+                        ApplicableYear = ApplicableYear,
+                        ApplicableQuarter = ApplicableQuarter,
+                        Message = message,
+                        UserId = UserId,
+                        ProgramCode = ProgramCode.XB.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = existingDoc.InstanceId,
+                        MessageType = MessageType.INFO.ToString()
+                    };
+                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
                     return;
                 }
-                if (isLoadedStatus)
+                if (isLoadedDocument)
                 {
                     DeleteDocument(existingDoc.InstanceId);
                 }
@@ -124,10 +158,33 @@ namespace XbrlReader
             }
 
             
-
-                WriteProcessStarted();
+            WriteProcessStarted();
 
             XmlDoc = CreateXbrlData(fileName);
+
+            if(XmlDoc is null)
+            {
+                var message = $"XmlDoc is null";
+                Log.Error(message);
+                Console.WriteLine(message);
+               
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = existingDoc.InstanceId,
+                    MessageType = MessageType.INFO.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                return;
+            }
+            
 
             var diffminutes = StartTime.Subtract(DateTime.Now).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
@@ -201,9 +258,31 @@ namespace XbrlReader
             RootNode = xmlDoc.Root;
 
             var reference = RootNode.Element(link + "schemaRef").Attribute(xlink + "href").Value;
-            ModuleCode = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
+            var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
+            if (moduleCodeXbrl != Module.ModuleCode)
+            {
+                var message = $" Module Code provided {Module.ModuleCode} NOT the same with Module in Xbrl : {moduleCodeXbrl}";
+                Log.Error(message);
+                Console.WriteLine(message);                                
 
-            Console.WriteLine($"Opened Xblrl=>  Module: {ModuleCode} ");
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = moduleCodeXbrl,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.INFO.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                return null;
+            }
+
+            Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
 
             DocumentId = CreateDocInstanceInDb();
 
@@ -291,7 +370,7 @@ namespace XbrlReader
             {
                 PensionFundId = FundId,
                 UserId,
-                ModuleCode,
+                ModuleCode = ModuleCode,
                 ApplicableYear,
                 ApplicableQuarter,
                 ModuleId = moduleId,
@@ -599,21 +678,7 @@ VALUES (
             Console.WriteLine(message);
             Log.Information(message);
 
-            TransactionLog trans;
-            trans = new TransactionLog()
-            {
-                PensionFundId = FundId,
-                ModuleCode = "XX",
-                ApplicableYear = ApplicableYear,
-                ApplicableQuarter = ApplicableQuarter,
-                Message = message,
-                UserId = UserId,
-                ProgramCode = ProgramCode.XB.ToString(),
-                ProgramAction = ProgramAction.INS.ToString(),
-                InstanceId = 0,
-                MessageType = MessageType.INFO.ToString()
-            };
-            TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
         }
 
         private DocInstance GetExistingDocument()

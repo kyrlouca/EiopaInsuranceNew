@@ -74,6 +74,15 @@ namespace XbrlReader
 
             DocumentId = documentId;
             Document = GetDocument(documentId);
+            if (Document is null)
+            {
+                var message = $"Document id:{DocumentId} NOT Found";
+                Console.Write(message);
+                Log.Error(message);
+                return;
+            }
+
+
             Filings = filings;
 
             ModuleCode = Document.ModuleCode.Trim();

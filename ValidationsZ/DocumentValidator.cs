@@ -59,7 +59,8 @@ namespace Validations
             DocumentInstance = document;
             DocumentId = document.InstanceId;
 
-            var module = GetCellValueF';
+            var module = GetModuleId();
+
             if (module is null)
             {
                 return;
@@ -1364,6 +1365,7 @@ namespace Validations
         }
 
 
+
         private static decimal FunctionForExp(List<RuleTerm> allTerms, RuleTerm exTerm)
         {
             //In a fractional exponent, the numerator is the power to which the number should be taken and the denominator is the root which should be taken.
@@ -1493,6 +1495,40 @@ namespace Validations
             connectionPension.Execute(sqlUpdateStatus, new { DocumentId, status });
 
             return isDocumentValid;
+        }
+
+
+        private MModule GetModuleId()
+        {
+            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+
+
+            var sqlSelectDoc = @"SELECT mo.ModuleID, moduleCode, mo.ModuleLabel, mo.XBRLSchemaRef FROM mModule mo where mo.ModuleID = @moduleId";
+            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlSelectDoc, new { DocumentInstance.ModuleId });
+            if (module is null)
+            {
+                var message = $"Validator: Module NOT Valid. Module: {ModuleId} ";
+                Log.Error(message);
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = DocumentInstance.PensionFundId,
+                    ModuleCode = DocumentInstance.ModuleCode,
+                    ApplicableYear = DocumentInstance.ApplicableYear,
+                    ApplicableQuarter = DocumentInstance.ApplicableQuarter,
+                    Message = message,
+                    UserId = 0,
+                    ProgramCode = ProgramCode.VA.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = DocumentId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                return module;
+            }
+            return module;
+
         }
 
 
