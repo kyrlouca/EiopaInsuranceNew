@@ -84,7 +84,7 @@ namespace XbrlReader
             var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
             var hell = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
 
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 11, 2021, 4,hell);
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 11, "qrs", 2021, 4,hell);
             _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 
@@ -95,7 +95,7 @@ namespace XbrlReader
             Console.WriteLine("Finish");
             return 1;
 #endif
-            if (args.Length == 7)
+            if (args.Length == 8)
             {
 
 
@@ -106,13 +106,14 @@ namespace XbrlReader
                 var currencyBatchId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
                 var userId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
                 var fundId = int.TryParse(args[3], out var arg3) ? arg3 : 0;
-                var applicationYear = int.TryParse(args[4], out var arg4) ? arg4 : 0;
-                var applicationQuarter = int.TryParse(args[5], out var arg5) ? arg5 : 0;
-                var xbrlFile = args[6];
+                var moduleCode = args[4];
+                var applicationYear = int.TryParse(args[5], out var arg5) ? arg5 : 0;
+                var applicationQuarter = int.TryParse(args[6], out var arg6) ? arg6 : 0;
+                var xbrlFile = args[7];
                 Console.WriteLine($"XbrlReader v1: xbrlfile:{xbrlFile}");
 
                 //no need for module (it is found in xbrl file)
-                var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, applicationYear, applicationQuarter, xbrlFile);
+                var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
                 Console.WriteLine("Starting XbrlDataProcessor");
                 _ = new XbrlDataProcessor(solvencyVersion,  xbrlData.DocumentId,xbrlData.FilingsSubmitted);
 

@@ -59,7 +59,7 @@ namespace Validations
             DocumentInstance = document;
             DocumentId = document.InstanceId;
 
-            var module = GetModuleId();
+            var module = GetCellValueF';
             if (module is null)
             {
                 return;
@@ -597,7 +597,7 @@ namespace Validations
             return doc;
         }
 
-        private MModule GetModuleId()
+        private MModule  Id()
         {
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);

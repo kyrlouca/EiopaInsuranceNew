@@ -15,7 +15,7 @@ using TransactionLoggerNs;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
 using Dapper;
-
+using System.Text.RegularExpressions;
 
 namespace XbrlReader
 {
@@ -26,7 +26,7 @@ namespace XbrlReader
         //The XbrlReader creates structures for the data contained in an XBRL file (units, facts, contexts, fileinfo)        
         //It does NOT  assign row/col to the facts and it does NOT save to the database
         //It is the DataProcessor which does the processing and saving in db
-        
+
 
         public bool IsValidEiopaVersion { get; private set; }
         public int CurrencyBatchId { get; private set; }
@@ -43,8 +43,10 @@ namespace XbrlReader
         public string FileName { get; private set; }
 
         public string ModuleCode { get; private set; }
+        public MModule Module { get; private set; }
         public int DocumentId { get; internal set; }
-        public List<string> FilingsSubmitted { get; set; } = new();        
+
+        public List<string> FilingsSubmitted { get; set; } = new();
         public Dictionary<string, string> Units { get; protected set; } = new Dictionary<string, string>();
 
         public string SolvencyVersion { get; internal set; }
@@ -73,7 +75,7 @@ namespace XbrlReader
             return;
         }
 
-        public XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, int applicableYear, int applicableQuarter, string fileName)
+        public XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
             //Then store document, sheets, and facts in database
@@ -84,7 +86,7 @@ namespace XbrlReader
             ApplicableYear = applicableYear;
             ApplicableQuarter = applicableQuarter;
             FileName = fileName;
-            
+
 
             if (!GetConfiguration())
             {
@@ -93,16 +95,43 @@ namespace XbrlReader
 
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
 
-            WriteProcessStarted();
-            //var data = new XbrlDataProcessor(SolvencyVersion, this);            
-            //return;
+            Module = GetModule(moduleCode);
+            if (Module is null)
+            {
+                var message = $"invalid Module code {moduleCode}";
+                Log.Error(message);
+                Console.WriteLine(message);
+                return;
+            }
+
+            var existingDoc = GetExistingDocument();
+            
+            if(existingDoc is not null)
+            {
+                var isLoadedStatus = Regex.IsMatch(@"[LE]", existingDoc.Status );
+                if (!isLoadedStatus)
+                {
+                    var message = $"Document already exists: instanceId: {existingDoc.InstanceId} status :{existingDoc.Status}";
+                    Log.Error(message);
+                    Console.WriteLine(message);
+                    return;
+                }
+                if (isLoadedStatus)
+                {
+                    DeleteDocument(existingDoc.InstanceId);
+                }
+
+            }
+
+            
+
+                WriteProcessStarted();
 
             XmlDoc = CreateXbrlData(fileName);
-            
+
             var diffminutes = StartTime.Subtract(DateTime.Now).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
         }
-
 
 
         private bool GetConfiguration()
@@ -177,7 +206,7 @@ namespace XbrlReader
             Console.WriteLine($"Opened Xblrl=>  Module: {ModuleCode} ");
 
             DocumentId = CreateDocInstanceInDb();
-            
+
             //AddFilingIndicators();
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
@@ -188,7 +217,7 @@ namespace XbrlReader
             Console.WriteLine("\nCreate Contexts");
             AddContexts();
 
-            
+
 
             Console.WriteLine("\nCreate Facts");
             AddFacts();
@@ -202,8 +231,8 @@ namespace XbrlReader
 
         private void DeleteContexts()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
-            connectionInsurance.Execute("Delete from Context where InstanceId= @DocumentId", new {DocumentId });
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            connectionInsurance.Execute("Delete from Context where InstanceId= @DocumentId", new { DocumentId });
         }
 
         private void AddValidFilingIndicators()
@@ -218,22 +247,9 @@ namespace XbrlReader
                 {
                     continue;
                 }
-                FilingsSubmitted.Add(fi.Value); 
+                FilingsSubmitted.Add(fi.Value);
             }
         }
-
-        //private void AddFilingIndicators()
-        //{
-        //    //filing indicators
-        //    var filingsHeader = RootNode.Element(findNs + "fIndicators");
-        //    var filingIndicators = filingsHeader?.Elements(findNs + "filingIndicator").ToList();
-        //    foreach (var fi in filingIndicators)
-        //    {
-        //        var isNotFiled = fi.Attribute(findNs + "filed")?.Value == "false";
-        //        var val = fi.Value;
-        //        FilingIndicators.Add(new XbuFilingIndicator(val, !isNotFiled));
-        //    }
-        //}
 
         private int CreateDocInstanceInDb()
         {
@@ -266,7 +282,7 @@ namespace XbrlReader
                 SELECT CAST(SCOPE_IDENTITY() as int);
                 ";
 
-            
+
 
             var sqlModule = @"select mod.ModuleID from mModule mod where mod.ModuleCode = @moduleCode";
             var moduleId = connectionEiopa.QuerySingleOrDefault<int>(sqlModule, new { ModuleCode });
@@ -278,7 +294,7 @@ namespace XbrlReader
                 ModuleCode,
                 ApplicableYear,
                 ApplicableQuarter,
-                ModuleId =moduleId,
+                ModuleId = moduleId,
                 FileName,
                 CurrencyBatchId
             };
@@ -317,7 +333,7 @@ namespace XbrlReader
                 i += 1;
                 var contextXbrlId = contextElement.Attribute("id").Value;
                 var scenario = contextElement.Element(xbrli + "scenario");
-                
+
 
                 var contextDb = new Context(DocumentId, contextXbrlId, contextXbrlId, 0);
                 var sqlInsertContext = @"INSERT INTO dbo.Context (InstanceId, ContextXbrlId, Signature, TableId) VALUES (@InstanceId,@ContextXbrlId, @Signature, @TableId)
@@ -334,9 +350,9 @@ namespace XbrlReader
                     //<xbrldi:explicitMember dimension="s2c_dim:AG">s2c_VM:x17</xbrldi:explicitMember>
                     var dimAndType = explicitDim.Attribute("dimension").Value; //s2c_dim:AG                    
                     var domainAndMember = explicitDim.Value; //s2c_VM:x17
-                                        
+
                     //************************
-                    var dd = $"{dimAndType}({domainAndMember})";                    
+                    var dd = $"{dimAndType}({domainAndMember})";
                     contextDb.ContextLinesF1.Add(dd);
                     //****************************                   
                 }
@@ -349,7 +365,7 @@ namespace XbrlReader
                     //get the domNodeValue from  the typed element(ID) -- 1 in the case above
 
                     var dimAndType = typedDim.Attribute("dimension").Value; //s2c_dim:AG 
-                  
+
                     var domNode = typedDim.Elements()?.First(); //<s2c_typ:ID>1</s2c_typ:ID>                    
                     var domain = domNode?.Name?.LocalName ?? ""; //ID
                     var domainMember = domNode.Value; //1                     
@@ -362,7 +378,7 @@ namespace XbrlReader
 
                 }
                 var sqlUpdateContext = @"update Context set Signature=@Signature where ContextId=@ContextId;";
-                
+
                 contextDb.BuildSignature();
                 connectionInsurance.Execute(sqlUpdateContext, new { contextDb.Signature, contextId });
                 Console.Write($"^");
@@ -400,10 +416,10 @@ namespace XbrlReader
                 {
                     decimals = 0;
                 }
-                
-                var unitRef = fe.Attribute("unitRef")?.Value ?? ""; 
+
+                var unitRef = fe.Attribute("unitRef")?.Value ?? "";
                 var metric = fe.Name.LocalName.ToString(); //maybe not needed in Db                
-                var xbrlCode= $"{prefix.Trim()}:{metric.Trim()}";
+                var xbrlCode = $"{prefix.Trim()}:{metric.Trim()}";
                 var mMetric = FindFactMetricId(xbrlCode);  //"s2md_met:ei1633"              
                 var dataTypeUse = CntConstants.SimpleDataTypes[mMetric.DataType]; //N, S,B,E..
 
@@ -427,7 +443,7 @@ namespace XbrlReader
                     XBRLCode = xbrlCode,
                     ContextId = contextId,
                     Unit = unitRef,
-                    Decimals = decimals,                    
+                    Decimals = decimals,
                     IsConversionError = false,
                     IsEmpty = false,
                     TextValue = fe.Value,
@@ -438,13 +454,13 @@ namespace XbrlReader
                     DataTypeUse = dataTypeUse,
                     DataPointSignature = "",
                     DataPointSignatureFilled = "",
-                    RowSignature = "",                    
+                    RowSignature = "",
                 };
-                
+
                 var ctxLines = GetContextLinesNew(contextId);
-                
+
                 newFact.UpdateFactDetails(xbrlCode, ctxLines);
-                
+
                 var sqlInsFact = @"
                     
 INSERT INTO dbo.TemplateSheetFact (
@@ -500,11 +516,11 @@ VALUES (
                 newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
                 CreateFactDimsDb(ConfigObject, newFact.FactId, newFact.DataPointSignature);
 
-                
+
                 Console.Write(".");
 
                 count++;
-                if(count % 1000 == 0)
+                if (count % 1000 == 0)
                 {
                     Console.WriteLine($"facts Count:{count}");
                 }
@@ -525,7 +541,7 @@ VALUES (
 
             }
 
-             MMetric FindFactMetricId(string xbrlCode)
+            MMetric FindFactMetricId(string xbrlCode)
             {
                 //xbrl code is actually the metric of a fact
                 using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
@@ -541,7 +557,6 @@ VALUES (
             }
 
         }
-
 
         internal static int CreateFactDimsDb(ConfigObject config, int factId, string signature)
         {
@@ -578,8 +593,6 @@ VALUES (
             return count;
         }
 
-
-
         private void WriteProcessStarted()
         {
             var message = $"XBRL Reader Started -- Fund:{FundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion} file:{FileName}";
@@ -603,6 +616,44 @@ VALUES (
             TransactionLogger.LogTransaction(SolvencyVersion, trans);
         }
 
+        private DocInstance GetExistingDocument()
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
+            var sqlExists = @"
+                    select doc.InstanceId, doc.Status from DocInstance doc where  
+                    PensionFundId= @FundId and ModuleId=@moduleId
+                    and ApplicableYear = @ApplicableYear and ApplicableQuarter = @ApplicableQuarter"
+                    ;
+
+            var docParams = new { PensionFundId = FundId, ModuleId = Module.ModuleID, ApplicableYear, ApplicableQuarter };
+            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlExists, docParams);
+            return doc;
+        }
+
+        private int DeleteDocument(int documentId)
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var sqlExists = @"delete from DocInstance where InstanceId= @documentId";                                
+            var rows = connectionInsurance.Execute(sqlExists, new{documentId });
+            return rows;
+        }
+
+
+        private MModule GetModule(string moduleCode)
+        {
+            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            //module code : {ari, qri, ara, ...}
+            var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
+            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode= moduleCode.ToLower().Trim() });
+            if (module is null)
+            {
+                return new MModule();
+            }
+            return module;
+
+        }
 
     }
 }
