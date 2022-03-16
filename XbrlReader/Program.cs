@@ -84,7 +84,11 @@ namespace XbrlReader
             var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
             var hell = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
 
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 11, "qrs", 2021, 4,hell);
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,hell);
+            if (xbrlDataTesting.DocumentId==0)
+            {
+                return 1;
+            }
             _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 
@@ -115,17 +119,21 @@ namespace XbrlReader
                 //no need for module (it is found in xbrl file)
                 
                 var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
+                if(xbrlData.DocumentId ==0)
+                {
+                    return 1;
+                }
                 Console.WriteLine("Starting XbrlDataProcessor");
                 _ = new XbrlDataProcessor(solvencyVersion,  xbrlData.DocumentId,xbrlData.FilingsSubmitted);
 
-                return 1;
+                return 0;
             }
             else
             {
 
                 var message = @".\XbrlReader  solvencyVersion currencyBatch userId fundId year quarter filepath";
                 Console.WriteLine(message);
-                return 0;
+                return 1;
             }
 
             return 1;

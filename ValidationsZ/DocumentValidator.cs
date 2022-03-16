@@ -598,7 +598,7 @@ namespace Validations
             return doc;
         }
 
-        private MModule  Id()
+        private MModule  GetModlueById()
         {
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);

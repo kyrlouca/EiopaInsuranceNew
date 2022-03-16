@@ -17,6 +17,10 @@ namespace TestingValidationsZ
         {
             var theTerm = new RuleTerm("X0", "abc", 9, false, DateTime.Now, EiopaConstants.DataTypeMajorUU.StringDtm, false);
             var theExp= "";
+            if(theTerm is null || string.IsNullOrEmpty(theExp))
+            {
+                //to remove waring
+            }
             var rules = new List<RuleTerm>();
             if (rules.Count == 0)
             {

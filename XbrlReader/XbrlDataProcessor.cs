@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Serilog;
 using HelperInsuranceFunctions;
+using TransactionLoggerNs;
 
 namespace XbrlReader
 {
@@ -79,6 +80,21 @@ namespace XbrlReader
                 var message = $"Document id:{DocumentId} NOT Found";
                 Console.Write(message);
                 Log.Error(message);
+                
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = 0,
+                    ModuleCode = "",
+                    ApplicableYear = 0,
+                    ApplicableQuarter =0,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return;
             }
 

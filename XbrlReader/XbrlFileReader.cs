@@ -58,7 +58,7 @@ namespace XbrlReader
         readonly XNamespace xbrldi = "http://xbrl.org/2006/xbrldi";
         readonly XNamespace xlink = "http://www.w3.org/1999/xlink";
         readonly XNamespace link = "http://www.xbrl.org/2003/linkbase";
-        readonly XNamespace typedDimNs = "http://eiopa.europa.eu/xbrl/s2c/dict/typ";
+        //readonly XNamespace typedDimNs = "http://eiopa.europa.eu/xbrl/s2c/dict/typ";
         readonly XNamespace findNs = "http://www.eurofiling.info/xbrl/ext/filing-indicators";
 
 
@@ -122,10 +122,14 @@ namespace XbrlReader
                 return;
             }
 
-            var existingDoc = GetExistingDocument();
-            
-            if(existingDoc is not null)
+            var existingDocs = GetExistingDocuments();
+            if (existingDocs.Count == 0)
             {
+
+            }
+            else if (existingDocs.Count == 1)                
+            {
+                var existingDoc = existingDocs.First();
                 var isLoadedDocument = Regex.IsMatch(@"[LE]", existingDoc.Status );
                 if (!isLoadedDocument)
                 {
@@ -154,7 +158,28 @@ namespace XbrlReader
                 {
                     DeleteDocument(existingDoc.InstanceId);
                 }
+            }else
+            {
+                var message = $"More than One Document exists: fund:{FundId} module:{ModuleCode} year:{ApplicableYear} quarter{ApplicableQuarter}";
+                Log.Error(message);
+                Console.WriteLine(message);
 
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                return;
             }
 
             
@@ -178,8 +203,8 @@ namespace XbrlReader
                     UserId = UserId,
                     ProgramCode = ProgramCode.XB.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = existingDoc.InstanceId,
-                    MessageType = MessageType.INFO.ToString()
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return;
@@ -370,7 +395,7 @@ namespace XbrlReader
             {
                 PensionFundId = FundId,
                 UserId,
-                ModuleCode = ModuleCode,
+                ModuleCode,
                 ApplicableYear,
                 ApplicableQuarter,
                 ModuleId = moduleId,
@@ -681,7 +706,7 @@ VALUES (
 
         }
 
-        private DocInstance GetExistingDocument()
+        private List<DocInstance> GetExistingDocuments()
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
             var sqlExists = @"
@@ -690,16 +715,21 @@ VALUES (
                     and ApplicableYear = @ApplicableYear and ApplicableQuarter = @ApplicableQuarter"
                     ;
 
-            var docParams = new { PensionFundId = FundId, ModuleId = Module.ModuleID, ApplicableYear, ApplicableQuarter };
-            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlExists, docParams);
-            return doc;
+            var docParams = new { FundId, ModuleId = Module.ModuleID, ApplicableYear, ApplicableQuarter };
+            var docs = connectionInsurance.Query<DocInstance>(sqlExists, docParams).ToList();
+            return docs;            
+            
         }
 
         private int DeleteDocument(int documentId)
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var sqlExists = @"delete from DocInstance where InstanceId= @documentId";                                
-            var rows = connectionInsurance.Execute(sqlExists, new{documentId });
+            var sqlDeleteDoc = @"delete from DocInstance where InstanceId= @documentId";                                
+            var rows = connectionInsurance.Execute(sqlDeleteDoc, new{documentId });
+
+            var sqlErrorDocDelete = @"delete from DocInstance where InstanceId= @documentId";
+            connectionInsurance.Execute(sqlErrorDocDelete, new { documentId });
+
             return rows;
         }
 
