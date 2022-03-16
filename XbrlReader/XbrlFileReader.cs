@@ -130,7 +130,8 @@ namespace XbrlReader
             else if (existingDocs.Count == 1)                
             {
                 var existingDoc = existingDocs.First();
-                var isLoadedDocument = Regex.IsMatch(@"[LE]", existingDoc.Status );
+                var status = existingDoc.Status.Trim();
+                var isLoadedDocument = (status=="L" || status=="E" );
                 if (!isLoadedDocument)
                 {
                     var message = $"Document already exists: instanceId: {existingDoc.InstanceId} status :{existingDoc.Status}";
@@ -148,7 +149,7 @@ namespace XbrlReader
                         ProgramCode = ProgramCode.XB.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
                         InstanceId = existingDoc.InstanceId,
-                        MessageType = MessageType.INFO.ToString()
+                        MessageType = MessageType.ERROR.ToString()
                     };
                     TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
@@ -286,7 +287,7 @@ namespace XbrlReader
             var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
             if (moduleCodeXbrl != Module.ModuleCode)
             {
-                var message = $" Module Code provided {Module.ModuleCode} NOT the same with Module in Xbrl : {moduleCodeXbrl}";
+                var message = $" Module Code provided +{Module.ModuleCode}+ DIFFERENT THAN  Module in Xbrl : +{moduleCodeXbrl}+";
                 Log.Error(message);
                 Console.WriteLine(message);                                
 
