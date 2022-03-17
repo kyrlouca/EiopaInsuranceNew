@@ -206,7 +206,7 @@ namespace XbrlReader
         {
             var zet = @"s2c_dim:AX(*[8;1;0])|s2c_dim:AX(x)|s2c_dim:BL(*[331;1512;0])";
             var clean = zet.Split("|").Where(item => !item.Contains("(*")).ToList() ?? new List<string>();
-            var x = 3;
+           
         }
 
 
@@ -224,11 +224,11 @@ namespace XbrlReader
                 GROUP BY 
                     DYN_TAB_COLUMN_NAME
                 ";
-            var dps = @"MET(s2md_met:mi289)|s2c_dim:AF(*?[CA_1])|s2c_dim:AX(*[AM_8;x0;0])|s2c_dim:BL(*[LB_31;x0;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[CU_";
+            //var dps = @"MET(s2md_met:mi289)|s2c_dim:AF(*?[CA_1])|s2c_dim:AX(*[AM_8;x0;0])|s2c_dim:BL(*[LB_31;x0;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[CU_";
 
             var dps124 = @"MET(s2md_met:mi289)|s2c_dim:DY(s2c_TI:x1)|s2c_dim:RM(s2c_TI:x46)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
             var dpsList = dps124.Split("|").ToList();
-            var sqlx = @"select DIM_CODE from MAPPING where TABLE_VERSION_ID=@tableId";
+            //var sqlx = @"select DIM_CODE from MAPPING where TABLE_VERSION_ID=@tableId";
             var mappings = connectionEiopa.Query<(string rowCol, string dims)>(sqlDims, new { tableId = 124 }).ToList();
             var rowCol = "";
             foreach (var mapping in mappings)
@@ -241,7 +241,7 @@ namespace XbrlReader
                 }
 
             }
-            var yy = 2;
+            
             return "";
 
         }
@@ -316,7 +316,7 @@ namespace XbrlReader
 
             var cellSig = "MET(s2md_met:mi289)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
             var factSig = "MET(s2md_met:mi289)|s2c_dim:AF(s2c_CA:x1)|s2c_dim:AX(s2c_AM:x4)|s2c_dim:BL(s2c_LB:x52)|s2c_dim:DY(s2c_TI:x8)|s2c_dim:OC(s2c_CU:EUR)|s2c_dim:RM(s2c_TI:x58)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
-            var tableZet = "MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:OC(*?[237])|s2c_dim:VG(s2c_AM:x80)";
+            //var tableZet = "MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:OC(*?[237])|s2c_dim:VG(s2c_AM:x80)";
 
             factSig = @"MET(s2md_met:ei1026)|s2c_dim:BL(s2c_LB:x136)|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(ID:FAC_MON/089/14)|s2c_dim:RD(ID:P_MON/089/14)|s2c_dim:RE(ID:RE_PERSONAL_ACCIDENT)";
             cellSig = @"MET(s2md_met:ei1026)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
@@ -326,8 +326,7 @@ namespace XbrlReader
 
 
             var extraFactDims = factDims.Where(dim => !isFactDimInCellDims(dim))?.ToList() ?? new List<string>();
-
-            var y = 2;
+            
 
             bool isFactDimInCellDims(string factDim)
             {

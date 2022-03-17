@@ -598,39 +598,6 @@ namespace Validations
             return doc;
         }
 
-        private MModule  GetModlueById()
-        {
-            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-
-
-
-            var sqlSelectDoc = @"SELECT mo.ModuleID, moduleCode, mo.ModuleLabel, mo.XBRLSchemaRef FROM mModule mo where mo.ModuleID = @moduleId";
-            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlSelectDoc, new { DocumentInstance.ModuleId });
-            if (module is null)
-            {
-                var message = $"Validator: Module NOT Valid. Module: {ModuleId} ";
-                Log.Error(message);
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = DocumentInstance.PensionFundId,
-                    ModuleCode = DocumentInstance.ModuleCode,
-                    ApplicableYear = DocumentInstance.ApplicableYear,
-                    ApplicableQuarter = DocumentInstance.ApplicableQuarter,
-                    Message = message,
-                    UserId = 0,
-                    ProgramCode = ProgramCode.VA.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = DocumentId,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return module;
-            }
-            return module;
-
-        }
-
         private bool ValidateOpenTableKeysUnique(int documentId)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);

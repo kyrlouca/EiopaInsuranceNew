@@ -13,7 +13,7 @@ namespace XbrlReader
 #if (DEBUG)
             Console.WriteLine("XbrlReader in DEBUG MODE");            
 
-            if (1 == 2)
+            if (1==2)
             {
 
 
@@ -67,19 +67,19 @@ namespace XbrlReader
             //var simpleTest= @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Trimmed.xbrl";
             //var ancoriaQrs = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Ancoria Insurance - QRS Q2 2021.xbrl";
             //var graw2020 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-25 0\GraweRe - Annual 2020.xbrl"; //6051
-            var defenceAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\UK Defence - Annual 2020.xbrl";
+            //var defenceAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\UK Defence - Annual 2020.xbrl";
             //var simpleFile = @"C:\Users\kyrlo\soft\dotnet\insuranc e-project\testing-250\simple.xbrl"; //6051
 
-            var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
-            var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
-            var SMuaeAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\SMUAE Annual 2020.xbrl";
+            //var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
+            //var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
+            //var SMuaeAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\SMUAE Annual 2020.xbrl";
 
             //var Euro260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\EuroLife Q4 2021.xbrl";
             //var Uni260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\Universal Q4 2021.xbrl";
             //var Cnp260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\CNP Asfalistiki Q4 2021.xbrl";
             //var med260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\MEDLIFE Q4 2021.xbrl";
 
-            var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
+            //var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
             var hell = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
 
             var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,hell);            
