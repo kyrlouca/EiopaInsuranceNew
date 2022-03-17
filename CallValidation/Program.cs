@@ -86,9 +86,7 @@ namespace ValidationCall
                 return 1;
             }
 
-#endif
-
-
+#else
             if (args.Length == 2)
             {                
                 //.\ValidationCaller.exe "IU250" 8668
@@ -108,13 +106,7 @@ namespace ValidationCall
             }
 
             return 1;
-
-        }
-
-
-
-        //public enum FnTypes { Val, Sum, Matches, Abs, Max, Min, Cnt, Err };
-
-
+#endif
+        }        
     }
 }

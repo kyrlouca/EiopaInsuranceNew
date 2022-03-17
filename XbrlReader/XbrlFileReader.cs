@@ -125,7 +125,7 @@ namespace XbrlReader
             var existingDocs = GetExistingDocuments();
             if (existingDocs.Count == 0)
             {
-
+                //do nothin
             }
             else if (existingDocs.Count == 1)
             {
@@ -211,7 +211,6 @@ namespace XbrlReader
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return;
             }
-
 
             var diffminutes = StartTime.Subtract(DateTime.Now).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
@@ -323,15 +322,11 @@ namespace XbrlReader
             Console.WriteLine("\nCreate Contexts");
             AddContexts();
 
-
-
             Console.WriteLine("\nCreate Facts");
             AddFacts();
 
             DeleteContexts();
             return xmlDoc;
-
-
 
         }
 

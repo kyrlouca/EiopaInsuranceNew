@@ -11,9 +11,7 @@ namespace XbrlReader
         static int Main(string[] args)
         {
 #if (DEBUG)
-            Console.WriteLine("XbrlReader in DEBUG MODE");
-
-            
+            Console.WriteLine("XbrlReader in DEBUG MODE");            
 
             if (1 == 2)
             {
@@ -84,11 +82,7 @@ namespace XbrlReader
             var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
             var hell = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
 
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,hell);
-            if (xbrlDataTesting.DocumentId==0)
-            {
-                return 1;
-            }
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,hell);            
             _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 
@@ -98,7 +92,8 @@ namespace XbrlReader
 
             Console.WriteLine("Finish");
             return 1;
-#endif
+#else        
+
             if (args.Length == 8)
             {
 
@@ -132,10 +127,7 @@ namespace XbrlReader
             }
 
             return 1;
-
-
-
-
+#endif
         }
     }
 }

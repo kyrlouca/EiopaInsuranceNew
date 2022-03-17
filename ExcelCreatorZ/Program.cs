@@ -8,18 +8,18 @@ namespace ExcelCreatorNs
         public static int Main(string[] args)
         {
 #if (DEBUG)
-             
+
 
             Console.WriteLine("Excel Creator Debug mode");
             //var (serial,file) = (6108, @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Ancoria Insurance ARS  - Annual 2020 VERSION 260.xlsx");    
-                  
+
 
             var (serial, file) = (8693, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\HELLENIC ALICO Q4 2021_v1.xlsx");
 
             var efc = new ExcelFileCreator("IU260", 99, serial, file);
             efc.CreateExcelFile();
             return 1;
-#endif
+#else
             if (args.Length == 4)
             {
                 //.\ExcelCreator "IU260" 99 8685 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\UniversalQ4.xlsx"
@@ -47,5 +47,10 @@ namespace ExcelCreatorNs
             return 1;
 
         }
+#endif
+        }
     }
 }
+
+
+    
