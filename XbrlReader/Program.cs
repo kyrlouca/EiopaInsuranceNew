@@ -10,7 +10,7 @@ namespace XbrlReader
     {
         static int Main(string[] args)
         {
-#if (DEBUG)
+#if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");            
 
             if (1==2)
