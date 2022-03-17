@@ -118,12 +118,7 @@ namespace XbrlReader
 
                 //no need for module (it is found in xbrl file)
                 
-                var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
-                if(xbrlData.DocumentId ==0)
-                {
-                    return 1;
-                }
-                Console.WriteLine("Starting XbrlDataProcessor");
+                var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);          
                 _ = new XbrlDataProcessor(solvencyVersion,  xbrlData.DocumentId,xbrlData.FilingsSubmitted);
 
                 return 0;

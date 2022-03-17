@@ -42,7 +42,7 @@ namespace XbrlReader
         public int ApplicableQuarter { get; private set; }
         public string FileName { get; private set; }
 
-        
+
         public string ModuleCode { get; private set; }
 
         public MModule Module { get; private set; }
@@ -75,7 +75,7 @@ namespace XbrlReader
         {
             Console.WriteLine("ONLY for testing XbrlData");
             return;
-        } 
+        }
 
         public XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
@@ -127,17 +127,17 @@ namespace XbrlReader
             {
 
             }
-            else if (existingDocs.Count == 1)                
+            else if (existingDocs.Count == 1)
             {
                 var existingDoc = existingDocs.First();
                 var status = existingDoc.Status.Trim();
-                var isLoadedDocument = (status=="L" || status=="E" );
-                if (!isLoadedDocument)
+                var isValidatedDocument = (status == "V" || status == "S");//validated or sumbmitted
+                if (isValidatedDocument)
                 {
                     var message = $"Document already exists: instanceId: {existingDoc.InstanceId} status :{existingDoc.Status}";
                     Log.Error(message);
                     Console.WriteLine(message);
-                    
+
                     var trans = new TransactionLog()
                     {
                         PensionFundId = FundId,
@@ -155,11 +155,12 @@ namespace XbrlReader
 
                     return;
                 }
-                if (isLoadedDocument)
+                else
                 {
                     DeleteDocument(existingDoc.InstanceId);
                 }
-            }else
+            }
+            else
             {
                 var message = $"More than One Document exists: fund:{FundId} module:{ModuleCode} year:{ApplicableYear} quarter{ApplicableQuarter}";
                 Log.Error(message);
@@ -183,17 +184,17 @@ namespace XbrlReader
                 return;
             }
 
-            
+
             WriteProcessStarted();
 
             XmlDoc = CreateXbrlData(fileName);
 
-            if(XmlDoc is null)
+            if (XmlDoc is null)
             {
                 var message = $"XmlDoc is null";
                 Log.Error(message);
                 Console.WriteLine(message);
-               
+
                 var trans = new TransactionLog()
                 {
                     PensionFundId = FundId,
@@ -210,7 +211,7 @@ namespace XbrlReader
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return;
             }
-            
+
 
             var diffminutes = StartTime.Subtract(DateTime.Now).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
@@ -289,7 +290,7 @@ namespace XbrlReader
             {
                 var message = $" Module Code provided +{Module.ModuleCode}+ DIFFERENT THAN  Module in Xbrl : +{moduleCodeXbrl}+";
                 Log.Error(message);
-                Console.WriteLine(message);                                
+                Console.WriteLine(message);
 
                 var trans = new TransactionLog()
                 {
@@ -709,7 +710,7 @@ VALUES (
 
         private List<DocInstance> GetExistingDocuments()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlExists = @"
                     select doc.InstanceId, doc.Status from DocInstance doc where  
                     PensionFundId= @FundId and ModuleId=@moduleId
@@ -718,15 +719,15 @@ VALUES (
 
             var docParams = new { FundId, ModuleId = Module.ModuleID, ApplicableYear, ApplicableQuarter };
             var docs = connectionInsurance.Query<DocInstance>(sqlExists, docParams).ToList();
-            return docs;            
-            
+            return docs;
+
         }
 
         private int DeleteDocument(int documentId)
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var sqlDeleteDoc = @"delete from DocInstance where InstanceId= @documentId";                                
-            var rows = connectionInsurance.Execute(sqlDeleteDoc, new{documentId });
+            var sqlDeleteDoc = @"delete from DocInstance where InstanceId= @documentId";
+            var rows = connectionInsurance.Execute(sqlDeleteDoc, new { documentId });
 
             var sqlErrorDocDelete = @"delete from DocInstance where InstanceId= @documentId";
             connectionInsurance.Execute(sqlErrorDocDelete, new { documentId });
@@ -742,7 +743,7 @@ VALUES (
 
             //module code : {ari, qri, ara, ...}
             var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
-            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode= moduleCode.ToLower().Trim() });
+            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode = moduleCode.ToLower().Trim() });
             if (module is null)
             {
                 return new MModule();
