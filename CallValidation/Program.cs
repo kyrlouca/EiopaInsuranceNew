@@ -76,7 +76,7 @@ namespace ValidationCall
                 docId = 8685; //uinversal//4822, 4427,4407
                 docId = 8689;//universal error 5232,2572
                 
-                docId = 8693;//hellenic alico
+                docId = 8694;//hellenic alico
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
 
