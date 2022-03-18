@@ -1025,7 +1025,8 @@ namespace Validations
                         ErrorDocumentId = DocumentId,
                         SheetId = fact.TemplateSheetId,
                         SheetCode = fact.SheetCode,
-                        RowCol = "",
+                        Scope = fact.SheetCode,
+                        RowCol = $"{fact.Row}/{fact.Col}",
                         RuleMessage = $" Factid:{fact.FactId} Data Conversion Error",
                         IsWarning = false,
                         IsError = true,
@@ -1042,14 +1043,18 @@ namespace Validations
                     var mMember = getMemberValue(fact.MetricID, fact.TextValue);
                     if (mMember is null)
                     {
+                        var validValues = getAllMetricValidValues(fact.MetricID);
+                        var validValuesStr = string.Join(",", validValues);
+
                         var errorRule = new ERROR_Rule
                         {
                             RuleId = 10101,
                             ErrorDocumentId = DocumentId,
                             SheetId = fact.TemplateSheetId,
                             SheetCode = fact.SheetCode,
-                            RowCol = "",
-                            RuleMessage = $" Invalid ENUM Value:{fact.TextValue} -- Factid:{fact.FactId} metric:{fact.Metric} - {fact.MetricID}",
+                            Scope = fact.SheetCode,
+                            RowCol = $"{fact.Row}/{fact.Col}",
+                            RuleMessage = $"Invalid ENUM Value:{fact.TextValue} where valid values are :{validValuesStr}-- Factid:{fact.FactId} metric:{fact.Metric} - {fact.MetricID}",
                             IsWarning = false,
                             IsError = true,
                             IsDataError = true,
@@ -1088,6 +1093,25 @@ namespace Validations
 
             var mMember = connectionEiopa.QuerySingleOrDefault<MMember>(sqlGetMem, new { metricId, enumValue });
             return mMember;
+        }
+
+        private List<string> getAllMetricValidValues(int metricId)
+        {
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var sqlGetMem = @"
+                SELECT 
+	                mem.MemberXBRLCode
+                FROM mMetric met
+                JOIN mHierarchy hi ON hi.HIERARCHYID = met.ReferencedHierarchyID
+                JOIN mHierarchyNode hn ON hn.HIERARCHYID = hi.HIERARCHYID
+                JOIN mMember mem ON mem.MemberID = hn.MemberID
+                WHERE met.MetricID = @metricId
+	                AND mem.MemberXBRLCode = @enumValue
+                ";
+
+            var values = connectionEiopa.Query<string>(sqlGetMem, new { metricId}).ToList();
+            return values;
         }
 
         private void CreateErrorDocument()
