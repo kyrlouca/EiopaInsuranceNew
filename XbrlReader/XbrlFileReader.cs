@@ -521,8 +521,11 @@ namespace XbrlReader
                 var unitRef = fe.Attribute("unitRef")?.Value ?? "";
                 var metric = fe.Name.LocalName.ToString(); //maybe not needed in Db                
                 var xbrlCode = $"{prefix.Trim()}:{metric.Trim()}";
+                
                 var mMetric = FindFactMetricId(xbrlCode);  //"s2md_met:ei1633"                
-                var dataTypeUse = CntConstants.SimpleDataTypes[mMetric.DataType]; //N, S,B,E..
+
+                var dataTypeUse = mMetric is not null ? CntConstants.SimpleDataTypes[mMetric.DataType] : ""; 
+                //var dataTypeUse = CntConstants.SimpleDataTypes[mMetric.DataType]; //N, S,B,E..
 
                 //var unitNN = XbuFact.Units.ContainsKey(unitRef) ? Units[unitRef] : unitRef;
                 var contextId = fe.Attribute("contextRef")?.Value ?? "";

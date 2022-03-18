@@ -79,11 +79,10 @@ namespace XbrlReader
             //var Cnp260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\CNP Asfalistiki Q4 2021.xbrl";
             //var med260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\MEDLIFE Q4 2021.xbrl";
 
-            //var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";
-            var hellAlico = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
-            var hd = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl";
-
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 103, "qrs", 2021, 4,hd);            
+            //var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";            
+            //var hd = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl";
+            var helloAlic = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,helloAlic);            
                 _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 

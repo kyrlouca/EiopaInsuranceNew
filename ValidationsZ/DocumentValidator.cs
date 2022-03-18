@@ -1038,8 +1038,9 @@ namespace Validations
                     };
                     CreateRuleError(errorRule);
                 }
-                if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
-                {
+                //if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
+                    if (fact.DataTypeUse == "E" )
+                    {
                     var mMember = getMemberValue(fact.MetricID, fact.TextValue);
                     if (mMember is null)
                     {

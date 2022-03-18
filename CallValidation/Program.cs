@@ -77,7 +77,12 @@ namespace ValidationCall
                 docId = 8694;//hellenic alico
                 
                 docId = 8689;//universal error 5232,2572
-                docId = 8691;//HD
+                
+                
+                docId = 8699;//HD
+                
+                docId = 8701;//hehllenic
+                docId = 8700;//Eurolife
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
