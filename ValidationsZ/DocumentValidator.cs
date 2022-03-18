@@ -286,6 +286,159 @@ namespace Validations
         }
 
 
+        public static DbValue GetCellValueFromOneSheetDb(ConfigObject configObj, string tableCode, int sheetId, string row, string col)
+        {
+            using var connectionPension = new SqlConnection(configObj.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObj.EiopaDatabaseConnectionString);
+            //We may have two sheets with the same sheetCode in one Document due to Z dim
+            //Therefore, we must use the SheetId and not just the sheetCode for these facts. (because of sheets with the same sheetcode)
+            //On the other hand, if a ruleTerm refers to a fact in another sheet, we have to use the sheet Code and NOT the sheetID
+
+
+            var sqlFact = @"
+                SELECT
+                  fact.TemplateSheetId
+                 ,fact.FactId
+                 ,fact.Row
+                 ,fact.Col
+                 ,fact.Zet
+                 ,fact.TextValue
+                 ,fact.NumericValue
+                 ,fact.DateTimeValue
+                 ,fact.DataType
+                 ,fact.DataTypeUse
+                FROM TemplateSheetFact fact
+                WHERE fact.TemplateSheetId = @sheetId
+                AND fact.row = @row
+                AND fact.Col = @col
+                                ";
+            var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { sheetId, row, col });
+            TemplateSheetFact fact;
+
+            if (!facts.Any())
+            {
+                //it is possible that we have null facts in a sheet.
+                //we need the data type 
+                var sqlMapping = @"
+                    select top 1 map.DATA_TYPE 
+                      from MAPPING map 
+                      left join mTable tab on tab.TableID=map.TABLE_VERSION_ID
+                      where 
+	                    tab.TableCode=@tableCode 
+	                    and  DYN_TAB_COLUMN_NAME = @rowCol
+	                    and map.IS_IN_TABLE=1
+                    ";
+
+
+                var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
+                var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
+                var majorType = CntConstants.GetMajorDataType(dataType);
+                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
+                return emptyRes;
+            }
+            else if (facts.Count() == 1)
+            {
+                fact = facts.First();
+                var majorDataType = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
+
+                var resVal = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType, false);
+                return resVal;
+
+            }
+            else
+            {
+
+                //check for zet (same fact for row,col but  with different zet mainly for currencies and countries
+                if (facts.All(fact => !string.IsNullOrWhiteSpace(fact.Zet) && fact.DataTypeUse == "M"))
+                {
+                    var firstFact = facts.First();
+                    var majorDataType = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
+                    var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
+                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
+                    return resVal;
+                }
+            }
+
+            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            return emptyRes2;
+
+
+        }
+
+        public static DbValue GetCellValueFromDbNew(ConfigObject configObj, int docId, string tableCode, string row, string col)
+        {
+            using var connectionPension = new SqlConnection(configObj.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObj.EiopaDatabaseConnectionString);
+            //We may have two sheets with the same sheetCode in one Document due to Z dim
+            //Therefore, we must use the SheetId and not just the sheetCode for these facts. (because of sheets with the same sheetcode)
+            //On the other hand, if a ruleTerm refers to a fact in another sheet, we have to use the sheet Code and NOT the sheetID
+
+
+
+            var sqlFact = @"
+                SELECT fact.TemplateSheetId, fact.FactId, fact.Row, fact.Col, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.DataType,fact.DataTypeUse
+                FROM TemplateSheetFact fact
+                LEFT OUTER JOIN TemplateSheetInstance sheet
+	                ON sheet.TemplateSheetId = fact.TemplateSheetId
+                WHERE sheet.InstanceId = @DocId
+	                AND sheet.TableCode = @tableCode
+	                AND fact.row = @row
+	                AND fact.Col = @col
+                ";
+            var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
+            //var fact = connectionPension.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
+
+
+
+            if (!facts.Any())
+            {
+                //it is possible that we have null facts in a sheet.
+                //we need the data type 
+                var sqlMapping = @"
+                    select top 1 map.DATA_TYPE 
+                      from MAPPING map 
+                      left join mTable tab on tab.TableID=map.TABLE_VERSION_ID
+                      where 
+	                    tab.TableCode=@tableCode 
+	                    and  DYN_TAB_COLUMN_NAME = @rowCol
+	                    and map.IS_IN_TABLE=1
+                    ";
+
+                var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
+                var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
+                var majorType = CntConstants.GetMajorDataType(dataType);
+                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
+                return emptyRes;
+            }
+            else if (facts.Count() == 1)
+            {
+                var fact = facts.First();
+                var majorDataType1 = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
+
+                var resVal1 = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType1, false);
+                return resVal1;
+
+            }
+            else
+            {
+                //check for zet (same fact for row,col but  with different zet mainly for currencies and countries
+                if (facts.All(fact => !string.IsNullOrWhiteSpace(fact.Zet) && fact.DataTypeUse == "M"))
+                {
+                    var firstFact = facts.First();
+                    var majorDataType2 = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
+                    var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
+                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
+                    return resValMany;
+                }
+            }
+
+            //888888888888888
+
+            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            return emptyRes2;
+        }
+
+
         private int CreateModuleRules()
         {
             //** Read the validation Rules from the Database and construct Module Rules for the corresponding Module            
@@ -922,158 +1075,6 @@ namespace Validations
             var fact = connectionInsurance.QueryFirstOrDefault<TemplateSheetFact>(sqlKeyFact, new { DocumentId, tableCode, KeyCol, keyFactValue });
 
             return fact?.Row ?? "";
-        }
-
-        public static DbValue GetCellValueFromOneSheetDb(ConfigObject configObj, string tableCode, int sheetId, string row, string col)
-        {
-            using var connectionPension = new SqlConnection(configObj.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(configObj.EiopaDatabaseConnectionString);
-            //We may have two sheets with the same sheetCode in one Document due to Z dim
-            //Therefore, we must use the SheetId and not just the sheetCode for these facts. (because of sheets with the same sheetcode)
-            //On the other hand, if a ruleTerm refers to a fact in another sheet, we have to use the sheet Code and NOT the sheetID
-
-
-            var sqlFact = @"
-                SELECT
-                  fact.TemplateSheetId
-                 ,fact.FactId
-                 ,fact.Row
-                 ,fact.Col
-                 ,fact.Zet
-                 ,fact.TextValue
-                 ,fact.NumericValue
-                 ,fact.DateTimeValue
-                 ,fact.DataType
-                 ,fact.DataTypeUse
-                FROM TemplateSheetFact fact
-                WHERE fact.TemplateSheetId = @sheetId
-                AND fact.row = @row
-                AND fact.Col = @col
-                                ";
-            var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { sheetId, row, col });
-            TemplateSheetFact fact;
-
-            if (!facts.Any())
-            {
-                //it is possible that we have null facts in a sheet.
-                //we need the data type 
-                var sqlMapping = @"
-                    select top 1 map.DATA_TYPE 
-                      from MAPPING map 
-                      left join mTable tab on tab.TableID=map.TABLE_VERSION_ID
-                      where 
-	                    tab.TableCode=@tableCode 
-	                    and  DYN_TAB_COLUMN_NAME = @rowCol
-	                    and map.IS_IN_TABLE=1
-                    ";
-
-
-                var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
-                var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
-                var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
-                return emptyRes;
-            }
-            else if (facts.Count() == 1)
-            {
-                fact = facts.First();
-                var majorDataType = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
-
-                var resVal = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType, false);
-                return resVal;
-                
-            }
-            else
-            {
-                
-                //check for zet (same fact for row,col but  with different zet mainly for currencies and countries
-                if (facts.All(fact => !string.IsNullOrWhiteSpace(fact.Zet) && fact.DataTypeUse=="M"))
-                {
-                    var firstFact = facts.First();
-                    var majorDataType = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
-                    var sum=facts.Aggregate(decimal.Zero,(currentVal,item)=>currentVal+=(decimal)item.NumericValue);                    
-                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
-                    return resVal;
-                }
-            }
-
-            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
-            return emptyRes2;
-
-
-        }
-
-        public static DbValue GetCellValueFromDbNew(ConfigObject configObj, int docId, string tableCode, string row, string col)
-        {
-            using var connectionPension = new SqlConnection(configObj.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(configObj.EiopaDatabaseConnectionString);
-            //We may have two sheets with the same sheetCode in one Document due to Z dim
-            //Therefore, we must use the SheetId and not just the sheetCode for these facts. (because of sheets with the same sheetcode)
-            //On the other hand, if a ruleTerm refers to a fact in another sheet, we have to use the sheet Code and NOT the sheetID
-
-
-
-            var sqlFact = @"
-                SELECT fact.TemplateSheetId, fact.FactId, fact.Row, fact.Col, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.DataType,fact.DataTypeUse
-                FROM TemplateSheetFact fact
-                LEFT OUTER JOIN TemplateSheetInstance sheet
-	                ON sheet.TemplateSheetId = fact.TemplateSheetId
-                WHERE sheet.InstanceId = @DocId
-	                AND sheet.TableCode = @tableCode
-	                AND fact.row = @row
-	                AND fact.Col = @col
-                ";
-            var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
-            //var fact = connectionPension.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
-
-            
-
-            if (!facts.Any())
-            {
-                //it is possible that we have null facts in a sheet.
-                //we need the data type 
-                var sqlMapping = @"
-                    select top 1 map.DATA_TYPE 
-                      from MAPPING map 
-                      left join mTable tab on tab.TableID=map.TABLE_VERSION_ID
-                      where 
-	                    tab.TableCode=@tableCode 
-	                    and  DYN_TAB_COLUMN_NAME = @rowCol
-	                    and map.IS_IN_TABLE=1
-                    ";
-
-                var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
-                var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
-                var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
-                return emptyRes;
-            }
-            else if (facts.Count() == 1)
-            {
-                var fact = facts.First();
-                var majorDataType1 = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
-
-                var resVal1 = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType1, false);
-                return resVal1;
-
-            }
-            else
-            {
-                //check for zet (same fact for row,col but  with different zet mainly for currencies and countries
-                if (facts.All(fact => !string.IsNullOrWhiteSpace(fact.Zet) && fact.DataTypeUse == "M"))
-                {
-                    var firstFact = facts.First();
-                    var majorDataType2 = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
-                    var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
-                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
-                    return resValMany;
-                }
-            }
-
-            //888888888888888
-
-            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
-            return emptyRes2;
         }
 
 

@@ -22,11 +22,9 @@ namespace Validations
             TextValue = textValue;
             DecimalValue = decimalValue;
             DateValue = dateValue;
-            BoolValue = boolValue;
-            //MetricDataTypex = metricDataType;
+            BoolValue = boolValue;            
             DataTypeEnumMajorUU = dataTypeEnumMajor;
-            IsMissing = isMissing;
-            //NewDataTypeUsex= newDataTypeUse;
+            IsMissing = isMissing;            
         }
 
     }

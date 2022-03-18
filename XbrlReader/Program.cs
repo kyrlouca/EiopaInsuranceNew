@@ -83,7 +83,7 @@ namespace XbrlReader
             var hell = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
 
             var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,hell);            
-            _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
+                _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
 
 
             //var sig = @"MET(s2md_met:mi503)|s2c_dim:BL(s2c_LB:x10)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x84)";

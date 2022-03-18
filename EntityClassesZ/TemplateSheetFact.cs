@@ -40,7 +40,8 @@ namespace EntityClasses
         public string ZetValues { get; set; }
         public string CurrencyDim { get; set; }
 
-        public string Metric { get; set; }        
+        public string Metric { get; set; }
+        public int MetricID { get; set; }
         public string ContextId { get; set; }        
         public string Signature { get; set; }
         public string RowSignature { get; set; }        

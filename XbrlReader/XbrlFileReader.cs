@@ -521,7 +521,7 @@ namespace XbrlReader
                 var unitRef = fe.Attribute("unitRef")?.Value ?? "";
                 var metric = fe.Name.LocalName.ToString(); //maybe not needed in Db                
                 var xbrlCode = $"{prefix.Trim()}:{metric.Trim()}";
-                var mMetric = FindFactMetricId(xbrlCode);  //"s2md_met:ei1633"              
+                var mMetric = FindFactMetricId(xbrlCode);  //"s2md_met:ei1633"                
                 var dataTypeUse = CntConstants.SimpleDataTypes[mMetric.DataType]; //N, S,B,E..
 
                 //var unitNN = XbuFact.Units.ContainsKey(unitRef) ? Units[unitRef] : unitRef;
@@ -540,6 +540,7 @@ namespace XbrlReader
                     CellID = 0,
                     CurrencyDim = "",
                     Metric = fe.Name.LocalName.ToString(),
+                    MetricID=mMetric.MetricID,
                     //nsPrefix = prefix,
                     XBRLCode = xbrlCode,
                     ContextId = contextId,
@@ -582,6 +583,7 @@ INSERT INTO dbo.TemplateSheetFact (
 	,CellID
 	,CurrencyDim
 	,metric	
+    ,metricID
 	,contextId
 	,Unit
 	,Decimals
@@ -606,6 +608,7 @@ VALUES (
 	,@CellID
 	,@CurrencyDim
 	,@metric	
+    ,@metricID
 	,@contextId
 	,@Unit
 	,@Decimals
@@ -648,7 +651,7 @@ VALUES (
                 using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
                 var sqlMetric = @"
-                SELECT met.CorrespondingMemberID, met.DataType
+                SELECT met.MetricID, met.CorrespondingMemberID, met.DataType
                 FROM dbo.mMetric met
                 LEFT OUTER JOIN mMember mem ON mem.MemberID = met.CorrespondingMemberID
                 WHERE mem.MemberXBRLCode = @xbrlCode

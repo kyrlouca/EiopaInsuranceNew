@@ -88,8 +88,7 @@ namespace ValidationCall
 
 #else
             if (args.Length == 2)
-            {                
-                //.\ValidationCaller.exe "IU250" 8668
+            {                                
                 //.\ValidationCaller.exe "IU260" 8691
                 var solvencyVersion = args[0].Trim();                  
                 var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;                
