@@ -994,8 +994,7 @@ namespace Validations
 	              ,[IsShaded]
                   ,IsRowKey	        
                   ,[DataType]
-	              ,fact.DataTypeUse
-                  ,[Metric]
+	              ,fact.DataTypeUse  
                   ,[MetricId]
                 ,[IsConversionError]
               FROM TemplateSheetFact fact
@@ -1055,7 +1054,7 @@ namespace Validations
                             SheetCode = fact.SheetCode,
                             Scope = fact.SheetCode,
                             RowCol = $"{fact.Row}/{fact.Col}",
-                            RuleMessage = $"Invalid ENUM Value:{fact.TextValue} where valid values are :{validValuesStr}-- Factid:{fact.FactId} metric:{fact.Metric} - {fact.MetricID}",
+                            RuleMessage = $"Invalid ENUM Value:{fact.TextValue} where valid values are :{validValuesStr}-- Factid:{fact.FactId} xbrlCode:{fact.XBRLCode} - {fact.MetricID}",
                             IsWarning = false,
                             IsError = true,
                             IsDataError = true,

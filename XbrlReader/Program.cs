@@ -80,15 +80,13 @@ namespace XbrlReader
             //var med260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\MEDLIFE Q4 2021.xbrl";
 
             //var Euro260E = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl";            
-            //var hd = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl";
-            var helloAlic = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 101, "qrs", 2021, 4,helloAlic);            
+            var hd = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl";
+            //var helloAlic = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl";
+            
+            
+            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, 103, "qrs", 2021, 4,hd);            
                 _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
-
-
-            //var sig = @"MET(s2md_met:mi503)|s2c_dim:BL(s2c_LB:x10)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x84)";
-            //var tableId = 61;
-            //var result= DatabaseWriter.FindFactRowCol(tableId, sig);
+            
 
             Console.WriteLine("Finish");
             return 1;

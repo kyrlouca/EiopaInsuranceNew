@@ -542,7 +542,7 @@ namespace XbrlReader
                     InternalRow = 0,
                     CellID = 0,
                     CurrencyDim = "",
-                    Metric = fe.Name.LocalName.ToString(),
+                    //Metric = fe.Name.LocalName.ToString(),
                     MetricID=mMetric.MetricID,
                     //nsPrefix = prefix,
                     XBRLCode = xbrlCode,
@@ -584,8 +584,7 @@ INSERT INTO dbo.TemplateSheetFact (
 	,Col
 	,Zet
 	,CellID
-	,CurrencyDim
-	,metric	
+	,CurrencyDim	
     ,metricID
 	,contextId
 	,Unit
@@ -609,8 +608,7 @@ VALUES (
 	,@Col
 	,@Zet
 	,@CellID
-	,@CurrencyDim
-	,@metric	
+	,@CurrencyDim	
     ,@metricID
 	,@contextId
 	,@Unit

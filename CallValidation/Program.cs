@@ -62,27 +62,18 @@ namespace ValidationCall
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 4934); //open table refers to single
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 994);// sum of a closed table
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
-                docId = 8666;//altius
-                docId = 8669; //cosmos                
-                docId = 8667;//grawe
-                docId = 8670;//defence
-
-                docId = 8681;//SMuaeAnnual 965
                 
-                docId = 8674;//CosmosQ
-                docId = 8673;//hydraQ
-
-                docId = 8686; //cnp
                 docId = 8685; //uinversal//4822, 4427,4407
                 docId = 8694;//hellenic alico
                 
                 docId = 8689;//universal error 5232,2572
                 
                 
-                docId = 8699;//HD
+                
                 
                 docId = 8701;//hehllenic
                 docId = 8700;//Eurolife
+                docId = 8705;//HD
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);

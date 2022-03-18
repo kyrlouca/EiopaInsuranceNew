@@ -309,8 +309,8 @@ namespace XbrlReader
                         fact.FieldOrigin = "KYR";
                         //do NOT use fields  templateSheetId and factId, and tableId  is new 
                         var sqlInsertAnotherFact = @"
-                            INSERT INTO dbo.TemplateSheetFact (  Row, Col, Zet, CellID, FieldOrigin, TableID, DataPointSignature, Unit, Decimals, NumericValue, BooleanValue, DateTimeValue, TextValue, DPS, IsRowKey, IsShaded, XBRLCode, DataType, DataPointSignatureFilled,  InternalRow, internalCol, DataTypeUse, IsEmpty, IsConversionError, ZetValues, OpenRowSignature, CurrencyDim, metric, metricId, contextId,  RowSignature,  InstanceId)
-                            VALUES (  @Row, @Col, @Zet, @CellID, @FieldOrigin, @TableID, @DataPointSignature, @Unit, @Decimals, @NumericValue, @BooleanValue, @DateTimeValue, @TextValue, @DPS, @IsRowKey, @IsShaded, @XBRLCode, @DataType, @DataPointSignatureFilled,  @InternalRow, @internalCol, @DataTypeUse, @IsEmpty, @IsConversionError, @ZetValues, @OpenRowSignature, @CurrencyDim, @metric, @metricId,  @contextId,  @RowSignature, @InstanceId);
+                            INSERT INTO dbo.TemplateSheetFact (  Row, Col, Zet, CellID, FieldOrigin, TableID, DataPointSignature, Unit, Decimals, NumericValue, BooleanValue, DateTimeValue, TextValue, DPS, IsRowKey, IsShaded, XBRLCode, DataType, DataPointSignatureFilled,  InternalRow, internalCol, DataTypeUse, IsEmpty, IsConversionError, ZetValues, OpenRowSignature, CurrencyDim,  metricId, contextId,  RowSignature,  InstanceId)
+                            VALUES (  @Row, @Col, @Zet, @CellID, @FieldOrigin, @TableID, @DataPointSignature, @Unit, @Decimals, @NumericValue, @BooleanValue, @DateTimeValue, @TextValue, @DPS, @IsRowKey, @IsShaded, @XBRLCode, @DataType, @DataPointSignatureFilled,  @InternalRow, @internalCol, @DataTypeUse, @IsEmpty, @IsConversionError, @ZetValues, @OpenRowSignature, @CurrencyDim,  @metricId,  @contextId,  @RowSignature, @InstanceId);
                             SELECT CAST(SCOPE_IDENTITY() as int);
                         ";
 
@@ -804,8 +804,7 @@ namespace XbrlReader
                  ,fact.IsConversionError
                  ,fact.ZetValues
                  ,fact.OpenRowSignature
-                 ,fact.CurrencyDim
-                 ,fact.metric                 
+                 ,fact.CurrencyDim                 
                  ,fact.contextId                 
                  ,fact.Signature
                  ,fact.RowSignature                 
