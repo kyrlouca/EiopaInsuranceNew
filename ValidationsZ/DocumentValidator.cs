@@ -1038,7 +1038,7 @@ namespace Validations
                     };
                     CreateRuleError(errorRule);
                 }
-                if (fact.DataTypeUse == "E")
+                if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
                 {
                     var mMember = getMemberValue(fact.MetricID, fact.TextValue);
                     if (mMember is null)
@@ -1106,8 +1106,7 @@ namespace Validations
                 JOIN mHierarchy hi ON hi.HIERARCHYID = met.ReferencedHierarchyID
                 JOIN mHierarchyNode hn ON hn.HIERARCHYID = hi.HIERARCHYID
                 JOIN mMember mem ON mem.MemberID = hn.MemberID
-                WHERE met.MetricID = @metricId
-	                AND mem.MemberXBRLCode = @enumValue
+                WHERE met.MetricID = @metricId	                
                 ";
 
             var values = connectionEiopa.Query<string>(sqlGetMem, new { metricId}).ToList();
