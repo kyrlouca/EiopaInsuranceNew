@@ -847,7 +847,7 @@ namespace ExcelCreatorNs
             var firstColumnIndex = FindFirstColumnOpenTable(rowWithcolumnLabels, OrgDataRange.LastColumn);
 
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var sqlRows = @"select  distinct fact.Row from TemplateSheetFact fact  where  fact.TemplateSheetId= @sheetId ";
+            var sqlRows = @"select  distinct fact.Row from TemplateSheetFact fact  where  fact.TemplateSheetId= @sheetId order by fact.Row";
             var rowLabels = connectionInsurance.Query<string>(sqlRows, new { sheetId = SheetDb.TemplateSheetId }).ToList();
 
 

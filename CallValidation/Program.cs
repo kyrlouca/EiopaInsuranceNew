@@ -71,9 +71,10 @@ namespace ValidationCall
                 
                 
                 
-                docId = 8701;//hehllenic
+                
                 docId = 8700;//Eurolife
                 docId = 8705;//HD
+                docId = 8701;//hehllenic
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
