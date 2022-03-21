@@ -68,9 +68,11 @@ namespace ValidationCall
                 docId = 8689;//universal error 5232,2572
 
                 
-                docId = 9710;//Eurolife                
-                docId = 9711;//HD
-                docId = 9712;//hehllenic
+                
+                
+                docId = 9712;//hehllenic                
+                docId = 9713;//HD
+                docId = 9715;//Eurolife                
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
