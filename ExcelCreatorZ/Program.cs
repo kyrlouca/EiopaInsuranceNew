@@ -14,7 +14,8 @@ namespace ExcelCreatorNs
             //var (serial,file) = (6108, @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Ancoria Insurance ARS  - Annual 2020 VERSION 260.xlsx");    
 
 
-            var (serial, file) = (8701, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\HellenicV1.xlsx");
+            //var (serial, file) = (8701, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\HellenicV1.xlsx");
+            var (serial, file) = (8700, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\EuroV1.xlsx");
 
             var efc = new ExcelFileCreator("IU260", 99, serial, file);
             efc.CreateExcelFile();
