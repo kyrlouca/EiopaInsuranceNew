@@ -9,7 +9,7 @@ using Validations;
 
 namespace TestingValidationsZ
 {
-    public class OldCreateRuleTermsTest
+    public class OldCreateRuleTermsTestxxx
     {
         [Fact]
         public void ValidateCreateRuleTestx()

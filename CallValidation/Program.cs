@@ -67,15 +67,17 @@ namespace ValidationCall
                 docId = 8694;//hellenic alico
                 
                 docId = 8689;//universal error 5232,2572
+
+
+
+
+
+
                 
                 
-                
-                
-                
-                
-                docId = 8701;//hehllenic
-                docId = 9708;//HD
-                docId = 8700;//Eurolife                
+                docId = 9709;//Eurolife                
+                docId = 9711;//HD
+                docId = 9712;//hehllenic
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
@@ -83,7 +85,7 @@ namespace ValidationCall
                 //validatorDg.CreateModuleAndDocumentRules();
                 var x = validatorDg.ValidateDocument();
 
-                return 1;
+                return 1; 
             }
 
 #else
