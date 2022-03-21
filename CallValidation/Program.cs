@@ -64,18 +64,11 @@ namespace ValidationCall
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
                 
                 docId = 8685; //uinversal//4822, 4427,4407
-                docId = 8694;//hellenic alico
-                
+                docId = 8694;//hellenic alico                
                 docId = 8689;//universal error 5232,2572
 
-
-
-
-
-
                 
-                
-                docId = 9709;//Eurolife                
+                docId = 9710;//Eurolife                
                 docId = 9711;//HD
                 docId = 9712;//hehllenic
 

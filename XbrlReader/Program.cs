@@ -13,63 +13,6 @@ namespace XbrlReader
 #if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");            
 
-            if (1==2)
-            {
-
-
-                var annualFilings = new List<string>() { "S.19.01" };
-                var filings = new List<string>() {
-                                        "S.01.01",
-                                        "S.01.02",
-                                        "S.02.01",
-                                        "S.05.01",
-                                        "S.05.01",
-                                        "S.06.02",
-                                        "S.06.02",
-                                        "S.12.01",
-                                        "S.17.01",
-                                        "S.23.01",
-                                        "S.23.01",
-                                        "S.28.02",
-                                        "S.28.02",
-                                        "S.28.02",
-                                        "S.28.02",
-                                        "S.28.02",
-                                        "S.28.02"
-                                        };
-                _ = new XbrlDataProcessor("IU250", 8648, annualFilings);
-                return 1;
-
-
-
-                var config = Configuration.GetInstance("IU250").Data;               
-                using var connectionEiopa = new SqlConnection(config.EiopaDatabaseConnectionString);
-
-                //var sqlsel = "select tab.TableID, tab.ZDimVal,YDimVal from mTable tab where tab.TableID=124";
-                //var factSig = "MET(s2md_met:mi346)|s2c_dim:VG(s2c_AM:x80)";
-                //var table = connectionEiopa.QueryFirst<MTable>(sqlsel);
-                //var xx = XbrlDataProcessor.FindMatchingFactsV3(config, 8549, factSig);
-                //MET(s2md_met:di1037)|s2c_dim:BL(s2c_LB:x141)|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(ID:FAC_594290)|s2c_dim:RD(ID:P_594290)|s2c_dim:RE(ID:RE_FIRE)
-
-                //var xx = XbrlDataProcessor.IsFactDimMatchingCell(config, factDim, cellDim);
-
-                var factSig = @"MET(s2md_met:mi1104)|s2c_dim:BL(s2c_LB:x136)|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(ID:FAC_MON/089/14)|s2c_dim:RD(ID:P_MON/089/14)|s2c_dim:RE(ID:RE_PERSONAL_ACCIDENT)";
-                var cellSig = @"MET(s2md_met:mi1104)|s2c_dim:BL(*[3343;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
-                var xx = XbrlDataProcessor.IsFactSignatureMatchingExpensive(config, cellSig, factSig);
-
-                //var cellFSig="MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
-
-                //var xxx = XbrlDataProcessor.FindMatchingFactsV5(config, 8626, cellFSig);
-
-                return 1;
-            }
-
-            //var simpleTest= @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Trimmed.xbrl";
-            //var ancoriaQrs = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Ancoria Insurance - QRS Q2 2021.xbrl";
-            //var graw2020 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-25 0\GraweRe - Annual 2020.xbrl"; //6051
-            //var defenceAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\UK Defence - Annual 2020.xbrl";
-            //var simpleFile = @"C:\Users\kyrlo\soft\dotnet\insuranc e-project\testing-250\simple.xbrl"; //6051
-
             //var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
             //var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
             //var SMuaeAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\SMUAE Annual 2020.xbrl";

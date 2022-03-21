@@ -104,6 +104,9 @@ namespace Validations
             {
                 DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == selecteRule).ToList();
             }
+
+            //****************************************************************
+            //Check all the document rules
             Console.WriteLine($"Started Rule Validation doc:{DocumentId}");
             foreach (var rule in DocumentRules)
             {
@@ -117,6 +120,19 @@ namespace Validations
                     continue;
                 }
                 rulesCounter = +1;
+
+                var ruleTables = rule.RuleTerms
+                        .Where(term=>!term.IsFunctionTerm)
+                        .Select(term => term.TableCode)
+                        .Distinct().ToList();
+
+                var isRuleIgnore = ruleTables.Any(tableCode => !IsTableInDocument(tableCode));
+                if (isRuleIgnore)
+                {
+                    //if the rule contains a sheet which is not in the document then ignore the rule
+                    continue;
+                }
+
                 var isRuleValid = rule.ValidateTheRule();
 
                 if (!isRuleValid)
@@ -1040,10 +1056,10 @@ namespace Validations
                 //if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
                     if (fact.DataTypeUse == "E" )
                     {
-                    var mMember = getMemberValue(fact.MetricID, fact.TextValue);
+                    var mMember = GetMemberValue(fact.MetricID, fact.TextValue);
                     if (mMember is null)
                     {
-                        var validValues = getAllMetricValidValues(fact.MetricID);
+                        var validValues = GetAllMetricValidValues(fact.MetricID);
                         var validValuesStr = string.Join(",", validValues);
 
                         var errorRule = new ERROR_Rule
@@ -1076,7 +1092,7 @@ namespace Validations
 
             return (errorCounter == 0);
         }
-        private MMember getMemberValue(int metricId, string enumValue)
+        private MMember GetMemberValue(int metricId, string enumValue)
         {
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
@@ -1095,7 +1111,7 @@ namespace Validations
             return mMember;
         }
 
-        private List<string> getAllMetricValidValues(int metricId)
+        private List<string> GetAllMetricValidValues(int metricId)
         {
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
@@ -1565,6 +1581,16 @@ namespace Validations
                 return module;
             }
             return module;
+
+        }
+
+
+        private bool IsTableInDocument(string tableCode)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
+            var sqlSelectSheet = @"select sheet.TemplateSheetId from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.TableCode= @tableCode";
+            var sheet = connectionLocal.QuerySingleOrDefault<TemplateSheetInstance>(sqlSelectSheet, new { DocumentId,tableCode });
+            return sheet is not null;
 
         }
 
