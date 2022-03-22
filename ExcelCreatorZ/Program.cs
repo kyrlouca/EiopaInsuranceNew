@@ -12,7 +12,7 @@ namespace ExcelCreatorNs
 
             Console.WriteLine("Excel Creator Debug mode");            
             
-            var (serial, file) = (9712, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\HellenikV3.xlsx");
+            var (serial, file) = (9719, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\AmericanV4.xlsx");
 
             var efc = new ExcelFileCreator("IU260", 99, serial, file);
             efc.CreateExcelFile();
