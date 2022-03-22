@@ -74,10 +74,7 @@ namespace ValidationCall
                 docId = 9713;//HD
                 docId = 9715;//Eurolife                
 
-                var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
-                //var validatorDg = new DocumentValidator(solvencyVer, docId, 0);
-
-                //validatorDg.CreateModuleAndDocumentRules();
+                var validatorDg = new DocumentValidator(solvencyVer, docId,0);
                 var x = validatorDg.ValidateDocument();
 
                 return 1; 

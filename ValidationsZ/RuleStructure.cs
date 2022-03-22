@@ -444,7 +444,9 @@ namespace Validations
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //todo rule ID not necessary as parameter            
+
             
+
             var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
 
             //populate dicx with numeric, text, and boolean values accordingly
@@ -481,19 +483,22 @@ namespace Validations
             //@@@
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
-            if (!symbolExpression.Contains("(") && !(symbolExpression.IndexOfAny(new char[] { '&', '|', '!'}) > -1) && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && isAlgebraig)
+
+            var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
+            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
+            var isAllDecimal = dicx.All(obj => obj.Value.GetType() == typeof(decimal));
+            if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
             {
-                //do not use EVAL to compare numbers because of fractional differences. Allow for 0.01%
                 var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
                 var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
 
                 var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
                 return res;
             }
-
+                
 
             try
-            {
+            {                
                 var resx = Eval.Execute(symbolExpression, dicx);
                 return resx;
             }
@@ -548,16 +553,7 @@ namespace Validations
             var qt = @"""";
             var fixedExpression = symbolExpression;
             //convert if then statements to an expression
-            //and change the symbles not=> !, and =>&& , etc            
-
-            //var rgxFix1 = @"if\s*\((.*)\)\s*then(.*)";
-            //var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxFix1, fixedExpression);
-            //if (terms.Count == 3)
-            //{
-            //    //fixedExpression = @$"not({terms[1]})||({terms[1]}&&{terms[2]})";
-            //    fixedExpression = @$"not({terms[1]})||({terms[1]}&&({terms[2]}))";
-            //}
-            
+            //and change the symbles not=> !, and =>&& , etc                                    
 
             fixedExpression = fixedExpression.Replace("=", "==");
             fixedExpression = fixedExpression.Replace("!==", "!=");
