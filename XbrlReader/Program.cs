@@ -41,7 +41,7 @@ namespace XbrlReader
 
 
                 //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl
-                //.\XbrlReader.exe "IU250" 1 1 1 "qrs" 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"
+                //.\XbrlReader.exe "IU260" 1 1 1 "qrs" 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"
                 //.\XbrlReader.exe "IU250" 1 1 1 2021 3 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl"
                 var solvencyVersion = args[0].Trim();
                 var currencyBatchId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
