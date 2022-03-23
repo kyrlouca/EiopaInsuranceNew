@@ -11,7 +11,7 @@ using System.IO;
 using System.Linq;
 using TransactionLoggerNs;
 
-namespace ExcelCreatorNs
+namespace ExcelCreator
 {
     internal enum LineState { Start, SheetCodeState, ZetState, ColumnState, RowState, ErrorState, EndState };
     internal enum LineType { Empty, AnyText, SheetCode, Zet, Column, Row }//Code is template code "PF.01.01.02"

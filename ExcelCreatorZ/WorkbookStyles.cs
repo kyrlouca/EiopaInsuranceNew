@@ -1,7 +1,7 @@
 ﻿using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 
-namespace ExcelCreatorNs
+namespace ExcelCreator
 {
     public class WorkbookStyles
     {

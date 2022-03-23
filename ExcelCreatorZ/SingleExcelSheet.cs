@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using HelperInsuranceFunctions;
 
-namespace ExcelCreatorNs
+namespace ExcelCreator
 {
     public class SingleExcelSheet
     {

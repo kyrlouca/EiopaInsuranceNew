@@ -9,7 +9,7 @@ using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
 using ConfigurationNs;
 
-namespace ExcelCreatorNs
+namespace ExcelCreator
 {
 
     public class SheetS0601Combined

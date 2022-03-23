@@ -1,27 +1,29 @@
 ﻿using System;
 using HelperInsuranceFunctions;
-namespace ExcelCreatorNs
+namespace ExcelCreator
 {
     class Program
     {
 
         public static int Main(string[] args)
         {
+
 #if (DEBUG)
 
 
-            Console.WriteLine("Excel Creator Debug mode");            
-            
+            Console.WriteLine("Excel Creator Debug mode");
+
             var (serial, file) = (9724, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\HydraV5.xlsx");
 
             var efc = new ExcelFileCreator("IU260", 99, serial, file);
             efc.CreateExcelFile();
             return 1;
-#else
+#endif
+
             if (args.Length == 4)
             {
                 //.\ExcelCreator "IU260" 99 8685 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\UniversalQ4.xlsx"
-                                
+
                 var solvencyVersion = args[0].Trim();
                 var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
                 var documentId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
@@ -40,14 +42,9 @@ namespace ExcelCreatorNs
                 Console.WriteLine(message);
                 return 0;
             }
-
-            return 1;
+            
 
         }
-#endif
-        }
+
     }
 }
-
-
-    

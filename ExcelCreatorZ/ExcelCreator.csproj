@@ -4,7 +4,12 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>    
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-    <StartupObject>ExcelCreatorNs.Program</StartupObject>    
+    <StartupObject>ExcelCreator.Program</StartupObject>
+    <RootNamespace>ExcelCreator</RootNamespace>     
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">        
+    <Optimize>true</Optimize>    
   </PropertyGroup>
 
   <ItemGroup>

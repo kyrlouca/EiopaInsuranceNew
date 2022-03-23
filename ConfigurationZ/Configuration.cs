@@ -71,7 +71,7 @@ namespace ConfigurationNs
             Console.WriteLine("Mode=Debug from Config");
             Filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\EiopaInsurance\ConfigData.json";
 #else            
-            Console.WriteLine("Mode=Normal from Config");
+            Console.WriteLine("Mode=Release from Config");
             try
             {
                 Filename = Path.Combine(Directory.GetCurrentDirectory(), "ConfigData.json");                               
