@@ -11,7 +11,7 @@ namespace XbrlReader
         static int Main(string[] args)
         {
 #if DEBUG
-            Console.WriteLine("XbrlReader in DEBUG MODE");            
+            Console.WriteLine("XbrlReader in DEBUG MODE");
 
             //var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
             //var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
@@ -22,10 +22,12 @@ namespace XbrlReader
             //var Cnp260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\CNP Asfalistiki Q4 2021.xbrl";
             //var med260 = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Xbrl260\MEDLIFE Q4 2021.xbrl";
 
-
-            (var fundId, var filePath) = (102, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl");
+            //
+            //(var fundId, var filePath) = (102, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Eurolife Q4_v1.xbrl");
             //(var fundId,var filePath) = (103,@"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl");
             //(var fundId, var filePath) = (101, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl");
+            //(var fundId, var filePath) = (104, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Ethniki Life Q4 2021_v1.xbrl");
+            (var fundId, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\HYDRA Q4 2021_v1.xbrl");
 
 
             var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, fundId, "qrs", 2021, 4,filePath);            

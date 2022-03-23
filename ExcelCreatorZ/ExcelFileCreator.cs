@@ -193,11 +193,14 @@ namespace ExcelCreatorNs
             var sheetS06Name = "S.06.02.01 Combined";
             var sheetS06Combined = new SheetS0601Combined(ConfigObject, DestExcelTemplateBook, sheetS06Name, WorkbookStyles);
             sheetS06Combined.CreateS06CombinedSheet();
-            sheetList.Add(("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
-            sheetList.Sort();
-
-            var sheetS602idx = sheetList.Select(item => item.sheetName).ToList().IndexOf(sheetS06Name);
-            DestExcelTemplateBook.SetSheetOrder(sheetS06Name, sheetS602idx);
+            if (!sheetS06Combined.IsEmpty)
+            {
+                sheetList.Add(("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
+                sheetList.Sort();
+                var sheetS602idx = sheetList.Select(item => item.sheetName).ToList().IndexOf(sheetS06Name);
+                DestExcelTemplateBook.SetSheetOrder(sheetS06Name, sheetS602idx);
+            }
+                        
             //---------------------------------------------------------------
 
             var listSheet = CreateListSheet(sheetList);

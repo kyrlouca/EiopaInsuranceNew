@@ -70,11 +70,15 @@ namespace ValidationCall
                 
                 
                 
-                docId = 9712;//hehllenic                
+                
                 docId = 9713;//HD
                 docId = 9715;//Eurolife                
                 docId = 9721;//Commercial          ,5407      
                 docId = 9722;//GIC
+                docId = 9719;//American Hellenic
+                docId = 9712;//hehllenic  alico              
+                docId = 9724;//Hydra            
+                docId = 9723;//Ethniki            
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId,0);
                 var x = validatorDg.ValidateDocument();

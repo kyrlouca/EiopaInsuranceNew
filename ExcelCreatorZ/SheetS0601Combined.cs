@@ -23,17 +23,18 @@ namespace ExcelCreatorNs
         public ISheet SheetS61 { get; }
         public ISheet SheetS62 { get; }
         public ISheet SheetS63 { get; internal set; }
+        public bool IsEmpty { get; internal set; } = false;
 
 
-        public SheetS0601Combined( ConfigObject configObject,XSSFWorkbook workingExcelWorkbook,string sheetName, WorkbookStyles workbookStyles)
+        public SheetS0601Combined(ConfigObject configObject, XSSFWorkbook workingExcelWorkbook, string sheetName, WorkbookStyles workbookStyles)
         {
             ConfigObject = configObject;
             SheetS63Name = sheetName;
             WorkingExcelWorkbook = workingExcelWorkbook;
             WorkbookStyles = workbookStyles;
 
-            
-            
+
+
             SheetS61 = WorkingExcelWorkbook.GetSheet("S.06.02.01.01");
             SheetS62 = WorkingExcelWorkbook.GetSheet("S.06.02.01.02");
 
@@ -42,14 +43,16 @@ namespace ExcelCreatorNs
         public void CreateS06CombinedSheet()
         {
 
+
             if (SheetS61 is null || SheetS62 is null)
             {
+                IsEmpty = true;
                 return;
             }
 
             SheetS61.CopyTo(WorkingExcelWorkbook, $"{SheetS63Name}", true, true);
             SheetS63 = WorkingExcelWorkbook.GetSheet(SheetS63Name);
-            
+
             var s61ColRowIdx = FindColumnRow(SheetS61, "C0001");
             var s61ColRow = SheetS61.GetRow(s61ColRowIdx);
             var offset = s61ColRow.LastCellNum + 1;
@@ -95,13 +98,13 @@ namespace ExcelCreatorNs
 
             CreateHyperLink();
             SheetS63.SetZoom(80);
-            
+
             //var yx = WorkingExcelWorkbook.NumCellStyles;
 
         }
 
         private static int FindColumnRow(ISheet sheet, string colLabel)
-        {            
+        {
             for (var i = sheet.FirstRowNum; i <= sheet.LastRowNum; i++)
             {
                 var cell = sheet.GetRow(i)?.GetCell(0);
@@ -114,7 +117,7 @@ namespace ExcelCreatorNs
         }
 
         private static int FindS62LinkedRow(ISheet sheet, int startingRow, string key)
-        {            
+        {
             for (var i = startingRow; i <= sheet.LastRowNum; i++)
             {
                 var cell = sheet.GetRow(i)?.GetCell(0);
