@@ -334,18 +334,31 @@ namespace Validations
 
                     var test = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText);
                     var termText = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2].Value;
-                    var termParts = termText.Split(",");
 
-                    if (termParts.Length != 2)
+                    var splitReg = @"(.+),""(.+)""";
+                    var termParts = GeneralUtils.GetRegexSingleMatchManyGroups(splitReg, termText);
+                    if (termParts.Count != 3)
                     {
                         term.BooleanValue = true;
                         break;
                     }
-
-                    var termLetterM = termParts[0];
-                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
-                    var pattern = termParts[1].Replace("\"", ""); //
+                    var pattern = termParts[2];
                     pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
+
+
+                    //var termParts = termText.Split(",");
+                    //if (termParts.Length != 2)
+                    //{
+                    //    term.BooleanValue = true;
+                    //    break;
+                    //}
+                    //var fregPattern = termParts[1].Replace("\"", ""); // termParts[1];
+
+
+
+                    var termLetterM = termParts[1];
+                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
+                    //var pattern = termParts[1].Replace("\"", ""); //                    
                     var val = valueTerm.TextValue;
                     term.IsMissing = valueTerm.IsMissing;
                     term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
