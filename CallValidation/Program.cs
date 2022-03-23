@@ -74,6 +74,7 @@ namespace ValidationCall
                 docId = 9713;//HD
                 docId = 9715;//Eurolife                
                 docId = 9721;//Commercial          ,5407      
+                docId = 9722;//GIC
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId,0);
                 var x = validatorDg.ValidateDocument();
