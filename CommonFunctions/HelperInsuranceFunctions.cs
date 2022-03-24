@@ -91,7 +91,7 @@ namespace HelperInsuranceFunctions
             var configObject = Configuration.GetInstance("get the existing one");
             using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
             var emptyDocument = new DocInstance();
-            var sqlPensionFund = "select doc.InstanceId, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
+            var sqlPensionFund = "select doc.InstanceId, doc.Status, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
             var doc = connectionInsurance.QueryFirstOrDefault<DocInstance>(sqlPensionFund, new { DocumentId });
             if (doc is null)
             {

@@ -30,8 +30,8 @@ namespace XbrlReader
             (var fundId, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\HYDRA Q4 2021_v1.xbrl");
 
 
-            var xbrlDataTesting = new XbrlFileReader("IU260", 1, 99, fundId, "qrs", 2021, 4,filePath);            
-                _ = new XbrlDataProcessor("IU260", xbrlDataTesting.DocumentId,xbrlDataTesting.FilingsSubmitted);
+            var fileReader = new XbrlFileReader("IU260", 1, 99, fundId, "qrs", 2022, 1,filePath);            
+                _ = new AssignFactsToSheets("IU260", fileReader.DocumentId,fileReader.FilingsSubmitted);
             
 
             Console.WriteLine("Finish");

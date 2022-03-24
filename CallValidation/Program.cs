@@ -79,6 +79,8 @@ namespace ValidationCall
                 docId = 9712;//hehllenic  alico              
                 docId = 9724;//Hydra            
                 docId = 9723;//Ethniki            
+                
+                docId = 9727;
 
                 var validatorDg = new DocumentValidator(solvencyVer, docId,0);
                 var x = validatorDg.ValidateDocument();

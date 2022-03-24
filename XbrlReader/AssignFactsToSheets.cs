@@ -15,7 +15,7 @@ namespace XbrlReader
 {
 
 
-    class XbrlDataProcessor
+    class AssignFactsToSheets
     {
         //Gets the data as structures(xbrlData) which where prepared by XbrlFileReader
         //Processes of facts and assigns them with row/col. It also inserts the document/sheets/facts to the database
@@ -57,7 +57,7 @@ namespace XbrlReader
         //n
 
 
-        public XbrlDataProcessor(string solvencyVersion, int documentId, List<string> filings)
+        public AssignFactsToSheets(string solvencyVersion, int documentId, List<string> filings)
         {
             //process all the tables (S.01.01.01.01, S.01.01.02.01, etc ) related to the filings (S.01.01)
             //for each cell in each table, create a sheet and associate the mathcing facts (or create new facts if a fact should be in two tables)            
@@ -116,19 +116,25 @@ namespace XbrlReader
 
             ModuleTablesFiled = GetFiledModuleTables();                        
             var countFacts = ProcessModuleTables();
-            
+
+            UpdateDocumentStatus("L");
 
             Log.Information($"DocId:{DocumentId} DataProcessor time:{StartTime.Subtract(DateTime.Now).TotalSeconds}, facts :{countFacts}");
             Console.WriteLine($"\ndocId: {DocumentId} -- sheets: facts:{countFacts}");
         }
 
+        private void UpdateDocumentStatus(string status)
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
+            var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId,status });
+        }
+
         private DocInstance GetDocument(int documentId)
         {
             var sqlGetDocument = @"
-
-                  SELECT
-  
-                  doc.InstanceId
+                    SELECT
+                      doc.InstanceId
                      ,doc.PensionFundId
                      ,doc.ModuleId
                      ,doc.Status
@@ -139,11 +145,12 @@ namespace XbrlReader
                      ,doc.UserId
                     FROM dbo.DocInstance doc
                     WHERE doc.InstanceId = @documentId
-                    ";    
+                    ";
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>GetDocumentatus, new { documentId });
+            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlGetDocument, new { documentId });
             return doc;
         }
+
 
         public static void TestingCode(ConfigObject config)
         {

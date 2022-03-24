@@ -123,16 +123,15 @@ namespace XbrlReader
             }
 
             var existingDocs = GetExistingDocuments();
-            if (existingDocs.Count == 0)
-            {
-                //do nothin
-            }
-            else if (existingDocs.Count == 1)
+            var existingDocId = 0;
+            
+            if (existingDocs.Count == 1)
             {
                 var existingDoc = existingDocs.First();
+                existingDocId = existingDoc.InstanceId;
                 var status = existingDoc.Status.Trim();
-                var isValidatedDocument = (status == "V" || status == "S" || status=="P");//validated or sumbmitted or processe3d
-                if (isValidatedDocument)
+                var isValidDocument = (status == "V" || status == "S" || status=="P");//validated or sumbmitted or processe3d
+                if (isValidDocument)
                 {
                     
                     var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
@@ -160,12 +159,8 @@ namespace XbrlReader
 
                     return;
                 }
-                else
-                {
-                    DeleteDocument(existingDoc.InstanceId);
-                }
             }
-            else
+            else if (existingDocs.Count>1)
             {
                 var message = $"More than One Document exists: fund:{FundId} module:{ModuleCode} year:{ApplicableYear} quarter{ApplicableQuarter}";
                 Log.Error(message);
@@ -192,11 +187,11 @@ namespace XbrlReader
 
             WriteProcessStarted();
 
-            XmlDoc = CreateXbrlData(fileName);
+            var docId = CreateFreeFacts(existingDocId, fileName);
 
-            if (XmlDoc is null)
+            if (docId==0)
             {
-                var message = $"XmlDoc is null";
+                var message = $"Document not created";
                 Log.Error(message);
                 Console.WriteLine(message);
 
@@ -258,19 +253,23 @@ namespace XbrlReader
             return true;
         }
 
-        private XDocument CreateXbrlData(string sourceFile)
+        private int CreateFreeFacts(int existingDoc, string sourceFile)
         {
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
             //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures
 
+            
 
             if (!File.Exists(sourceFile))
             {
                 var message = $"XBRL CreateXbrlDocument ERROR: Document not Found : {sourceFile}";
                 Console.WriteLine($"**** {message}");
                 Log.Error(message);
-                return null;
+                return 0;
             }
+
+            
+
 
             XDocument xmlDoc;
             try
@@ -283,7 +282,7 @@ namespace XbrlReader
                 Log.Error(message);
                 Log.Error(e.Message);
                 Console.WriteLine(e);
-                return null;
+                return 0;
             }
 
             RootNode = xmlDoc.Root;
@@ -310,11 +309,18 @@ namespace XbrlReader
                     MessageType = MessageType.INFO.ToString()
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return null;
+                return 0;
             }
 
             Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
+            
 
+
+            if (existingDoc > 0)
+            {             
+                //delete any existing doc. It was checked before, if it was valid or processed
+                DeleteDocument(existingDoc);
+            }
             DocumentId = CreateDocInstanceInDb();
 
             //AddFilingIndicators();
@@ -331,7 +337,7 @@ namespace XbrlReader
             AddFacts();
 
             DeleteContexts();
-            return xmlDoc;
+            return DocumentId;
 
         }
 

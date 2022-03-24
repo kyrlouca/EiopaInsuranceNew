@@ -31,13 +31,14 @@ namespace Validations
         public int DocumentId { get; private set; }
         public int ModuleId { get; private set; }
         public DocInstance DocumentInstance { get; private set; }
+        public bool IsValidDocument { get; private set; } = true;
 
         public string SolvencyVersion { get; private set; }
 
         public List<RuleStructure> ModuleRules { get; private set; } = new List<RuleStructure>();
         public List<RuleStructure> DocumentRules { get; private set; } = new List<RuleStructure>();
         public int TestingRuleId { get; set; } = 0;
-        public ConfigObject ConfigObject { get; private set; }
+        public ConfigObject ConfigObject { get; private set; } 
 
 
 
@@ -51,11 +52,57 @@ namespace Validations
 
             GetConfiguration();
 
-            var document = GetDocumentId();
+            
+            var document = InsuranceData.GetDocumentById(documentId);
             if (document is null)
             {
+                IsValidDocument = false;
+                var messg = $"Validation: Document  NOT Found. Document Id: {DocumentId} ";
+                Log.Error(messg);
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = document.PensionFundId,
+                    ModuleCode = document.ModuleCode,
+                    ApplicableYear = document.ApplicableYear,
+                    ApplicableQuarter = document.ApplicableQuarter,
+                    Message = messg,
+                    UserId = 0,
+                    ProgramCode = ProgramCode.VA.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = document.InstanceId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
                 return;
             }
+            if (document.Status.Trim() == "P")
+            {
+                IsValidDocument = false;
+                var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
+                Log.Error(messg);
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = document.PensionFundId,
+                    ModuleCode = document.ModuleCode,
+                    ApplicableYear = document.ApplicableYear,
+                    ApplicableQuarter = document.ApplicableQuarter,
+                    Message = messg,
+                    UserId = 0,
+                    ProgramCode = ProgramCode.VA.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = document.InstanceId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                return;
+            }
+
+            
+
+
             DocumentInstance = document;
             DocumentId = document.InstanceId;
 
@@ -71,9 +118,20 @@ namespace Validations
             Log.Information(message);
 
 
+            //to prevent anyone else validating when processed
+            UpdateDocumentStatus("P");
+
             //CreateErrorDocument the Error Document even if doc does not exist
             CreateErrorDocument();
             CreateModuleAndDocumentRules();
+        }
+
+
+        private void UpdateDocumentStatus(string status)
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
+            var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
 
 
@@ -84,6 +142,11 @@ namespace Validations
             var errorCounter = 0;
             var warningCounter = 0;
             var rulesCounter = 0;
+
+            if (!IsValidDocument)
+            {
+                return false;
+            }
 
             //todo updateSheet needs to update fact with IsConversionError
             var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
@@ -122,7 +185,7 @@ namespace Validations
                 rulesCounter = +1;
 
                 var ruleTables = rule.RuleTerms
-                        .Where(term=>!term.IsFunctionTerm)
+                        .Where(term => !term.IsFunctionTerm)
                         .Select(term => term.TableCode)
                         .Distinct().ToList();
 
@@ -193,8 +256,8 @@ namespace Validations
             connectionPension.Execute(sqlUpdate, new { isDocumentValid, eCounter = totalErrors > 0, wCounter = warningErrors > 0, DocumentId });
 
             var status = (totalErrors == 0) ? "V" : "E";
-            var sqlUpdateStatus = @" update DocInstance set Status=@status where InstanceId =@documentId";
-            connectionPension.Execute(sqlUpdateStatus, new { DocumentId, status });
+            UpdateDocumentStatus(status);
+
 
             return isDocumentValid;
         }
@@ -840,54 +903,7 @@ namespace Validations
             return true;
         }
 
-        private DocInstance GetDocumentId()
-        {
-            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-
-            var doc = InsuranceData.GetDocumentById(DocumentId);
-            if (doc.InstanceId == 0)
-            {
-                var message = $"Validation: Document  NOT Found. Document Id: {DocumentId} ";
-                Log.Error(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = doc.PensionFundId,
-                    ModuleCode = doc.ModuleCode,
-                    ApplicableYear = doc.ApplicableYear,
-                    ApplicableQuarter = doc.ApplicableQuarter,
-                    Message = message,
-                    UserId = 0,
-                    ProgramCode = ProgramCode.VA.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = doc.InstanceId,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return doc;
-            }
-            else
-            {
-                var message = $"-- Validation started for Document:{ doc.InstanceId}";
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = doc.PensionFundId,
-                    ModuleCode = doc.ModuleCode,
-                    ApplicableYear = doc.ApplicableYear,
-                    ApplicableQuarter = doc.ApplicableQuarter,
-                    Message = message,
-                    UserId = 0,
-                    ProgramCode = ProgramCode.VA.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = doc.InstanceId,
-                    MessageType = MessageType.INFO.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-            }
-            return doc;
-        }
-
+       
         private bool ValidateOpenTableKeysUnique(int documentId)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -1004,7 +1020,7 @@ namespace Validations
         private bool ValidateFactValuesForFuture()
         {
             var errorCounter = 0;
-             using var connenctionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connenctionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             //
 
 
@@ -1067,8 +1083,8 @@ namespace Validations
                     CreateRuleError(errorRule);
                 }
                 //if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
-                    if (fact.DataTypeUse == "E" )
-                    {
+                if (fact.DataTypeUse == "E")
+                {
                     var mMember = GetMemberValue(fact.MetricID, fact.TextValue);
                     if (mMember is null)
                     {
@@ -1138,7 +1154,7 @@ namespace Validations
                 WHERE met.MetricID = @metricId	                
                 ";
 
-            var values = connectionEiopa.Query<string>(sqlGetMem, new { metricId}).ToList();
+            var values = connectionEiopa.Query<string>(sqlGetMem, new { metricId }).ToList();
             return values;
         }
 
@@ -1600,9 +1616,9 @@ namespace Validations
 
         private bool IsTableInDocument(string tableCode)
         {
-            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);            
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlSelectSheet = @"select sheet.TemplateSheetId from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.TableCode= @tableCode";
-            var sheet = connectionLocal.QuerySingleOrDefault<TemplateSheetInstance>(sqlSelectSheet, new { DocumentId,tableCode });
+            var sheet = connectionLocal.QuerySingleOrDefault<TemplateSheetInstance>(sqlSelectSheet, new { DocumentId, tableCode });
             return sheet is not null;
 
         }
