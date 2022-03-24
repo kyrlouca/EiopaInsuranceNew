@@ -125,8 +125,10 @@ namespace XbrlReader
         private DocInstance GetDocument(int documentId)
         {
             var sqlGetDocument = @"
-                    SELECT
-                      doc.InstanceId
+
+                  SELECT
+  
+                  doc.InstanceId
                      ,doc.PensionFundId
                      ,doc.ModuleId
                      ,doc.Status
@@ -137,9 +139,9 @@ namespace XbrlReader
                      ,doc.UserId
                     FROM dbo.DocInstance doc
                     WHERE doc.InstanceId = @documentId
-                    ";
+                    ";    
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlGetDocument, new { documentId });
+            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>GetDocumentatus, new { documentId });
             return doc;
         }
 

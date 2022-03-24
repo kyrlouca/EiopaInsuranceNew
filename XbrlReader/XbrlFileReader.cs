@@ -131,10 +131,15 @@ namespace XbrlReader
             {
                 var existingDoc = existingDocs.First();
                 var status = existingDoc.Status.Trim();
-                var isValidatedDocument = (status == "V" || status == "S");//validated or sumbmitted
+                var isValidatedDocument = (status == "V" || status == "S" || status=="P");//validated or sumbmitted or processe3d
                 if (isValidatedDocument)
                 {
-                    var message = $"Document already exists: instanceId: {existingDoc.InstanceId} status :{existingDoc.Status}";
+                    
+                    var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
+                    if (status == "P")
+                    {
+                        message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
+                    }
                     Log.Error(message);
                     Console.WriteLine(message);
 
@@ -368,6 +373,7 @@ namespace XbrlReader
                    ,[ModuleId]      
                    ,[FileName]
                    ,[CurrencyBatchId]
+                   ,[Status]
                     )
                 VALUES
                    (                                
@@ -379,6 +385,7 @@ namespace XbrlReader
                    ,@ModuleId
                    ,@FileName
                    ,@CurrencyBatchId
+                   ,@Status
                     ); 
                 SELECT CAST(SCOPE_IDENTITY() as int);
                 ";
@@ -397,7 +404,8 @@ namespace XbrlReader
                 ApplicableQuarter,
                 ModuleId = moduleId,
                 FileName,
-                CurrencyBatchId
+                CurrencyBatchId,
+                Status = "P"
             };
 
 
