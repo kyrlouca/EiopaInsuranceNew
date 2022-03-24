@@ -110,6 +110,7 @@ namespace Validations
 
             if (module is null)
             {
+                IsValidDocument = false;
                 return;
             }
             ModuleId = module.ModuleID;
