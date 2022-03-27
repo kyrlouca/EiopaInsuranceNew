@@ -112,7 +112,7 @@ namespace XbrlReader
                     ApplicableQuarter = ApplicableQuarter,
                     Message = message,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
                     MessageType = MessageType.INFO.ToString()
@@ -150,7 +150,7 @@ namespace XbrlReader
                         ApplicableQuarter = ApplicableQuarter,
                         Message = message,
                         UserId = UserId,
-                        ProgramCode = ProgramCode.XB.ToString(),
+                        ProgramCode = ProgramCode.RX.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
                         InstanceId = existingDoc.InstanceId,
                         MessageType = MessageType.ERROR.ToString()
@@ -174,7 +174,7 @@ namespace XbrlReader
                     ApplicableQuarter = ApplicableQuarter,
                     Message = message,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
                     MessageType = MessageType.ERROR.ToString()
@@ -203,7 +203,7 @@ namespace XbrlReader
                     ApplicableQuarter = ApplicableQuarter,
                     Message = message,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
                     MessageType = MessageType.ERROR.ToString()
@@ -303,7 +303,7 @@ namespace XbrlReader
                     ApplicableQuarter = ApplicableQuarter,
                     Message = message,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
                     MessageType = MessageType.INFO.ToString()

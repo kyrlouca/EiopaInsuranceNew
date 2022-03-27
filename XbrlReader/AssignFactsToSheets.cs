@@ -96,7 +96,7 @@ namespace XbrlReader
                     ApplicableQuarter =0,
                     Message = message,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.XB.ToString(),
+                    ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
                     MessageType = MessageType.ERROR.ToString()

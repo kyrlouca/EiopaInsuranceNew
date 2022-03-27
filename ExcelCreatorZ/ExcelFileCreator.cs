@@ -108,6 +108,32 @@ namespace ExcelCreator
                 Log.Error($"Invalid Document Id:{DocumentIdInput}");
                 return false;
             }
+
+            if (Document.Status.Trim() == "P")
+            {                
+                var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
+                Log.Error(messg);
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = Document.PensionFundId,
+                    ModuleCode = Document.ModuleCode,
+                    ApplicableYear = Document.ApplicableYear,
+                    ApplicableQuarter = Document.ApplicableQuarter,
+                    Message = messg,
+                    UserId = 0,
+                    ProgramCode = ProgramCode.CX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = Document.InstanceId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                return false;
+            }
+
+
+
+
             ModuleId = Document.ModuleId;
             ModuleCode = Document.ModuleCode;
             PensionFundId = Document.PensionFundId;
@@ -322,7 +348,7 @@ namespace ExcelCreator
                 ApplicableQuarter = ApplicableQuarter,
                 Message = message,
                 UserId = UserId,
-                ProgramCode = ProgramCode.DO.ToString(),
+                ProgramCode = ProgramCode.CX.ToString(),
                 ProgramAction = ProgramAction.INS.ToString(),
                 InstanceId = DocumentId,
                 MessageType = MessageType.INFO.ToString()
@@ -351,7 +377,7 @@ namespace ExcelCreator
                     ApplicableQuarter = ApplicableQuarter,
                     Message = messagef,
                     UserId = UserId,
-                    ProgramCode = ProgramCode.DO.ToString(),
+                    ProgramCode = ProgramCode.CX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = DocumentId,
                     MessageType = MessageType.ERROR.ToString(),

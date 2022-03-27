@@ -8,7 +8,7 @@ using ConfigurationNs;
 
 namespace TransactionLoggerNs
 {
-    public enum ProgramCode { AG, DO, XB, VA }
+    public enum ProgramCode { AG, DO, XB, VA,CX,RX }
     public enum ProgramAction { DEL, INS, UPD }
     public enum MessageType {ERROR,INFO,COMPLETE }
 

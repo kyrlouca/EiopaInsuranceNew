@@ -77,6 +77,7 @@ namespace Validations
 
                 return;
             }
+
             if (document.Status.Trim() == "P")
             {
                 IsValidDocument = false;
