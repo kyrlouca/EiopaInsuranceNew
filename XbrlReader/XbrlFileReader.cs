@@ -322,8 +322,7 @@ namespace XbrlReader
                 DeleteDocument(existingDoc);
             }
             DocumentId = CreateDocInstanceInDb();
-
-            //AddFilingIndicators();
+            
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
 

@@ -16,10 +16,7 @@ namespace XbrlReader
 
 
     class AssignFactsToSheets
-    {
-        //Gets the data as structures(xbrlData) which where prepared by XbrlFileReader
-        //Processes of facts and assigns them with row/col. It also inserts the document/sheets/facts to the database
-
+    {        
         public int TestingTableId { get; set; } = 0;
         //65 S.05.02.01.02 ars error fin grawo
         //60 S.05.01.02.01  qrs simple zet
