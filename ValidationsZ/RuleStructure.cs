@@ -454,8 +454,7 @@ namespace Validations
 
             var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
 
-            //populate dicx with numeric, text, and boolean values accordingly
-            var dicx = new Dictionary<string, object>();
+            //populate dicx with numeric, text, and boolean values accordingly            
             var dicObj = new Dictionary<string, ObjTerm>();
             var expressionTerms = ruleTerms.Where(rt => allTerms.Contains(rt.Letter));
             foreach (var term in expressionTerms)
@@ -511,50 +510,51 @@ namespace Validations
                         DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
                         _ => term.TextValue,
                     };
-                }
-                dicx.Add(term.Letter, new { obj, numberOfDecimals = term.NumberOfDecimals });
+                }                
                 dicObj.Add(term.Letter, objTerm);
             }
-
-            //@@@
+            
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
 
             var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
-            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
-            var isAllDecimal = dicx.All(obj => obj.Value.GetType() == typeof(decimal));
+            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");            
 
-            var isAllDecimal2 = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
-            
+            var isAllDecimal = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
+            var dicNormal= dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
-            if (!containsParen && !containsLogical && isAllDecimal2 && isAlgebraig)
+            if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
             {
 
+                if (dicObj.Count>2 && operatorUsed=="=")
+                {
+                    //interval comparison if equality operator and more than two terms
+                    var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
+                    var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));
 
-                var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff =>ff.Value.obj);
-                var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
-                return res;
+                    var leftNumMin = Convert.ToDouble(Eval.Execute(leftOperand, dicMin));
+                    var leftNumMax = Convert.ToDouble(Eval.Execute(leftOperand, dicMax));
 
+                    var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
+                    var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
 
-                var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
-                var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));
-                
+                    var isValid = (leftNumMin < rightNumMin && leftNumMax > rightNumMin);
+                    return isValid;
+                }
+                else
+                {                                        
+                    var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
+                    var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
 
-                var leftNumMin = Convert.ToDouble(Eval.Execute(leftOperand, dicMin));
-                var leftNumMax = Convert.ToDouble(Eval.Execute(leftOperand, dicMax));
-
-                var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
-                var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
-
-                var isValid = (leftNumMin < rightNumMin && leftNumMax > rightNumMin);
-                return isValid;
-
+                    var res = CompareNumbers(operatorUsed, 0.01, leftNum, rightNum);
+                    return res;
+                }
             }
 
 
             try
             {
-                var resx = Eval.Execute(symbolExpression, dicx);
+                var resx = Eval.Execute(symbolExpression, dicNormal);
                 return resx;
             }
             catch (Exception e)
@@ -572,18 +572,18 @@ namespace Validations
         {
             try
             {
-                var num = Convert.ToDouble( objTerm.obj);
+                var num = Convert.ToDouble(objTerm.obj);
                 var power = objTerm.decimals;
-                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10,power)/2.0 : Math.Pow(10, -power)/2.0;
-                
+                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
+
                 var xx = isGetMax ? num + interval : num - interval;
                 return xx;
             }
             catch
             {
                 return 0;
-            }            
-            
+            }
+
         }
 
         static (bool isIfExpression, string ifExpression, string thenExpression) SplitIfThenElse(string stringExpression)

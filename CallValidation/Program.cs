@@ -80,9 +80,9 @@ namespace ValidationCall
                 docId = 9724;//Hydra            
                 docId = 9723;//Ethniki            
                 
-                docId = 9727;
+                docId = 9727;//868
 
-                var validatorDg = new DocumentValidator(solvencyVer, docId,868);
+                var validatorDg = new DocumentValidator(solvencyVer, docId,0);//
                 var x = validatorDg.ValidateDocument();
 
                 return 1; 
