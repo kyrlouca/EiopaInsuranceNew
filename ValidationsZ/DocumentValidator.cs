@@ -38,7 +38,7 @@ namespace Validations
         public List<RuleStructure> ModuleRules { get; private set; } = new List<RuleStructure>();
         public List<RuleStructure> DocumentRules { get; private set; } = new List<RuleStructure>();
         public int TestingRuleId { get; set; } = 0;
-        public ConfigObject ConfigObject { get; private set; } 
+        public ConfigObject ConfigObject { get; private set; }
 
 
 
@@ -52,7 +52,7 @@ namespace Validations
 
             GetConfiguration();
 
-            
+
             var document = InsuranceData.GetDocumentById(documentId);
             if (document is null)
             {
@@ -78,10 +78,14 @@ namespace Validations
                 return;
             }
 
-            if (document.Status.Trim() == "P")
+            var status = document.Status.Trim();
+            var isLockedDocument = status == "P" || status == "S";
+            if (isLockedDocument)
             {
                 IsValidDocument = false;
-                var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
+                var messg = status == "P"
+                    ? $"DocumentId: {DocumentId}. Document currently being Processed by another User"
+                    : $"DocumentId: {DocumentId}. Document has already been submitted";
                 Log.Error(messg);
                 var trans = new TransactionLog()
                 {
@@ -101,7 +105,7 @@ namespace Validations
                 return;
             }
 
-            
+
 
 
             DocumentInstance = document;
@@ -532,7 +536,7 @@ namespace Validations
                 var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
                 var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
                 var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, majorType, true);
+                var emptyRes = new DbValue(0, "", 0, 0, new DateTime(2000, 1, 1), false, majorType, true);
                 return emptyRes;
             }
             else if (facts.Count() == 1)
@@ -553,12 +557,12 @@ namespace Validations
                     var firstFact = facts.First();
                     var majorDataType = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
                     var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
-                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum,firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
+                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
                     return resVal;
                 }
             }
 
-            var emptyRes2 = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            var emptyRes2 = new DbValue(0, "", 0, 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
             return emptyRes2;
 
 
@@ -606,7 +610,7 @@ namespace Validations
                 var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
                 var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
                 var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, majorType, true);
+                var emptyRes = new DbValue(0, "", 0, 0, new DateTime(2000, 1, 1), false, majorType, true);
                 return emptyRes;
             }
             else if (facts.Count() == 1)
@@ -626,14 +630,14 @@ namespace Validations
                     var firstFact = facts.First();
                     var majorDataType2 = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
                     var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
-                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum,firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
+                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
                     return resValMany;
                 }
             }
 
             //888888888888888
 
-            var emptyRes2 = new DbValue(0, "", 0, 0,new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            var emptyRes2 = new DbValue(0, "", 0, 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
             return emptyRes2;
         }
 
@@ -902,7 +906,7 @@ namespace Validations
             return true;
         }
 
-       
+
         private bool ValidateOpenTableKeysUnique(int documentId)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);

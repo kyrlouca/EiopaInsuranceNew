@@ -130,8 +130,8 @@ namespace XbrlReader
                 var existingDoc = existingDocs.First();
                 existingDocId = existingDoc.InstanceId;
                 var status = existingDoc.Status.Trim();
-                var isValidDocument = (status == "V" || status == "S" || status=="P");//validated or sumbmitted or processe3d
-                if (isValidDocument)
+                var isLockedDocument = ( status == "S" || status=="P");//validated or sumbmitted or processe3d
+                if (isLockedDocument)
                 {
                     
                     var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";

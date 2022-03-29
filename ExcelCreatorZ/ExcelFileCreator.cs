@@ -108,8 +108,8 @@ namespace ExcelCreator
                 Log.Error($"Invalid Document Id:{DocumentIdInput}");
                 return false;
             }
-
-            if (Document.Status.Trim() == "P")
+            var isLockedDocument = Document.Status.Trim() == "P";
+            if (isLockedDocument)
             {                
                 var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
                 Log.Error(messg);

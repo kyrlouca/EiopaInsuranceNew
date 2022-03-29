@@ -525,8 +525,8 @@ namespace Validations
 
             if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
             {
-
-                if (dicObj.Count>2 && operatorUsed=="=")
+                var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
+                if ((dicObj.Count>2 || hasSumFunction )&& operatorUsed=="=")
                 {
                     //interval comparison if equality operator and more than two terms
                     var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
@@ -538,7 +538,7 @@ namespace Validations
                     var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
                     var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
 
-                    var isValid = (leftNumMin < rightNumMin && leftNumMax > rightNumMin);
+                    var isValid = (leftNumMin <= rightNumMax && leftNumMax >= rightNumMin);
                     return isValid;
                 }
                 else
