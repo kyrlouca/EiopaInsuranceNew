@@ -535,8 +535,22 @@ namespace Validations
                     var leftNumMin = Convert.ToDouble(Eval.Execute(leftOperand, dicMin));
                     var leftNumMax = Convert.ToDouble(Eval.Execute(leftOperand, dicMax));
 
+                    if (leftNumMin > leftNumMax)
+                    {
+                        var temp = leftNumMin;
+                        leftNumMin = leftNumMax;
+                        leftNumMax = temp;
+                    }
+
                     var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
                     var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
+                    if (rightNumMin > rightNumMax)
+                    {
+                        var temp = rightNumMin;
+                        rightNumMin = rightNumMax;
+                        rightNumMax = temp;
+                    }
+
 
                     var isValid = (leftNumMin <= rightNumMax && leftNumMax >= rightNumMin);
                     return isValid;
@@ -576,7 +590,7 @@ namespace Validations
                 var power = objTerm.decimals;
                 var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
 
-                var xx = isGetMax ? num + interval : num - interval;
+                var xx = isGetMax ? num + interval +0.001 : num - interval -0.001;
                 return xx;
             }
             catch
