@@ -285,33 +285,29 @@ namespace Validations
             {
                 //Console.WriteLine(".");
                 Console.Write($"\n{rule.ValidationRuleId}");
-                EvaluateRuleAndFilterTermsNew(rule);
+                UpdateRuleAndFilterTerms(rule);
             }
 
             return false;
         }
 
-        private void EvaluateRuleAndFilterTermsNew(RuleStructure rule)
+        private void UpdateRuleAndFilterTerms(RuleStructure rule)
         {
-
-
             //Console.Write($"");
-
-
 
             //*****RuleTerms
             var plainTerms = rule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList(); // {S.06.02.01.01,c0170,snnn} for terms like these we cannot get a  direct db value
-            plainTerms.ForEach(term => EvaluatePlainTerm(rule, term));
+            plainTerms.ForEach(term => UpdatePlainTerm(rule, term));
 
             //***FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
             //"T" terms  are the inner nested terms and  should be evaluated first T = max(Z1)
             var functionTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-            functionTerms.ForEach(term => EvaluteSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
+            functionTerms.ForEach(term => UpdateSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
 
             //evaluate function Z Terms
             //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-            functionZetTerms.ForEach(term => EvaluteSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
+            functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
 
 
             //*******Filter terms
@@ -320,21 +316,21 @@ namespace Validations
             {
                 //plain terms
                 var plainFilterTerms = rule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
-                plainFilterTerms.ForEach(term => EvaluatePlainTerm(rule, term));
+                plainFilterTerms.ForEach(term => UpdatePlainTerm(rule, term));
 
                 //evaluate function T Terms
                 var functionFilterTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-                functionFilterTerms.ForEach(term => EvaluteSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterTerms.ForEach(term => UpdateSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
 
                 //evaluate function Z Terms
                 var functionFilterZetTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-                functionFilterZetTerms.ForEach(term => EvaluteSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
             }
 
         }
 
 
-        private int EvaluteSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
+        private int UpdateSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
         {
 
             var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
@@ -470,7 +466,7 @@ namespace Validations
             return 0;
         }
 
-        private int EvaluatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
+        private int UpdatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
         {
             //var dbValue = EvaluateTermFunction(term);
             if (plainTerm.IsSum)
@@ -506,6 +502,7 @@ namespace Validations
                  ,fact.Zet
                  ,fact.TextValue
                  ,fact.NumericValue
+                 ,fact.Decimals
                  ,fact.DateTimeValue
                  ,fact.DataType
                  ,fact.DataTypeUse
@@ -535,7 +532,7 @@ namespace Validations
                 var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
                 var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
                 var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
+                var emptyRes = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, majorType, true);
                 return emptyRes;
             }
             else if (facts.Count() == 1)
@@ -543,7 +540,7 @@ namespace Validations
                 fact = facts.First();
                 var majorDataType = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
 
-                var resVal = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType, false);
+                var resVal = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.Decimals, fact.DateTimeValue, fact.BooleanValue, majorDataType, false);
                 return resVal;
 
             }
@@ -556,12 +553,12 @@ namespace Validations
                     var firstFact = facts.First();
                     var majorDataType = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
                     var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
-                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
+                    var resVal = new DbValue(firstFact.FactId, firstFact.TextValue, sum,firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType, false);
                     return resVal;
                 }
             }
 
-            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            var emptyRes2 = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
             return emptyRes2;
 
 
@@ -578,7 +575,7 @@ namespace Validations
 
 
             var sqlFact = @"
-                SELECT fact.TemplateSheetId, fact.FactId, fact.Row, fact.Col, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.DataType,fact.DataTypeUse
+                SELECT fact.TemplateSheetId, fact.FactId, fact.Row, fact.Col, fact.TextValue, fact.NumericValue, fact.Decimals, fact.DateTimeValue, fact.DataType,fact.DataTypeUse
                 FROM TemplateSheetFact fact
                 LEFT OUTER JOIN TemplateSheetInstance sheet
 	                ON sheet.TemplateSheetId = fact.TemplateSheetId
@@ -609,7 +606,7 @@ namespace Validations
                 var rowCol = IsOpenTable(configObj, tableCode) ? $"{col}" : $"{row}{col}";
                 var dataType = connectionEiopa.QuerySingleOrDefault<string>(sqlMapping, new { tableCode, rowCol }) ?? "";
                 var majorType = CntConstants.GetMajorDataType(dataType);
-                var emptyRes = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, majorType, true);
+                var emptyRes = new DbValue(0, "", 0,0, new DateTime(2000, 1, 1), false, majorType, true);
                 return emptyRes;
             }
             else if (facts.Count() == 1)
@@ -617,7 +614,7 @@ namespace Validations
                 var fact = facts.First();
                 var majorDataType1 = CntConstants.GetMajorDataType(fact.DataTypeUse.Trim());
 
-                var resVal1 = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.DateTimeValue, fact.BooleanValue, majorDataType1, false);
+                var resVal1 = new DbValue(fact.FactId, fact.TextValue, fact.NumericValue, fact.Decimals, fact.DateTimeValue, fact.BooleanValue, majorDataType1, false);
                 return resVal1;
 
             }
@@ -629,14 +626,14 @@ namespace Validations
                     var firstFact = facts.First();
                     var majorDataType2 = CntConstants.GetMajorDataType(firstFact.DataTypeUse.Trim());
                     var sum = facts.Aggregate(decimal.Zero, (currentVal, item) => currentVal += (decimal)item.NumericValue);
-                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
+                    var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum,firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
                     return resValMany;
                 }
             }
 
             //888888888888888
 
-            var emptyRes2 = new DbValue(0, "", 0, new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
+            var emptyRes2 = new DbValue(0, "", 0, 0,new DateTime(2000, 1, 1), false, DataTypeMajorUU.UnknownDtm, true);
             return emptyRes2;
         }
 
@@ -1438,7 +1435,7 @@ namespace Validations
                     UpdateTermRowCol(filterTerm, fakeFilterRule.ScopeTableCode, ScopeRangeAxis.Rows, sumFact.Row);
                 }
                 //evaluate the filter RULE to decide when to add the row@@ add the ruleId tot the temp
-                EvaluateRuleAndFilterTermsNew(fakeFilterRule);
+                UpdateRuleAndFilterTerms(fakeFilterRule);
                 if ((bool)RuleStructure.AssertExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
                     factSum += sumFact.NumericValue;

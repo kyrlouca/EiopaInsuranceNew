@@ -82,7 +82,7 @@ namespace ValidationCall
                 
                 docId = 9727;
 
-                var validatorDg = new DocumentValidator(solvencyVer, docId,0);
+                var validatorDg = new DocumentValidator(solvencyVer, docId,868);
                 var x = validatorDg.ValidateDocument();
 
                 return 1; 

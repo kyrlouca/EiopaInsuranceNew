@@ -14,6 +14,11 @@ using Z.Expressions;
 
 namespace Validations
 {
+    public class ObjTerm
+    {
+        public object obj;
+        public int decimals;
+    }
 
 
     public class RuleStructure
@@ -445,19 +450,36 @@ namespace Validations
         {
             //todo rule ID not necessary as parameter            
 
-            
+
 
             var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
 
             //populate dicx with numeric, text, and boolean values accordingly
             var dicx = new Dictionary<string, object>();
+            var dicObj = new Dictionary<string, ObjTerm>();
             var expressionTerms = ruleTerms.Where(rt => allTerms.Contains(rt.Letter));
             foreach (var term in expressionTerms)
             {
-                object val;
+                object obj;
+                ObjTerm objTerm;
                 if (term.IsMissing)
                 {
-                    val = term.DataTypeOfTerm switch
+
+                    objTerm = new ObjTerm
+                    {
+                        obj = term.DataTypeOfTerm switch
+                        {
+                            DataTypeMajorUU.BooleanDtm => false,
+                            DataTypeMajorUU.StringDtm => "",
+                            DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDecimal(0.00),
+                            _ => term.TextValue,
+                        },
+                        decimals = term.NumberOfDecimals,
+                    };
+
+
+                    obj = term.DataTypeOfTerm switch
                     {
                         DataTypeMajorUU.BooleanDtm => false,
                         DataTypeMajorUU.StringDtm => "",
@@ -468,7 +490,20 @@ namespace Validations
                 }
                 else
                 {
-                    val = term.DataTypeOfTerm switch
+                    objTerm = new ObjTerm
+                    {
+                        obj = term.DataTypeOfTerm switch
+                        {
+                            DataTypeMajorUU.BooleanDtm => term.BooleanValue,
+                            DataTypeMajorUU.StringDtm => term.TextValue,
+                            DataTypeMajorUU.DateDtm => term.DateValue,
+                            DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
+                            _ => term.TextValue,
+                        },
+                        decimals = term.NumberOfDecimals,
+                    };
+
+                    obj = term.DataTypeOfTerm switch
                     {
                         DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                         DataTypeMajorUU.StringDtm => term.TextValue,
@@ -477,7 +512,8 @@ namespace Validations
                         _ => term.TextValue,
                     };
                 }
-                dicx.Add(term.Letter, val);
+                dicx.Add(term.Letter, new { obj, numberOfDecimals = term.NumberOfDecimals });
+                dicObj.Add(term.Letter, objTerm);
             }
 
             //@@@
@@ -487,18 +523,37 @@ namespace Validations
             var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
             var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
             var isAllDecimal = dicx.All(obj => obj.Value.GetType() == typeof(decimal));
-            if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
-            {
-                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
-                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
 
+            var isAllDecimal2 = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
+            
+
+            if (!containsParen && !containsLogical && isAllDecimal2 && isAlgebraig)
+            {
+
+
+                var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff =>ff.Value.obj);
                 var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
                 return res;
-            }
+
+
+                var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
+                var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));
                 
 
+                var leftNumMin = Convert.ToDouble(Eval.Execute(leftOperand, dicMin));
+                var leftNumMax = Convert.ToDouble(Eval.Execute(leftOperand, dicMax));
+
+                var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
+                var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
+
+                var isValid = (leftNumMin < rightNumMin && leftNumMax > rightNumMin);
+                return isValid;
+
+            }
+
+
             try
-            {                
+            {
                 var resx = Eval.Execute(symbolExpression, dicx);
                 return resx;
             }
@@ -512,6 +567,24 @@ namespace Validations
             }
         }
 
+
+        public static double GetNumWithInterval(ObjTerm objTerm, bool isGetMax)
+        {
+            try
+            {
+                var num = Convert.ToDouble( objTerm.obj);
+                var power = objTerm.decimals;
+                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10,power)/2.0 : Math.Pow(10, -power)/2.0;
+                
+                var xx = isGetMax ? num + interval : num - interval;
+                return xx;
+            }
+            catch
+            {
+                return 0;
+            }            
+            
+        }
 
         static (bool isIfExpression, string ifExpression, string thenExpression) SplitIfThenElse(string stringExpression)
         {

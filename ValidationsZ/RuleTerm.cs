@@ -23,6 +23,7 @@ namespace Validations
         public bool BooleanValue { get; set; }
         public string TextValue { get; set; }
         public decimal DecimalValue { get; set; }
+        public int NumberOfDecimals { get; set; }
         public DateTime DateValue { get; set; }
         public string Letter { get; }
         public string TermText { get; set; }
@@ -76,6 +77,7 @@ namespace Validations
             FactId = dbValue.FactId;
             TextValue = dbValue.TextValue;
             DecimalValue = dbValue.DecimalValue;
+            NumberOfDecimals = dbValue.NumberOfDecimals;
             DateValue = dbValue.DateValue;
             BooleanValue = dbValue.BoolValue;
             DataTypeOfTerm = dbValue.DataTypeEnumMajorUU; //the value type 
