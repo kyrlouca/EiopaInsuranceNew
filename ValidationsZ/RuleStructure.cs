@@ -398,7 +398,7 @@ namespace Validations
                         DataTypeMajorUU.BooleanDtm => false,
                         DataTypeMajorUU.StringDtm => "",
                         DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(0.00),
+                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
                         _ => term.TextValue,
                     };
                 }
@@ -409,7 +409,7 @@ namespace Validations
                         DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                         DataTypeMajorUU.StringDtm => term.TextValue,
                         DataTypeMajorUU.DateDtm => term.DateValue,
-                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
+                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
                         _ => term.TextValue,
                     };
                 }
@@ -471,7 +471,7 @@ namespace Validations
                             DataTypeMajorUU.BooleanDtm => false,
                             DataTypeMajorUU.StringDtm => "",
                             DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDecimal(0.00),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
@@ -483,7 +483,7 @@ namespace Validations
                         DataTypeMajorUU.BooleanDtm => false,
                         DataTypeMajorUU.StringDtm => "",
                         DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(0.00),
+                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
                         _ => term.TextValue,
                     };
                 }
@@ -496,7 +496,7 @@ namespace Validations
                             DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
-                            DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
@@ -507,7 +507,7 @@ namespace Validations
                         DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                         DataTypeMajorUU.StringDtm => term.TextValue,
                         DataTypeMajorUU.DateDtm => term.DateValue,
-                        DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
+                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
                         _ => term.TextValue,
                     };
                 }
@@ -518,18 +518,18 @@ namespace Validations
 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
 
-            var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
+            var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDouble)\(");
             var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
 
-            var isAllDecimal = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
+            var isAllDouble = dicObj.All(obj => obj.Value.obj.GetType() == typeof(double));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
-            if (!containsLogical && isAllDecimal && isAlgebraig)
+            if (!containsLogical && isAllDouble && isAlgebraig)
             {
                 
 
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
-                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed == "=")
+                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed == "=")//only if more than two terms unless there is another term when formula contains *
                 {
 
                     if (containsParen)
@@ -617,7 +617,7 @@ namespace Validations
                 var objItem = normalDic[newLetter];
                 var power = objItem.decimals;
                 var num = Convert.ToDouble(objItem.obj);
-                var interval = Math.Pow(num, -power) / 2.0;
+                var interval = Math.Pow(10, -power) / 2.0;
 
                 //if it's a negative number, we need to make the number smaller to get the maximum interval
                 var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
@@ -725,7 +725,8 @@ namespace Validations
                 }
 
                 //replaces the entire match group not just the group
-                var newVal = m.Value.Replace(m.Groups[0].Value, @$"Convert.ToDecimal({m.Groups[0]})");
+                //var newVal = m.Value.Replace(m.Groups[0].Value, @$"Convert.ToDouble({m.Groups[0]})");
+                var newVal = m.Value;
                 return newVal;
             }
         }
