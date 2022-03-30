@@ -591,7 +591,7 @@ namespace Validations
                 var objTerm = objTerms[letterTerm];
                 var power = objTerm.decimals;
                 var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
-                var interval2 = Math.Pow(10, power) / 2.0;
+                var interval2 = 1/ Math.Pow(10, power) / 2.0;
                 if (interval != interval2)
                 {
                     throw new Exception("abc");
