@@ -87,7 +87,7 @@ namespace ValidationCall
                 docId = 9719;//American Hellenic 2829,3159
 
 
-                docId = 9727;//868,1066
+                
                 docId = 9712;//hehllenic  alico   1071           
 
 
@@ -95,6 +95,7 @@ namespace ValidationCall
                 docId = 9722;//GIC
                 docId = 9721;//Commercial          ,5407
                 docId = 9715;//Eurolife                
+                docId = 9727;//Hydra 868,1066
                 var validatorDg = new DocumentValidator(solvencyVer, docId, 0);//
                 var x = validatorDg.ValidateDocument();
 
