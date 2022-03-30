@@ -373,7 +373,7 @@ namespace Validations
             //todo rule ID not necessary as parameter
             var fixedSymbolExpression = FixExpression(symbolExpression);
 
-            fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
+            //fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
 
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
             {
@@ -530,31 +530,33 @@ namespace Validations
 
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
                 if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed == "=")//only if more than two terms unless there is another term when formula contains *
-                {
-
-                    if (containsParen)
-                    {
-                        throw new Exception($"has Paren {ruleId}");
-                    }
+                {                    
 
                     //interval comparison if equality operator and more than two terms                    
                     //left site
+                    if (leftOperand.Contains("(")){
+                        leftOperand = RemoveParenthesis(leftOperand);
+                    }
                     var leftTerms = GetLetterTerms(leftOperand);
                     var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
                     var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
 
                     var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
                     var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
-                    (leftNumSmall, leftNumBig) = PositionSmaller(leftNumSmall, leftNumBig);
+                    (leftNumSmall, leftNumBig) = SwapSmaller(leftNumSmall, leftNumBig);
 
                     //Right site
+                    if (rightOperand.Contains("("))
+                    {
+                        rightOperand = RemoveParenthesis(rightOperand);
+                    }
                     var rightTerms = GetLetterTerms(rightOperand);
                     var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
                     var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
 
                     var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
                     var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
-                    (rightNumSmall, rightNumBig) = PositionSmaller(rightNumSmall, rightNumBig);
+                    (rightNumSmall, rightNumBig) = SwapSmaller(rightNumSmall, rightNumBig);
 
 
                     var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
@@ -588,14 +590,31 @@ namespace Validations
 
         public static List<string> GetLetterTerms(string expression)
         {
+            //it will return the letter terms but with the MINUS sign in front
             var list = GeneralUtils.GetRegexListOfMatches(@"(-?\s*[XZ]\d{1,2})", expression);
             return list;
         }
 
-
-        public static (double, double) PositionSmaller(double a, double b)
+        public static string RemoveParenthesis(string expression)
         {
+            //remove parenthesis
+            //@"$c = $d - (-$e - $f + x2)";=>@"$c = $d + $e + $f - x2";
+            var wholeParen = GeneralUtils.GetRegexSingleMatch(@"(-\s*\(.*?\))", expression);
+            var x1 = wholeParen.Replace("+", "?");
+            var x2 = x1.Replace("-", "+");
+            var x3 = x2.Replace("?", "-");
+            var x4 = x3.Replace("(", "");
+            var x5 = x4.Replace(")", "");
+            var nn = expression.Replace(wholeParen, x5);
+            var n1 = Regex.Replace(nn, @"\-\s*\-", "+");
+            var n2 = Regex.Replace(n1, @"\+\s*\+", "+");
+            var n3 = Regex.Replace(n2, @"\+\s*?\-", "-");
 
+            return n3;
+        }
+
+        public static (double, double) SwapSmaller(double a, double b)
+        {
             if (a < b)
             {
                 return (a, b);
@@ -708,29 +727,7 @@ namespace Validations
         }
 
 
-        public static string FixDecimalLiteral(string symbolExpression)
-        {
-            //X0 <= 0.2 * (X0 + X1) => X0 <= Convert.ToDecimal(0.2) * (X0 + X1)
-
-            var wrapWithDecimal = new MatchEvaluator(PutQuotesAroundTerm);
-            symbolExpression = Regex.Replace(symbolExpression, @"[0-9]+\.[0-9]+", wrapWithDecimal);
-            return symbolExpression;
-
-            static string PutQuotesAroundTerm(Match m)
-            {
-
-                if (m.Groups.Count != 1)
-                {
-                    return m.Value;
-                }
-
-                //replaces the entire match group not just the group
-                //var newVal = m.Value.Replace(m.Groups[0].Value, @$"Convert.ToDouble({m.Groups[0]})");
-                var newVal = m.Value;
-                return newVal;
-            }
-        }
-
+        
 
         static public bool CompareNumbers(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
         {
@@ -757,7 +754,7 @@ namespace Validations
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
 
             var fixedSymbolExpression = FixExpression(symbolExpression);
-            fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
+            //fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
 
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
             {

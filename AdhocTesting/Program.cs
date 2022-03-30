@@ -14,6 +14,13 @@ namespace AdhocTesting
         static void Main(string[] args)
         {
             //var sdfasfd = Enum.GetValues
+            var x1 = @"$c = $d - (-$e + $f)";
+            var x2 = @"$c = $d - ($e - $f + x2)";
+            var x3 = @"$c = $d - (+$e - $f + x2)";
+            var x4 = @"$c = $d - (-$e - $f + x2)";
+
+            var x = RuleStructure.RemoveParenthesis(x4);
+
             var exp= "X0 <= 0.2 * (X0 + X1) ";
 
             var xx = parseExp(exp);

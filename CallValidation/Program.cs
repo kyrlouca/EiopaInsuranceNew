@@ -62,36 +62,43 @@ namespace ValidationCall
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 4934); //open table refers to single
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 994);// sum of a closed table
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
-                
+
                 docId = 8685; //uinversal//4822, 4427,4407
                 docId = 8694;//hellenic alico                
                 docId = 8689;//universal error 5232,2572
 
-                
-                
-                
-                
+
+
+
+
                 docId = 9713;//HD
-                docId = 9715;//Eurolife                
-                docId = 9721;//Commercial          ,5407      
-                docId = 9722;//GIC
-                
+
+
+
+
                 docId = 9712;//hehllenic  alico              
                 docId = 9724;//Hydra            
-                docId = 9723;//Ethniki            
-                
-                
 
 
-                
+
+
+
+
                 docId = 9719;//American Hellenic 2829,3159
-                docId = 9712;//hehllenic  alico   1071           
+
 
                 docId = 9727;//868,1066
-                var validatorDg = new DocumentValidator(solvencyVer, docId,868);//
+                docId = 9712;//hehllenic  alico   1071           
+
+
+                docId = 9723;//Ethniki            
+                docId = 9722;//GIC
+                docId = 9721;//Commercial          ,5407
+                docId = 9715;//Eurolife                
+                var validatorDg = new DocumentValidator(solvencyVer, docId, 0);//
                 var x = validatorDg.ValidateDocument();
 
-                return 1; 
+                return 1;
             }
 
 #else
@@ -114,6 +121,6 @@ namespace ValidationCall
 
             return 1;
 #endif
-        }        
+        }
     }
 }
