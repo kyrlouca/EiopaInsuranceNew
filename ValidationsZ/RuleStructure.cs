@@ -526,14 +526,16 @@ namespace Validations
 
             if (!containsLogical && isAllDecimal && isAlgebraig)
             {
-                if (containsParen)
-                {
-                    throw new Exception($"has Paren {ruleId}");
-                }
+                
 
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
-                if ((dicObj.Count > 2 || hasSumFunction) && operatorUsed == "=")
+                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed == "=")
                 {
+
+                    if (containsParen)
+                    {
+                        throw new Exception($"has Paren {ruleId}");
+                    }
 
                     //interval comparison if equality operator and more than two terms                    
                     //left site

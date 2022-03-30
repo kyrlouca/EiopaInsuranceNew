@@ -82,10 +82,11 @@ namespace ValidationCall
                 
                 docId = 9727;//868,1066
 
+
                 
-                docId = 9712;//hehllenic  alico   1071           
                 docId = 9719;//American Hellenic 2829,3159
-                var validatorDg = new DocumentValidator(solvencyVer, docId,0);//
+                docId = 9712;//hehllenic  alico   1071           
+                var validatorDg = new DocumentValidator(solvencyVer, docId,4787);//
                 var x = validatorDg.ValidateDocument();
 
                 return 1; 
