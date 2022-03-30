@@ -510,53 +510,48 @@ namespace Validations
                         DataTypeMajorUU.NumericDtm => Convert.ToDecimal(term.DecimalValue),
                         _ => term.TextValue,
                     };
-                }                
+                }
                 dicObj.Add(term.Letter, objTerm);
             }
-            
+
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
 
             var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
-            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");            
+            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
 
             var isAllDecimal = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
-            var dicNormal= dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
+            var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
             if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
             {
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
-                if ((dicObj.Count>2 || hasSumFunction )&& operatorUsed=="=")
+                if ((dicObj.Count > 2 || hasSumFunction) && operatorUsed == "=")
                 {
+
                     //interval comparison if equality operator and more than two terms
-                    var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
-                    var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));
+                    //var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
+                    //var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));                   
 
-                    var leftNumMin = Convert.ToDouble(Eval.Execute(leftOperand, dicMin));
-                    var leftNumMax = Convert.ToDouble(Eval.Execute(leftOperand, dicMax));
+                    var leftTerms = GetLetterTerms(leftOperand);
+                    var leftInterval = CalculateInterval(leftTerms, dicObj);
 
-                    if (leftNumMin > leftNumMax)
-                    {
-                        var temp = leftNumMin;
-                        leftNumMin = leftNumMax;
-                        leftNumMax = temp;
-                    }
+                    var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
+                    var leftNumMin = leftNum - leftInterval;
+                    var leftNumMax = leftNum + leftInterval;
 
-                    var rightNumMin = Convert.ToDouble(Eval.Execute(rightOperand, dicMin));
-                    var rightNumMax = Convert.ToDouble(Eval.Execute(rightOperand, dicMax));
-                    if (rightNumMin > rightNumMax)
-                    {
-                        var temp = rightNumMin;
-                        rightNumMin = rightNumMax;
-                        rightNumMax = temp;
-                    }
-
+                    var rigthTerms = GetLetterTerms(rightOperand);
+                    var rightInterval = CalculateInterval(rigthTerms, dicObj);
+                   
+                    var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
+                    var rightNumMin = rightNum - rightInterval;
+                    var rightNumMax = rightNum + rightInterval;                   
 
                     var isValid = (leftNumMin <= rightNumMax && leftNumMax >= rightNumMin);
                     return isValid;
                 }
                 else
-                {                                        
+                {
                     var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
                     var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
 
@@ -581,6 +576,31 @@ namespace Validations
             }
         }
 
+        public static List<string> GetLetterTerms(string expression)
+        {
+            var list = GeneralUtils.GetRegexListOfMatches(@"([XZ]\d{1,2})", expression);
+            return list;
+        }
+
+        public static double CalculateInterval(List<string> letterTerms, Dictionary<string, ObjTerm> objTerms)
+        {
+            var totalInterval = 0.0;
+
+            foreach (var letterTerm in letterTerms)
+            {
+                var objTerm = objTerms[letterTerm];
+                var power = objTerm.decimals;
+                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
+                var interval2 = Math.Pow(10, power) / 2.0;
+                if (interval != interval2)
+                {
+                    throw new Exception("abc");
+                }
+                totalInterval += interval;
+            }
+            return totalInterval + 0.001;
+        }
+
 
         public static double GetNumWithInterval(ObjTerm objTerm, bool isGetMax)
         {
@@ -590,7 +610,7 @@ namespace Validations
                 var power = objTerm.decimals;
                 var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
 
-                var xx = isGetMax ? num + interval +0.001 : num - interval -0.001;
+                var xx = isGetMax ? num + interval + 0.001 : num - interval - 0.001;
                 return xx;
             }
             catch

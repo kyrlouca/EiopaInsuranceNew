@@ -100,6 +100,7 @@ namespace TestingValidationsZ
             //6887 fdtv            
             formula = @"matches(ftdv({S.06.02.01.02,c0290},""s2c_dim:UI""),""^CAU/.*"") and not(matches(ftdv({S.06.02.01.02,c0290},""s2c_dim:UI""),""^CAU/(ISIN/.*)|(INDEX/.*)""))";
             var res7 = new RuleStructure(formula);
+            res7.SymbolFinalFormula.Should().Be("Z0 and not(Z1)");
             var plain = res7.RuleTerms.Where(term => !term.IsFunctionTerm);
             plain.Count().Should().Be(1);//just one term, no doubles
             var fn = res7.RuleTerms.Where(term => term.IsFunctionTerm).ToArray();
