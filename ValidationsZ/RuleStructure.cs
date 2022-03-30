@@ -515,6 +515,7 @@ namespace Validations
             }
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
+
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
 
             var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDecimal)\(");
@@ -523,31 +524,38 @@ namespace Validations
             var isAllDecimal = dicObj.All(obj => obj.Value.obj.GetType() == typeof(decimal));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
-            if (!containsParen && !containsLogical && isAllDecimal && isAlgebraig)
+            if (!containsLogical && isAllDecimal && isAlgebraig)
             {
+                if (containsParen)
+                {
+                    throw new Exception($"has Paren {ruleId}");
+                }
+
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
                 if ((dicObj.Count > 2 || hasSumFunction) && operatorUsed == "=")
                 {
 
-                    //interval comparison if equality operator and more than two terms
-                    //var dicMin = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, false));
-                    //var dicMax = dicObj.ToDictionary(ff => ff.Key, ff => GetNumWithInterval(ff.Value, true));                   
-
+                    //interval comparison if equality operator and more than two terms                    
+                    //left site
                     var leftTerms = GetLetterTerms(leftOperand);
-                    var leftInterval = CalculateInterval(leftTerms, dicObj);
+                    var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
+                    var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
 
-                    var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
-                    var leftNumMin = leftNum - leftInterval;
-                    var leftNumMax = leftNum + leftInterval;
+                    var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
+                    var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
+                    (leftNumSmall, leftNumBig) = PositionSmaller(leftNumSmall, leftNumBig);
 
-                    var rigthTerms = GetLetterTerms(rightOperand);
-                    var rightInterval = CalculateInterval(rigthTerms, dicObj);
-                   
-                    var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
-                    var rightNumMin = rightNum - rightInterval;
-                    var rightNumMax = rightNum + rightInterval;                   
+                    //Right site
+                    var rightTerms = GetLetterTerms(rightOperand);
+                    var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
+                    var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
 
-                    var isValid = (leftNumMin <= rightNumMax && leftNumMax >= rightNumMin);
+                    var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
+                    var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
+                    (rightNumSmall, rightNumBig) = PositionSmaller(rightNumSmall, rightNumBig);
+
+
+                    var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
                     return isValid;
                 }
                 else
@@ -578,47 +586,48 @@ namespace Validations
 
         public static List<string> GetLetterTerms(string expression)
         {
-            var list = GeneralUtils.GetRegexListOfMatches(@"([XZ]\d{1,2})", expression);
+            var list = GeneralUtils.GetRegexListOfMatches(@"(-?\s*[XZ]\d{1,2})", expression);
             return list;
         }
 
-        public static double CalculateInterval(List<string> letterTerms, Dictionary<string, ObjTerm> objTerms)
-        {
-            var totalInterval = 0.0;
 
-            foreach (var letterTerm in letterTerms)
+        public static (double, double) PositionSmaller(double a, double b)
+        {
+
+            if (a < b)
             {
-                var objTerm = objTerms[letterTerm];
-                var power = objTerm.decimals;
-                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
-                var interval2 = 1/ Math.Pow(10, power) / 2.0;
-                if (interval != interval2)
-                {
-                    throw new Exception("abc");
-                }
-                totalInterval += interval;
+                return (a, b);
             }
-            return totalInterval + 0.001;
+            else
+            {
+                return (b, a);
+            }
         }
 
 
-        public static double GetNumWithInterval(ObjTerm objTerm, bool isGetMax)
+        public static Dictionary<string, double> ConvertDictionaryUsingInterval(List<string> letters, Dictionary<string, ObjTerm> normalDic, bool isAddInterval)
         {
-            try
+            var newDictionary = new Dictionary<string, double>();
+            foreach (var letter in letters)
             {
-                var num = Convert.ToDouble(objTerm.obj);
-                var power = objTerm.decimals;
-                var interval = objTerm.decimals > 0 ? 1.00 / Math.Pow(10, power) / 2.0 : Math.Pow(10, -power) / 2.0;
+                var signedNum = letter.Contains("-") ? -1.0 : 1.0;
+                var newLetter = letter.Replace("-", "").Trim();
+                var objItem = normalDic[newLetter];
+                var power = objItem.decimals;
+                var num = Convert.ToDouble(objItem.obj);
+                var interval = Math.Pow(num, -power) / 2.0;
 
-                var xx = isGetMax ? num + interval + 0.001 : num - interval - 0.001;
-                return xx;
+                //if it's a negative number, we need to make the number smaller to get the maximum interval
+                var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
+                newDictionary.Add(newLetter, newNum);
+
             }
-            catch
-            {
-                return 0;
-            }
+
+            return newDictionary;
 
         }
+
+
 
         static (bool isIfExpression, string ifExpression, string thenExpression) SplitIfThenElse(string stringExpression)
         {

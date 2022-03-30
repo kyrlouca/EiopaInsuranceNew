@@ -80,7 +80,7 @@ namespace Validations
 
             var status = document.Status.Trim();
             var isLockedDocument = status == "P" || status == "S";
-            if (isLockedDocument)
+            if (isLockedDocument && 1==2)
             {
                 IsValidDocument = false;
                 var messg = status == "P"
