@@ -27,10 +27,13 @@ namespace XbrlReader
             //(var fundId,var filePath) = (103,@"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HD Q4 2021_v1.xbrl");
             //(var fundId, var filePath) = (101, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\HELLENIC ALICO Q4 2021_v1.xbrl");
             //(var fundId, var filePath) = (104, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Ethniki Life Q4 2021_v1.xbrl");
-            (var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\HYDRA Q4 2021_v1.xbrl");
+            //(var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\HYDRA Q4 2021_v1.xbrl");            
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Hellenic Alico Q4 2021 No errors.xbrl
+
+            (var fundIdT, var filePath) = (101, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Hellenic Alico Q4 2021 No errors.xbrl");
 
 
-            var fileReader = new XbrlFileReader("IU260", 1, 99, fundIdT, "qrs", 2022, 1,filePath);            
+            var fileReader = new XbrlFileReader("IU260", 1, 99, fundIdT, "qrs", 2022, 3,filePath);            
                 _ = new AssignFactsToSheets("IU260", fileReader.DocumentId,fileReader.FilingsSubmitted);
             
 
