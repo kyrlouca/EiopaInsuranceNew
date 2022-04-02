@@ -1412,6 +1412,7 @@ namespace Validations
                     JOIN TemplateSheetInstance sheet
 	                    ON sheet.TemplateSheetId = fact.TemplateSheetId
                     WHERE sheet.InstanceId = @DocumentId
+                        AND fact.InstanceId = @DocumentId
 	                    AND sheet.tableCode = @tableCode
 	                    AND fact.Col = @col
                 ";
@@ -1630,7 +1631,7 @@ namespace Validations
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlSelectSheet = @"select sheet.TemplateSheetId from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.TableCode= @tableCode";
-            var sheet = connectionLocal.QuerySingleOrDefault<TemplateSheetInstance>(sqlSelectSheet, new { DocumentId, tableCode });
+            var sheet = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlSelectSheet, new { DocumentId, tableCode });
             return sheet is not null;
 
         }
