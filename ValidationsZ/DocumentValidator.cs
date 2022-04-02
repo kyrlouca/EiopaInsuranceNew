@@ -154,15 +154,19 @@ namespace Validations
                 return false;
             }
 
-            //todo updateSheet needs to update fact with IsConversionError
-            var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
+            //todo updateSheet needs to update fact with IsConversionError            
+            //@@ change it
+            //var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
+            var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
                 //updates document as error but keeps finding errors                
             }
 
 
-            var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
+            //@@@@ change it 
+            var isKeyValuesUnique = true;
+            //var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
 
             if (HasEmptySheets(DocumentId))
             {
@@ -269,7 +273,7 @@ namespace Validations
         }
 
 
-        private bool CreateModuleAndDocumentRules()
+        private void CreateModuleAndDocumentRules()
         {
 
             ///****** Read the Module Rules and Construct the Document Rules             
@@ -284,15 +288,15 @@ namespace Validations
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
 
-            Console.WriteLine("\n Evaluate terms");
+            Console.WriteLine("\n update rule terms");
             foreach (var rule in DocumentRules)
             {
                 //Console.WriteLine(".");
-                Console.Write($"\n{rule.ValidationRuleId}");
+                Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
                 UpdateRuleAndFilterTerms(rule);
             }
 
-            return false;
+            return ;
         }
 
         private void UpdateRuleAndFilterTerms(RuleStructure rule)
@@ -334,7 +338,7 @@ namespace Validations
         }
 
 
-        private int UpdateSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
+        private void UpdateSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
         {
 
             var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
@@ -467,7 +471,7 @@ namespace Validations
                     Console.WriteLine("");
                     break;
             }
-            return 0;
+            return ;
         }
 
         private int UpdatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
@@ -1220,13 +1224,13 @@ namespace Validations
                         )
                 ";
 
-            if (errorRule.RuleMessage.Length > 3950)
+            if (errorRule.RuleMessage.Length > 2500)
             {
-                errorRule.RuleMessage = errorRule.RuleMessage.Substring(0, 3950);
+                errorRule.RuleMessage = errorRule.RuleMessage.Substring(0, 2449);
             }
-            if (errorRule.DataValue.Length > 3950)
+            if (errorRule.DataValue.Length > 500)
             {
-                errorRule.DataValue = errorRule.DataValue.Substring(0, 1000);
+                errorRule.DataValue = errorRule.DataValue.Substring(0, 499);
             }
 
             connectionPension.Execute(sqlInsert, errorRule);
@@ -1418,7 +1422,7 @@ namespace Validations
             decimal factSum = 0;
             foreach (var sumFact in sumfacts)
             {
-                var fakeFilterRule = new RuleStructure(filterFormula, "")
+                var fakeFilterRule = new RuleStructure(filterFormula, "")//the filter formula will now be the tablebase formula
                 {
                     ScopeTableCode = sumFact.TableCodeDerived,
                     SheetId = sumFact.TemplateSheetId,
@@ -1439,6 +1443,11 @@ namespace Validations
                     UpdateTermRowCol(filterTerm, fakeFilterRule.ScopeTableCode, ScopeRangeAxis.Rows, sumFact.Row);
                 }
                 //evaluate the filter RULE to decide when to add the row@@ add the ruleId tot the temp
+                if (string.IsNullOrEmpty(fakeFilterRule.TableBaseFormula))
+                {
+                    factSum += sumFact.NumericValue;
+                    continue;
+                }
                 UpdateRuleAndFilterTerms(fakeFilterRule);
                 if ((bool)RuleStructure.AssertExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {

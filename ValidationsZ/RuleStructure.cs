@@ -424,7 +424,7 @@ namespace Validations
                 var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
                 var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
 
-                var res = CompareNumbers(operatorUsed, 0.1, leftNum, rightNum);
+                var res = IsPlainNumbersEqual(operatorUsed, 0.1, leftNum, rightNum);
                 return res;
             }
 
@@ -516,60 +516,52 @@ namespace Validations
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 
-            var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
+            var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(symbolExpression);
 
-            var containsParen = Regex.IsMatch(symbolExpression, @"(?<!ToDouble)\(");
             var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
-
             var isAllDouble = dicObj.All(obj => obj.Value.obj.GetType() == typeof(double));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
             if (!containsLogical && isAllDouble && isAlgebraig)
             {
-                
-
-                var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
-                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed == "=")//only if more than two terms unless there is another term when formula contains *
-                {                    
-
-                    //interval comparison if equality operator and more than two terms                    
-                    //left site
-                    if (leftOperand.Contains("(")){
-                        leftOperand = RemoveParenthesis(leftOperand);
-                    }
-                    var leftTerms = GetLetterTerms(leftOperand);
-                    var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
-                    var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
-
-                    var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
-                    var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
-                    (leftNumSmall, leftNumBig) = SwapSmaller(leftNumSmall, leftNumBig);
-
-                    //Right site
-                    if (rightOperand.Contains("("))
-                    {
-                        rightOperand = RemoveParenthesis(rightOperand);
-                    }
-                    var rightTerms = GetLetterTerms(rightOperand);
-                    var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
-                    var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
-
-                    var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
-                    var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
-                    (rightNumSmall, rightNumBig) = SwapSmaller(rightNumSmall, rightNumBig);
-
-
-                    var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
-                    return isValid;
-                }
-                else
+                var result = false;
+                //first, check > or <
+                if (operatorUsed.Contains("<") || operatorUsed.Contains(">"))
                 {
-                    var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
-                    var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
-
-                    var res = CompareNumbers(operatorUsed, 0.01, leftNum, rightNum);
-                    return res;
+                    try
+                    {
+                        result = (bool) Eval.Execute(symbolExpression, dicNormal);                     
+                    }
+                    catch (Exception e)
+                    {
+                        var mess = e.Message;
+                        Console.WriteLine(mess);
+                        Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                        throw;
+                    }
+                    //if operator is only ">" or "<" or isValid return 
+                    // otherwise => the  operator is >=  or false => it will have antother chance for tolerance equality
+                    if (!operatorUsed.Contains("=") || result)
+                    {
+                        return result;
+                    }                    
                 }
+                
+                //check equality with tolerance
+                var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
+                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
+                {                    
+                        return IsNumbersEqualWithTolerances(dicObj, ref leftOperand, ref rightOperand);
+                };
+
+                
+                //check for plain Equality without tolerances               
+                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
+                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
+
+                result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);
+                return result;
+
             }
 
 
@@ -584,8 +576,41 @@ namespace Validations
                 Console.WriteLine(mess);
                 Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
                 throw;
-
             }
+        }
+
+        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, ref string leftOperand, ref string rightOperand)
+        {
+            //interval comparison if equality operator and more than two terms                    
+            //left site
+            if (leftOperand.Contains("("))
+            {
+                leftOperand = RemoveParenthesis(leftOperand);
+            }
+            var leftTerms = GetLetterTerms(leftOperand);
+            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
+            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
+
+            var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
+            var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
+            (leftNumSmall, leftNumBig) = SwapSmaller(leftNumSmall, leftNumBig);
+
+            //Right site
+            if (rightOperand.Contains("("))
+            {
+                rightOperand = RemoveParenthesis(rightOperand);
+            }
+            var rightTerms = GetLetterTerms(rightOperand);
+            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
+            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
+
+            var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
+            var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
+            (rightNumSmall, rightNumBig) = SwapSmaller(rightNumSmall, rightNumBig);
+
+
+            var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
+            return isValid;
         }
 
         public static List<string> GetLetterTerms(string expression)
@@ -685,6 +710,29 @@ namespace Validations
 
         }
 
+
+        static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssionNew(string expression)
+        {
+            if (string.IsNullOrEmpty(expression))
+            {
+                return (false, "", "", "");
+            }
+
+            var reg = @"(.*)\s*([<>=]=)\s*(.*)";
+            var parts = GeneralUtils.GetRegexSingleMatchManyGroups(reg, expression);
+            if (parts.Count == 4)
+            {
+                var left = parts[1];
+                var op = parts[2];
+                var right = parts[3];
+                return (true, left, op, right);
+            }
+            return (false, "", "", "");
+
+        }
+
+
+
         public static string FixExpression(string symbolExpression)
         {
             var qt = @"""";
@@ -727,9 +775,9 @@ namespace Validations
         }
 
 
-        
 
-        static public bool CompareNumbers(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
+
+        static public bool IsPlainNumbersEqual(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
         {
             var absoluteDiff = Math.Abs(leftNum - rightNum);
             var res = false;
