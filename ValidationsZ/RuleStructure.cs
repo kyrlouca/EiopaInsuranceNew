@@ -551,7 +551,7 @@ namespace Validations
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
                 if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
                 {                    
-                        return IsNumbersEqualWithTolerances(dicObj, ref leftOperand, ref rightOperand);
+                        return IsNumbersEqualWithTolerances(dicObj,  leftOperand,  rightOperand);
                 };
 
                 
@@ -579,7 +579,7 @@ namespace Validations
             }
         }
 
-        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, ref string leftOperand, ref string rightOperand)
+        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj,  string leftOperand,  string rightOperand)
         {
             //interval comparison if equality operator and more than two terms                    
             //left site
@@ -625,11 +625,16 @@ namespace Validations
             //remove parenthesis
             //@"$c = $d - (-$e - $f + x2)";=>@"$c = $d + $e + $f - x2";
             var wholeParen = GeneralUtils.GetRegexSingleMatch(@"(-\s*\(.*?\))", expression);
+            if (string.IsNullOrEmpty(wholeParen))
+            {
+                //to catch (x1*x3) without the minus sign
+                return expression; 
+            }
             var x1 = wholeParen.Replace("+", "?");
             var x2 = x1.Replace("-", "+");
             var x3 = x2.Replace("?", "-");
             var x4 = x3.Replace("(", "");
-            var x5 = x4.Replace(")", "");
+            var x5 = x4.Replace(")", "");//do not replace if string is empty
             var nn = expression.Replace(wholeParen, x5);
             var n1 = Regex.Replace(nn, @"\-\s*\-", "+");
             var n2 = Regex.Replace(n1, @"\+\s*\+", "+");
