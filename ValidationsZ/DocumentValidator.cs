@@ -721,8 +721,7 @@ namespace Validations
 
             var scopeDetails = ScopeDetails.Parse(rule.ScopeString);
 
-            //find the actual sheet from the sheetcode of the scope. Required for open tables to go through all of its rows
-            //var sqlSelectSheetsOld = @"select sheet.TemplateSheetId, sheet.IsOpenTable from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.SheetCode=@sheetCode;";
+            //find the actual sheet from the sheetcode of the scope. Required for open tables to go through all of its rows            
             var sqlSelectSheets = @"select sheet.TemplateSheetId, sheet.SheetCode ,sheet.IsOpenTable from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.TableCode=@TableCode;";
             var sheetsUsingTheRule = connectionEiopa.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId, scopeDetails.TableCode }).ToList();
             var rowCols = new List<string>();
@@ -782,34 +781,36 @@ namespace Validations
                 //the axis is taken from the scope unless it is an open table which is row 
                 foreach (var rowCol in rowCols)
                 {
-
-
-                    var newRule = rule.Clone();
-                    newRule.ConfigObject = ConfigObject;
-                    newRule.DocumentId = DocumentId;
-                    newRule.SheetId = sheet.TemplateSheetId;
-
-                    newRule.ScopeRowCol = rowCol;
-                    newRule.ScopeTableCode = scopeDetails.TableCode;
-
-                    var isSum = rule.RuleTerms.Any(term => term.IsSum);
-                    var scopeAxis = sheet.IsOpenTable && !isSum ? ScopeRangeAxis.Rows : scopeDetails.ScopeAxis;
-                    newRule.SetApplicableAxis(scopeAxis); //set the rule's axis
-
-                    //the updated rows or cols depending on the scope. However, for open linked tables find the foreign key
-                    var plainTerms = newRule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList();
-                    plainTerms.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
-
-                    var plainFilterTersm = newRule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
-                    plainFilterTersm.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
-
-                    DocumentRules.Add(newRule);
-                    Console.Write("+");
+                    CreateOneDocumentRule(rule, scopeDetails, sheet, rowCol);
                 }
 
             }
         }
 
+        private void CreateOneDocumentRule(RuleStructure rule, ScopeDetails scopeDetails, TemplateSheetInstance sheet, string rowCol)
+        {
+            var newRule = rule.Clone();
+            newRule.ConfigObject = ConfigObject;
+            newRule.DocumentId = DocumentId;
+            newRule.SheetId = sheet.TemplateSheetId;
+
+            newRule.ScopeRowCol = rowCol;
+            newRule.ScopeTableCode = scopeDetails.TableCode;
+
+            var isSum = rule.RuleTerms.Any(term => term.IsSum);
+            var scopeAxis = sheet.IsOpenTable && !isSum ? ScopeRangeAxis.Rows : scopeDetails.ScopeAxis;
+            newRule.SetApplicableAxis(scopeAxis); //set the rule's axis
+
+            //the updated rows or cols depending on the scope. However, for open linked tables find the foreign key
+            var plainTerms = newRule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList();
+            plainTerms.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
+
+            var plainFilterTersm = newRule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
+            plainFilterTersm.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
+
+            DocumentRules.Add(newRule);
+            Console.Write("+");
+        }
 
         public void UpdateTermRowCol(RuleTerm term, string scopeTableCode, ScopeRangeAxis scopeAxis, string rowCol)
         {

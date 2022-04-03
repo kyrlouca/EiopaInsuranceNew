@@ -667,14 +667,14 @@ namespace Validations
             return fixedExpression;
 
             static string PutQuotesAroundTerm(Match m)
-            {
+            {//two groups: 1 for the whole and one group for the parenthesis
 
                 if (m.Groups.Count != 2)
                 {
                     return m.Value;
                 }
 
-                //replaces the entire match group
+                //replaces the match in entire match group =x0 => ="x0"
                 var newVal = m.Value.Replace(m.Groups[1].Value, $"\"{m.Groups[1]}\"");
                 return newVal;
             }
