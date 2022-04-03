@@ -67,6 +67,20 @@ namespace GeneralUtilsNs
             return list;
         }
 
+        public static List<string> GetRegexListOfMatchesWithCase(string regExpression, string inputString)
+        {
+            //**** assuming we have just ONE group, it will return a collection of matches. 
+            //Since we have just ONE capture group we return the value of group 1. group 0 contains the whole match
+            //single capture group returns a list of matches
+            //  @"\$(\w)" +   @"$a eq $b + $c" =>{a,b,c}
+            var rx = new Regex(regExpression, RegexOptions.Compiled);
+            var matches = rx.Matches(inputString);
+            var list = matches.Select(match => match.Groups[1].Value).ToList();
+            return list;
+        }
+
+
+
         public static void TestGroups(string wildString, string userValues )
         {
             //string zSignature = "AO(*[23])";

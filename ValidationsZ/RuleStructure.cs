@@ -368,91 +368,14 @@ namespace Validations
             //return IsValidRule;
         }
 
-        public static object AssertExpressionOld(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
-        {
-            //todo rule ID not necessary as parameter
-            var fixedSymbolExpression = FixExpression(symbolExpression);
-
-            //fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
-
-            if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
-            {
-                return null;
-            }
-            if (ruleTerms.Count == 0)
-            {
-                return null;
-            }
-
-            var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", fixedSymbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-            //we have numeric, text, and boolean expressions. Accordingly take the numeric, the text, or the bool value
-            var dicx = new Dictionary<string, object>();
-            var expressionTerms = ruleTerms.Where(rt => allTerms.Contains(rt.Letter));
-            foreach (var term in expressionTerms)
-            {
-                object val;
-                if (term.IsMissing)
-                {
-                    val = term.DataTypeOfTerm switch
-                    {
-                        DataTypeMajorUU.BooleanDtm => false,
-                        DataTypeMajorUU.StringDtm => "",
-                        DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
-                        _ => term.TextValue,
-                    };
-                }
-                else
-                {
-                    val = term.DataTypeOfTerm switch
-                    {
-                        DataTypeMajorUU.BooleanDtm => term.BooleanValue,
-                        DataTypeMajorUU.StringDtm => term.TextValue,
-                        DataTypeMajorUU.DateDtm => term.DateValue,
-                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
-                        _ => term.TextValue,
-                    };
-                }
-                dicx.Add(term.Letter, val);
-            }
-
-
-            var (isAlgebraExpression, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssion(symbolExpression);
-            if (isAlgebraExpression && !fixedSymbolExpression.Contains("(") && fixedSymbolExpression.IndexOfAny(new char[] { '+', '-', '*', '/' }) > -1 && dicx.All(obj => obj.Value.GetType() == typeof(decimal)) && !string.IsNullOrEmpty(operatorUsed))
-            {
-                //cannot use EVAL to compare numbers because of fractional differences. Allow for 0.01%
-                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicx));
-                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicx));
-
-                var res = IsPlainNumbersEqual(operatorUsed, 0.1, leftNum, rightNum);
-                return res;
-            }
-
-
-            try
-            {
-                var resx = Eval.Execute(fixedSymbolExpression, dicx);
-                return resx;
-            }
-            catch (Exception e)
-            {
-                var mess = e.Message;
-                Console.WriteLine(mess);
-                Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {fixedSymbolExpression}\n{e.Message}");
-                throw;
-
-            }
-        }
-
-
 
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //todo rule ID not necessary as parameter            
 
 
-
-            var allTerms = GeneralUtils.GetRegexListOfMatches(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+            //XZT only capitals
+            var allTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
 
             //populate dicx with numeric, text, and boolean values accordingly            
             var dicObj = new Dictionary<string, ObjTerm>();
@@ -496,7 +419,7 @@ namespace Validations
                             DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
+                            DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue)),
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
@@ -517,20 +440,19 @@ namespace Validations
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(symbolExpression);
-
-            var containsLogical = Regex.IsMatch(symbolExpression, @"[!|&]");
+            
             var isAllDouble = dicObj.All(obj => obj.Value.obj.GetType() == typeof(double));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
-            if (!containsLogical && isAllDouble && isAlgebraig)
+            if ( isAllDouble && isAlgebraig)
             {
                 var result = false;
-                //first, check > or <
+                //if plain  > or < then let the normal eval check first
                 if (operatorUsed.Contains("<") || operatorUsed.Contains(">"))
                 {
                     try
                     {
-                        result = (bool) Eval.Execute(symbolExpression, dicNormal);                     
+                        result = (bool)Eval.Execute(symbolExpression, dicNormal);
                     }
                     catch (Exception e)
                     {
@@ -544,17 +466,22 @@ namespace Validations
                     if (!operatorUsed.Contains("=") || result)
                     {
                         return result;
-                    }                    
+                    }
                 }
-                
+
                 //check equality with tolerance
                 var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
+                var hasSumFunctionNew = ruleTerms.Any(term => term.IsSum);
+                if (hasSumFunction != hasSumFunctionNew)
+                {
+                    var xx = 333;
+                }
                 if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
-                {                    
-                        return IsNumbersEqualWithTolerances(dicObj,  leftOperand,  rightOperand);
+                {
+                    return IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
                 };
 
-                
+
                 //check for plain Equality without tolerances               
                 var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
                 var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
@@ -579,7 +506,7 @@ namespace Validations
             }
         }
 
-        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj,  string leftOperand,  string rightOperand)
+        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, string leftOperand, string rightOperand)
         {
             //interval comparison if equality operator and more than two terms                    
             //left site
@@ -616,7 +543,7 @@ namespace Validations
         public static List<string> GetLetterTerms(string expression)
         {
             //it will return the letter terms but with the MINUS sign in front
-            var list = GeneralUtils.GetRegexListOfMatches(@"(-?\s*[XZ]\d{1,2})", expression);
+            var list = GeneralUtils.GetRegexListOfMatchesWithCase(@"(-?\s*[XZ]\d{1,2})", expression);
             return list;
         }
 
@@ -628,7 +555,7 @@ namespace Validations
             if (string.IsNullOrEmpty(wholeParen))
             {
                 //to catch (x1*x3) without the minus sign
-                return expression; 
+                return expression;
             }
             var x1 = wholeParen.Replace("+", "?");
             var x2 = x1.Replace("-", "+");
@@ -655,7 +582,6 @@ namespace Validations
             }
         }
 
-
         public static Dictionary<string, double> ConvertDictionaryUsingInterval(List<string> letters, Dictionary<string, ObjTerm> normalDic, bool isAddInterval)
         {
             var newDictionary = new Dictionary<string, double>();
@@ -678,65 +604,45 @@ namespace Validations
 
         }
 
-
-
         static (bool isIfExpression, string ifExpression, string thenExpression) SplitIfThenElse(string stringExpression)
         {
             //split if then expression            
             //if(A) then B=> A, B            
 
-            var rgxIfThen = @"if\s*\((.*)\)\s*then(.*)";
+            var rgxIfThen = @"if\s*(.*)\s*then(.*)";           
+            //var rgxIfThen = @"if\s*\((.*)\)\s*then(.*)";
+
             var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxIfThen, stringExpression);
             if (terms.Count != 3)
             {
                 return (false, "", "");
             }
+            
+            
             return (true, terms[1], terms[2]);
         }
 
-
-        static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssion(string expression)
-        {
-            if (string.IsNullOrEmpty(expression))
-            {
-                return (false, "", "", "");
-            }
-
-            var reg = @"(.*)\s*([<>=])=\s*(.*)";
-            var parts = GeneralUtils.GetRegexSingleMatchManyGroups(reg, expression);
-            if (parts.Count == 4)
-            {
-                var left = parts[1];
-                var op = parts[2];
-                var right = parts[3];
-                return (true, left, op, right);
-            }
-            return (false, "", "", "");
-
-        }
-
-
         static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssionNew(string expression)
         {
-            if (string.IsNullOrEmpty(expression))
+            var containsLogical = Regex.IsMatch(expression, @"[!|&]");
+            if (string.IsNullOrEmpty(expression) || containsLogical)
             {
                 return (false, "", "", "");
             }
 
-            var reg = @"(.*)\s*([<>=]=)\s*(.*)";
-            var parts = GeneralUtils.GetRegexSingleMatchManyGroups(reg, expression);
-            if (parts.Count == 4)
+            var partsSplit = expression.Split(new string[] { ">=", "<=", "==", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
+            if (partsSplit.Length == 2)
             {
-                var left = parts[1];
-                var op = parts[2];
-                var right = parts[3];
-                return (true, left, op, right);
+                var left = partsSplit[0].Trim();
+                var right = partsSplit[1].Trim();
+                var regOps = @"(<=|>=|==|<|>)";
+                var oper = GeneralUtils.GetRegexSingleMatch(regOps, expression);
+                return (true, left, oper, right);
             }
+
             return (false, "", "", "");
 
         }
-
-
 
         public static string FixExpression(string symbolExpression)
         {
@@ -779,26 +685,10 @@ namespace Validations
             }
         }
 
-
-
-
         static public bool IsPlainNumbersEqual(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
         {
             var absoluteDiff = Math.Abs(leftNum - rightNum);
-            var res = false;
-            if (cOperator == "=")
-            {
-                res = absoluteDiff <= maxAllowedDifference;
-            }
-            else if (cOperator == "<")
-            {
-                res = (leftNum < rightNum || absoluteDiff <= maxAllowedDifference); //diff is negative OR diff is not to big
-            }
-            else if (cOperator == ">")
-            {
-                res = (leftNum > rightNum || absoluteDiff <= maxAllowedDifference); //diff is positive OR diff is not to big
-            }
-            return res;
+            return cOperator == "==" && absoluteDiff <= maxAllowedDifference;
         }
 
         static public object AssertExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
