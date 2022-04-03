@@ -156,17 +156,17 @@ namespace Validations
 
             //todo updateSheet needs to update fact with IsConversionError            
             //@@ change it
-            //var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
-            var isFactValuesValid = true;
+            var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
+            //var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
                 //updates document as error but keeps finding errors                
             }
 
 
-            //@@@@ change it 
-            var isKeyValuesUnique = true;
-            //var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
+            
+            //var isKeyValuesUnique = true;
+            var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
 
             if (HasEmptySheets(DocumentId))
             {

@@ -691,7 +691,7 @@ namespace Validations
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
 
-            var fixedSymbolExpression = FixExpression(symbolExpression);
+             var fixedSymbolExpression = FixExpression(symbolExpression);
             //fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
 
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
