@@ -470,13 +470,8 @@ namespace Validations
                 }
 
                 //check equality with tolerance
-                var hasSumFunction = ruleTerms.Any(term => term.IsFunctionTerm);
-                var hasSumFunctionNew = ruleTerms.Any(term => term.IsSum);
-                if (hasSumFunction != hasSumFunctionNew)
-                {
-                    var xx = 333;
-                }
-                if ((dicObj.Count > 2 || hasSumFunction || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
+                var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);                
+                if ((dicObj.Count > 2 || hasFunctionTerm || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
                 {
                     return IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
                 };

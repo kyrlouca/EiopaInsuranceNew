@@ -115,7 +115,7 @@ namespace XbrlReader
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
-                    MessageType = MessageType.INFO.ToString()
+                    MessageType = MessageType.INFO.ToString(),                    
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
@@ -368,7 +368,7 @@ namespace XbrlReader
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
             var sqlInsertDoc = @"
-               INSERT INTO  DocInstance
+               INSERT INTO DocInstance
                    (                                            
                     [PensionFundId]                   
                    ,[UserId]                   
@@ -379,6 +379,7 @@ namespace XbrlReader
                    ,[FileName]
                    ,[CurrencyBatchId]
                    ,[Status]
+                   ,[EiopaVersion]
                     )
                 VALUES
                    (                                
@@ -391,6 +392,7 @@ namespace XbrlReader
                    ,@FileName
                    ,@CurrencyBatchId
                    ,@Status
+                   ,@EiopaVersion
                     ); 
                 SELECT CAST(SCOPE_IDENTITY() as int);
                 ";
@@ -410,7 +412,8 @@ namespace XbrlReader
                 ModuleId = moduleId,
                 FileName,
                 CurrencyBatchId,
-                Status = "P"
+                Status = "P",
+                EiopaVersion=SolvencyVersion,
             };
 
 
@@ -724,7 +727,7 @@ VALUES (
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlExists = @"
-                    select doc.InstanceId, doc.Status from DocInstance doc where  
+                    select doc.InstanceId, doc.Status, EiopaVersion from DocInstance  where  
                     PensionFundId= @FundId and ModuleId=@moduleId
                     and ApplicableYear = @ApplicableYear and ApplicableQuarter = @ApplicableQuarter"
                     ;
