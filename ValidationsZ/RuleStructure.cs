@@ -419,7 +419,7 @@ namespace Validations
                             DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
-                            DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue)),
+                            DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,

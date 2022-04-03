@@ -727,7 +727,7 @@ VALUES (
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlExists = @"
-                    select doc.InstanceId, doc.Status, EiopaVersion from DocInstance  where  
+                    select doc.InstanceId, doc.Status, EiopaVersion from DocInstance doc  where  
                     PensionFundId= @FundId and ModuleId=@moduleId
                     and ApplicableYear = @ApplicableYear and ApplicableQuarter = @ApplicableQuarter"
                     ;

@@ -67,29 +67,9 @@ namespace ValidationCall
                 docId = 8694;//hellenic alico                
                 docId = 8689;//universal error 5232,2572
 
-
-
-
-
-                docId = 9713;//HD
-
-
-
-
-                docId = 9712;//hehllenic  alico              
-                docId = 9724;//Hydra            
-
-
-
-
-
-
                 docId = 9719;//American Hellenic 2829,3159
-
-
                 
-                docId = 9712;//hehllenic  alico   1071           
-
+               docId = 9712;//hehllenic  alico   1071           
 
                 docId = 9723;//Ethniki            
                 docId = 9722;//GIC
@@ -99,8 +79,8 @@ namespace ValidationCall
                 docId = 9732;// 2814 ,3256
 
 
-                var validatorDg = new DocumentValidator("IU250", 9732, 3256);//
-                //var validatorDg = new DocumentValidator("IU250", 9729,0);//
+                //var validatorDg = new DocumentValidator("IU250", 9732, 3256);//
+                var validatorDg = new DocumentValidator("IU260", 9733,0);//
                 var x = validatorDg.ValidateDocument();
 
                 return 1;
