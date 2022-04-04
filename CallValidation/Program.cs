@@ -21,12 +21,12 @@ namespace ValidationCall
             if (1 == 1)
             {
 
-                var solvencyVer = "IU260";
-                var configObject = Configuration.GetInstance(solvencyVer).Data;
-                using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
-                var sqlLatestDoc = "select top 1 doc.InstanceId, PensionFundId from DocInstance doc order by doc.InstanceId desc";
+                //var solvencyVer = "IU260";
+                //var configObject = Configuration.GetInstance(solvencyVer).Data;
+                //using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
+                //var sqlLatestDoc = "select top 1 doc.InstanceId, PensionFundId from DocInstance doc order by doc.InstanceId desc";
 
-                (var docId, var fundIdDg) = connectionPension.QuerySingleOrDefault<(int, int)>(sqlLatestDoc, new { });
+                //(var docId, var fundIdDg) = connectionPension.QuerySingleOrDefault<(int, int)>(sqlLatestDoc, new { });
 
                 //var validator = new DocumentValidator(fundId, docId, 0);  //the third argument to test a specific rule
                 //1005 empty
@@ -63,6 +63,7 @@ namespace ValidationCall
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 994);// sum of a closed table
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
 
+                int docId;
                 docId = 8685; //uinversal//4822, 4427,4407
                 docId = 8694;//hellenic alico                
                 docId = 8689;//universal error 5232,2572

@@ -153,21 +153,19 @@ namespace Validations
             {
                 return false;
             }
+            Console.WriteLine($"Validate Document doc:{DocumentId}");
 
-            //todo updateSheet needs to update fact with IsConversionError            
-            //@@ change it
-            var isFactValuesValid = ValidateFactValuesForFuture(); //validation withour rules
+            //todo updateSheet needs to update fact with IsConversionError
+            Console.WriteLine($"Check Fact enum values");
+            var isFactValuesValid = (1 == 1) && ValidateFactEnumValues(); //validation withour rules
             //var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
                 //updates document as error but keeps finding errors                
             }
 
-
-            
-            //var isKeyValuesUnique = true;
-            var isKeyValuesUnique = ValidateOpenTableKeysUnique(DocumentId);
-
+            Console.WriteLine($"Check Unique Keys");
+            var isKeyValuesUnique = (1 == 2) && ValidateOpenTableKeysUnique(DocumentId);
             if (HasEmptySheets(DocumentId))
             {
                 //retrun
@@ -180,7 +178,7 @@ namespace Validations
 
             //****************************************************************
             //Check all the document rules
-            Console.WriteLine($"Started Rule Validation doc:{DocumentId}");
+            Console.WriteLine($"Rule Validation");
             foreach (var rule in DocumentRules)
             {
                 Console.WriteLine($"ruleId:{rule.ValidationRuleId}");
@@ -296,7 +294,7 @@ namespace Validations
                 UpdateRuleAndFilterTerms(rule);
             }
 
-            return ;
+            return;
         }
 
         private void UpdateRuleAndFilterTerms(RuleStructure rule)
@@ -462,16 +460,16 @@ namespace Validations
                     term.TextValue = FunctionForExDimVal(allTerms, term);
                     break;
                 case FunctionTypes.EXP:
-                    term.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
+                    term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                     term.IsMissing = false;
-                    term.DecimalValue = FunctionForExp(allTerms, term);
+                    term.DecimalValue = Convert.ToDecimal(FunctionForExp(allTerms, term));
                     break;
                 default:
 
                     Console.WriteLine("");
                     break;
             }
-            return ;
+            return;
         }
 
         private int UpdatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
@@ -1025,7 +1023,7 @@ namespace Validations
             return isValid;
         }
 
-        private bool ValidateFactValuesForFuture()
+        private bool ValidateFactEnumValues()
         {
             var errorCounter = 0;
             using var connenctionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -1090,10 +1088,11 @@ namespace Validations
                     };
                     CreateRuleError(errorRule);
                 }
-                //if (fact.DataTypeUse == "E" && !string.IsNullOrWhiteSpace(fact.TextValue))
-                if (fact.DataTypeUse == "E")
+                
+
+                if (fact.DataTypeUse == "E" && !string.IsNullOrEmpty(fact.TextValue) && !fact.IsRowKey)
                 {
-                    var mMember = GetMemberValue(fact.MetricID, fact.TextValue);
+                    var mMember = GetMemberValue(fact.MetricID, fact.XBRLCode, fact.TextValue);
                     if (mMember is null)
                     {
                         var validValues = GetAllMetricValidValues(fact.MetricID);
@@ -1129,40 +1128,50 @@ namespace Validations
 
             return (errorCounter == 0);
         }
-        private MMember GetMemberValue(int metricId, string enumValue)
+        private MMember GetMemberValue(int metricId, string xbrlCode, string factTextEnumValue)
         {
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
-            var sqlGetMem = @"
-                SELECT 
-	                mem.MemberXBRLCode
-                FROM mMetric met
-                JOIN mHierarchy hi ON hi.HIERARCHYID = met.ReferencedHierarchyID
-                JOIN mHierarchyNode hn ON hn.HIERARCHYID = hi.HIERARCHYID
-                JOIN mMember mem ON mem.MemberID = hn.MemberID
-                WHERE met.MetricID = @metricId
-	                AND mem.MemberXBRLCode = @enumValue
-                ";
+            var sqlGetMetric = @"select met.ReferencedHierarchyID,met.ReferencedDomainID from mMetric met  where met.MetricID= @metricId";
+            var metric = connectionEiopa.QuerySingleOrDefault<MMetric>(sqlGetMetric, new { metricId });
+            if (metric is null)
+            {
+                return null;
+            }
 
-            var mMember = connectionEiopa.QuerySingleOrDefault<MMember>(sqlGetMem, new { metricId, enumValue });
-            return mMember;
+            var sqlFindMem = @"
+                select mem.MemberID,mem.DomainID,mem.IsDefaultMember,mem.MemberLabel,mem.MemberXBRLCode  
+                  FROM mHierarchyNode hi
+                  join mMember mem on mem.MemberID= hi.MemberID
+                  where HierarchyID= @hierarchyId
+                  and mem.MemberXBRLCode= @xbrlCode
+                ";
+            var member = connectionEiopa.QuerySingleOrDefault<MMember>(sqlFindMem, new { hierarchyId = metric.ReferencedHierarchyID, xbrlCode = factTextEnumValue });
+            return member;
+
         }
 
         private List<string> GetAllMetricValidValues(int metricId)
         {
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
-            var sqlGetMem = @"
-                SELECT 
-	                mem.MemberXBRLCode
-                FROM mMetric met
-                JOIN mHierarchy hi ON hi.HIERARCHYID = met.ReferencedHierarchyID
-                JOIN mHierarchyNode hn ON hn.HIERARCHYID = hi.HIERARCHYID
-                JOIN mMember mem ON mem.MemberID = hn.MemberID
-                WHERE met.MetricID = @metricId	                
+            var sqlGetMetric = @"select met.ReferencedHierarchyID,met.ReferencedDomainID from mMetric met  where met.MetricID= @metricId";
+            var metric = connectionEiopa.QuerySingleOrDefault<MMetric>(sqlGetMetric, new { metricId });
+            if (metric is null)
+            {
+                return new List<string>();
+            }
+
+            var sqlHierarchyMembers = @"
+                select mem.MemberID,mem.DomainID,mem.IsDefaultMember,mem.MemberLabel,mem.MemberXBRLCode  
+                  FROM mHierarchyNode hi
+                  join mMember mem on mem.MemberID= hi.MemberID
+                  where HierarchyID= @hierarchyId;                  
                 ";
 
-            var values = connectionEiopa.Query<string>(sqlGetMem, new { metricId }).ToList();
+            var values = connectionEiopa.Query<MMember>(sqlHierarchyMembers, new { hierarchyId = metric.ReferencedHierarchyID })
+                .Select(mem=>mem.MemberXBRLCode)
+                .ToList();
             return values;
         }
 
@@ -1558,7 +1567,7 @@ namespace Validations
             var dim = parts[2];
 
             var factDim = connectionLocal.QueryFirstOrDefault<TemplateSheetFactDim>(sqlDim, new { term.FactId, dim });
-
+            //if the fact does not have the dim, then get the default dim
             var domAndValue = factDim is null
                 ? connectionEiopa.QueryFirstOrDefault<MMember>(sqlDefaultMember, new { dim })?.MemberCode ?? ""
                 : GeneralUtils.GetRegexSingleMatch(@".*\((.*?)\)", factDim.Signature); //"s2c_dim:OC(s2c_CU:USD)"=> s2c_CU:USD 
@@ -1568,7 +1577,7 @@ namespace Validations
 
 
 
-        private static decimal FunctionForExp(List<RuleTerm> allTerms, RuleTerm exTerm)
+        private static double FunctionForExp(List<RuleTerm> allTerms, RuleTerm exTerm)
         {
             //2^(3.1/5.2) 
             //In a fractional exponent, the numerator is the power to which the number should be taken and the denominator is the root which should be taken.
@@ -1590,7 +1599,7 @@ namespace Validations
             var powerDenominator = Eval.Execute<double>(expTerms[2], allTermsDict);
             var res = Math.Pow(value, powerNominator / powerDenominator);
 
-            return (decimal)res;
+            return (double)res;
         }
 
 
