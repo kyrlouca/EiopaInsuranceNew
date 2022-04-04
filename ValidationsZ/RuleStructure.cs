@@ -349,7 +349,7 @@ namespace Validations
                     IsValidRule = true;
                     return IsValidRule;
                 }
-                var isFilterValid = AssertExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
+                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
 
 
                 if (isFilterValid is null || !(bool)isFilterValid)
@@ -360,7 +360,7 @@ namespace Validations
                 }
             }
 
-            var isValidRuleUntyped = AssertExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
+            var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
             return isValidRule;
 
@@ -441,7 +441,7 @@ namespace Validations
 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(symbolExpression);
             
-            var isAllDouble = dicObj.All(obj => obj.Value.obj.GetType() == typeof(double));
+            var isAllDouble = dicObj.All(obj => obj.Value.obj?.GetType() == typeof(double));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
             if ( isAllDouble && isAlgebraig)
@@ -686,7 +686,7 @@ namespace Validations
             return cOperator == "==" && absoluteDiff <= maxAllowedDifference;
         }
 
-        static public object AssertExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals

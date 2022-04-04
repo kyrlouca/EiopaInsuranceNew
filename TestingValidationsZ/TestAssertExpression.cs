@@ -40,7 +40,7 @@ namespace TestingValidationsZ
                 new RuleTerm("X1", "has val", 6, false, DateTime.Now, EiopaConstants.DataTypeMajorUU.NumericDtm,false),
                 new RuleTerm("X2", "has val", 9, false, DateTime.Now, EiopaConstants.DataTypeMajorUU.NumericDtm,false),                
             };
-            var res4 = (bool)RuleStructure.AssertExpression(0, theExp, rules);
+            var res4 = (bool)RuleStructure.AssertIfThenElseExpression(0, theExp, rules);
             res4.Should().BeTrue();
 
 
@@ -52,7 +52,7 @@ namespace TestingValidationsZ
                 new RuleTerm("X1", "has val", 0, false, DateTime.Now, EiopaConstants.DataTypeMajorUU.BooleanDtm,false),
                 
             };
-            var res5 = (bool)RuleStructure.AssertExpression(0, theExp, rules);
+            var res5 = (bool)RuleStructure.AssertIfThenElseExpression(0, theExp, rules);
             res5.Should().BeTrue();            
 
 

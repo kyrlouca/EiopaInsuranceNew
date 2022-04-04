@@ -1451,7 +1451,7 @@ namespace Validations
                     continue;
                 }
                 UpdateRuleAndFilterTerms(fakeFilterRule);
-                if ((bool)RuleStructure.AssertExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
+                if ((bool)RuleStructure.AssertIfThenElseExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
                     factSum += sumFact.NumericValue;
                 }
@@ -1570,6 +1570,7 @@ namespace Validations
 
         private static decimal FunctionForExp(List<RuleTerm> allTerms, RuleTerm exTerm)
         {
+            //2^(3.1/5.2) 
             //In a fractional exponent, the numerator is the power to which the number should be taken and the denominator is the root which should be taken.
 
             //4743	BV908-5	S.01.01.01.01	if ({S.01.01.01.01,r0510,c0010}=[s2c_CN:x1]) then {S.26.02.01.01,r0400,c0080}
