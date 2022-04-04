@@ -157,7 +157,7 @@ namespace Validations
 
             //todo updateSheet needs to update fact with IsConversionError
             Console.WriteLine($"Check Fact enum values");
-            var isFactValuesValid = (1 == 1) && ValidateFactEnumValues(); //validation withour rules
+            var isFactValuesValid = (1 == 2) && ValidateFactEnumValues(); //validation withour rules
             //var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
@@ -308,12 +308,12 @@ namespace Validations
             //***FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
             //"T" terms  are the inner nested terms and  should be evaluated first T = max(Z1)
             var functionTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-            functionTerms.ForEach(term => UpdateSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
+            functionTerms.ForEach(term => UpdateSingleFunctionTerm(rule,rule.RuleTerms, term, rule.FilterFormula));
 
             //evaluate function Z Terms
             //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-            functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule.RuleTerms, term, rule.FilterFormula));
+            functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule,rule.RuleTerms, term, rule.FilterFormula));
 
 
             //*******Filter terms
@@ -326,18 +326,19 @@ namespace Validations
 
                 //evaluate function T Terms
                 var functionFilterTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-                functionFilterTerms.ForEach(term => UpdateSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterTerms.ForEach(term => UpdateSingleFunctionTerm(rule,rule.FilterTerms, term, rule.FilterFormula));
 
                 //evaluate function Z Terms
                 var functionFilterZetTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-                functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
             }
 
         }
 
 
-        private void UpdateSingleFunctionTerm(List<RuleTerm> allTerms, RuleTerm term, string filterFomula = "")
+        private void UpdateSingleFunctionTerm(RuleStructure rule,List<RuleTerm> allTerms, RuleTerm term, string filterFomula )
         {
+                                                    
 
             var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
             switch (term.FunctionType)
@@ -412,17 +413,6 @@ namespace Validations
                     var pattern = termParts[2];
                     pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
 
-
-                    //var termParts = termText.Split(",");
-                    //if (termParts.Length != 2)
-                    //{
-                    //    term.BooleanValue = true;
-                    //    break;
-                    //}
-                    //var fregPattern = termParts[1].Replace("\"", ""); // termParts[1];
-
-
-
                     var termLetterM = termParts[1];
                     var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
                     //var pattern = termParts[1].Replace("\"", ""); //                    
@@ -437,14 +427,15 @@ namespace Validations
                     var isOpenTableSum = IsOpenTable(ConfigObject, sumTerm.TableCode);
                     if (!isOpenTableSum || !sumTerm.TermText.ToUpper().Contains("SNNN"))
                     {
+                        term.SheetId = rule.SheetId;
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                         term.DecimalValue = FunctionForSumTermForCloseTableNew(sumTerm);
                     }
                     else
                     {
+
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                         term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);
-
 
                     };
 
@@ -479,6 +470,7 @@ namespace Validations
             {
                 //sum terms for either closed or open tables will be evaluated later as functions
                 //make it numeric to avoid rejection of rule
+                plainTerm.SheetId = rule.SheetId;
                 plainTerm.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                 return 0;
             }
@@ -1360,12 +1352,12 @@ namespace Validations
 	                    ON sheet.TemplateSheetId = fact.TemplateSheetId
                     WHERE sheet.InstanceId = @DocumentId
                         and fact.Row BETWEEN @startRowCol and @endRowCol
-	                    AND sheet.tableCode = @tableCode
+	                    and sheet.TemplateSheetId= @sheetId
 	                    AND fact.Col = @fixedRowCol
                 ";
 
                 var fixedRowCol = sumObj.RangeAxis == VldRangeAxis.Cols ? sumTerm.Row : sumTerm.Col;
-                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { tableCode = sumTerm.TableCode, startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
+                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { sheetId = sumTerm.SheetId, startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
                 return sum;
 
             }
@@ -1378,11 +1370,11 @@ namespace Validations
 	                    ON sheet.TemplateSheetId = fact.TemplateSheetId
                     WHERE sheet.InstanceId = @DocumentId
                         and fact.Col BETWEEN @startRowCol and @endRowCol
-	                    AND sheet.tableCode = @tableCode
+	                    and sheet.TemplateSheetId= @sheetId
 	                    AND fact.Row = @fixedRowCol
                 ";
                 var fixedRowCol = sumObj.RangeAxis == VldRangeAxis.Cols ? sumTerm.Row : sumTerm.Col;
-                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { tableCode = sumTerm.TableCode, startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
+                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { sheetId = sumTerm.SheetId, startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
                 return sum;
 
             }
@@ -1396,11 +1388,11 @@ namespace Validations
                     LEFT OUTER JOIN TemplateSheetInstance sheet
 	                    ON sheet.TemplateSheetId = fact.TemplateSheetId
                     WHERE sheet.InstanceId = @DocumentId
-                        AND sheet.tableCode = @tableCode                        
+                        and sheet.TemplateSheetId= @sheetId
                         and fact.Row  = @Row	                    
 	                    AND fact.Col = @col
                 ";
-                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { DocumentId, tableCode = sumTerm.TableCode, sumTerm.Row, sumTerm.Col }) ?? 0;
+                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { DocumentId, sheetId = sumTerm.SheetId, sumTerm.Row, sumTerm.Col }) ?? 0;
                 return sum;
             }
             return 0;
