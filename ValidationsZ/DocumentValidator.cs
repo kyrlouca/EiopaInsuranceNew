@@ -427,7 +427,7 @@ namespace Validations
                     var isOpenTableSum = IsOpenTable(ConfigObject, sumTerm.TableCode);
                     if (!isOpenTableSum || !sumTerm.TermText.ToUpper().Contains("SNNN"))
                     {
-                        term.SheetId = rule.SheetId;
+                        //sumTerm.SheetId = rule.SheetId;
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                         term.DecimalValue = FunctionForSumTermForCloseTableNew(rule, sumTerm);
                     }
