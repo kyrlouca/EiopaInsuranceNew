@@ -78,10 +78,9 @@ namespace ValidationCall
                 docId = 9715;//Eurolife                
                 docId = 9727;//Hydra 868,1066
                 docId = 9732;// 2814 ,3256
-                docId = 9734;//  4745 ,794, 994
-
-                //var validatorDg = new DocumentValidator("IU250", 9732, 3256);//
-                var validatorDg = new DocumentValidator("IU250", 9734,0);//
+                docId = 9734;//  4745 ,794, 994 ,4798
+                
+                var validatorDg = new DocumentValidator("IU250", 9734,994);//
                 var x = validatorDg.ValidateDocument();
 
                 return 1;

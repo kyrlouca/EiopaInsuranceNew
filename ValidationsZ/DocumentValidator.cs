@@ -157,7 +157,7 @@ namespace Validations
 
             //todo updateSheet needs to update fact with IsConversionError
             Console.WriteLine($"Check Fact enum values");
-            var isFactValuesValid = (1 == 2) && ValidateFactEnumValues(); //validation withour rules
+            var isFactValuesValid = (1 == 1) && ValidateFactEnumValues(); //validation withour rules
             //var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
@@ -165,7 +165,7 @@ namespace Validations
             }
 
             Console.WriteLine($"Check Unique Keys");
-            var isKeyValuesUnique = (1 == 2) && ValidateOpenTableKeysUnique(DocumentId);
+            var isKeyValuesUnique = (1 == 1) && ValidateOpenTableKeysUnique(DocumentId);
             if (HasEmptySheets(DocumentId))
             {
                 //retrun
@@ -949,7 +949,8 @@ namespace Validations
                         ErrorDocumentId = documentId,
                         SheetId = sheet.TemplateSheetId,
                         SheetCode = sheet.SheetCode,
-                        RowCol = "",
+                        Scope=sheet.SheetCode,
+                        RowCol = KeyColumn,
                         RuleMessage = $"Duplicate Key. Column:{KeyColumn} value:{duplicateText} ",
                         IsWarning = false,
                         IsError = true,
