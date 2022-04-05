@@ -1040,6 +1040,7 @@ namespace Validations
                   ,[DataType]
 	              ,fact.DataTypeUse  
                   ,[MetricId]
+                   ,XBRLCode
                 ,[IsConversionError]
               FROM TemplateSheetFact fact
               LEFT OUTER JOIN TemplateSheetInstance sheet on sheet.TemplateSheetId=fact.TemplateSheetId
@@ -1085,7 +1086,7 @@ namespace Validations
 
                 if (fact.DataTypeUse == "E" && !string.IsNullOrEmpty(fact.TextValue) && !fact.IsRowKey)
                 {
-                    var mMember = GetMemberValue(fact.MetricID, fact.XBRLCode, fact.TextValue);
+                    var mMember = FindMemberInHierarchy(fact.MetricID,  fact.TextValue);
                     if (mMember is null)
                     {
                         var validValues = GetAllMetricValidValues(fact.MetricID);
@@ -1121,11 +1122,13 @@ namespace Validations
 
             return (errorCounter == 0);
         }
-        private MMember GetMemberValue(int metricId, string xbrlCode, string factTextEnumValue)
+        private MMember FindMemberInHierarchy(int metricId,  string factTextEnumValue)
         {
+            //1. the metric was found from the fact xbrl contains the HIERARCHY
+            //2. Find the member in the hierarchy which has  the textEnum value
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
-            var sqlGetMetric = @"select met.ReferencedHierarchyID,met.ReferencedDomainID from mMetric met  where met.MetricID= @metricId";
+            var sqlGetMetric = @"select met.ReferencedHierarchyID,met.ReferencedDomainID,ReferencedHierarchyID from mMetric met  where met.MetricID= @metricId";
             var metric = connectionEiopa.QuerySingleOrDefault<MMetric>(sqlGetMetric, new { metricId });
             if (metric is null)
             {
@@ -1137,9 +1140,9 @@ namespace Validations
                   FROM mHierarchyNode hi
                   join mMember mem on mem.MemberID= hi.MemberID
                   where HierarchyID= @hierarchyId
-                  and mem.MemberXBRLCode= @xbrlCode
+                  and mem.MemberXBRLCode= @factTextEnumValue
                 ";
-            var member = connectionEiopa.QuerySingleOrDefault<MMember>(sqlFindMem, new { hierarchyId = metric.ReferencedHierarchyID, xbrlCode = factTextEnumValue });
+            var member = connectionEiopa.QuerySingleOrDefault<MMember>(sqlFindMem, new { hierarchyId = metric.ReferencedHierarchyID,  factTextEnumValue });
             return member;
 
         }

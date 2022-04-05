@@ -29,11 +29,14 @@ namespace XbrlReader
             //(var fundId, var filePath) = (104, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Ethniki Life Q4 2021_v1.xbrl");
             //(var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\HYDRA Q4 2021_v1.xbrl");            
             //(var fundIdT, var filePath) = (101, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\Hellenic Alico Q4 2021 No errors.xbrl");
-            
-            (var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\99-Altius Insurance - Annual 2020.xbrl");
 
-            var fileReader = new XbrlFileReader("IU250", 1, 99, fundIdT, "ars", 2020, 0,filePath);            
-                _ = new AssignFactsToSheets("IU250", fileReader.DocumentId,fileReader.FilingsSubmitted);
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl
+            //(var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\99-Altius Insurance - Annual 2020.xbrl");
+            
+            (var fundIdT, var filePath) = (301, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl");
+
+            var fileReader = new XbrlFileReader("IU260", 1, 99, fundIdT, "qrs", 2020, 4,filePath);            
+                _ = new AssignFactsToSheets("IU260", fileReader.DocumentId,fileReader.FilingsSubmitted);
             
 
             Console.WriteLine("Finish");
