@@ -163,7 +163,7 @@ namespace ExcelCreator
 
 
 
-        static public IWorkbook OpenWorkbook(string path)
+        static public IWorkbook CreateExcelWorkbook(string path)
         {
             IWorkbook workbook;
             using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))

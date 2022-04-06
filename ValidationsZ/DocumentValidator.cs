@@ -1086,7 +1086,7 @@ namespace Validations
 
                 if (fact.DataTypeUse == "E" && !string.IsNullOrEmpty(fact.TextValue) && !fact.IsRowKey)
                 {
-                    var mMember = FindMemberInHierarchy(fact.MetricID,  fact.TextValue);
+                    var mMember = FindMemberInHierarchy(fact.MetricID,   fact.TextValue,fact.XBRLCode);
                     if (mMember is null)
                     {
                         var validValues = GetAllMetricValidValues(fact.MetricID);
@@ -1122,7 +1122,7 @@ namespace Validations
 
             return (errorCounter == 0);
         }
-        private MMember FindMemberInHierarchy(int metricId,  string factTextEnumValue)
+        private MMember FindMemberInHierarchy(int metricId,  string factTextEnumValue,string xblr)
         {
             //1. the metric was found from the fact xbrl contains the HIERARCHY
             //2. Find the member in the hierarchy which has  the textEnum value

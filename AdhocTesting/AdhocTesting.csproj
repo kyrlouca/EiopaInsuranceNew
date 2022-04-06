@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
+    <ProjectReference Include="..\ExcelCreatorZ\ExcelCreator.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
     <ProjectReference Include="..\ValidationsZ\ValidationsZ.csproj" />
   </ItemGroup>

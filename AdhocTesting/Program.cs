@@ -5,18 +5,21 @@ using System.Collections.Generic;
 using System.Linq;
 using Validations;
 using EiopaConstants;
+using ExcelCreator;
 
 namespace AdhocTesting
 {
     public class Program
     {
+        
+
         enum Fts{ exp,count,empty,isfallback,min,max,sum,matches,ftdv,ExDimVal };
         static void Main(string[] args)
         {
+            var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
+            var xxx = ExcelValidationErrors.CreateErrorsExcelFile(9739, filename);
             //var sdfasfd = Enum.GetValues
-            var x1 = @"$c = $d - (-$e + $f)";
-            var x2 = @"$c = $d - ($e - $f + x2)";
-            var x3 = @"$c = $d - (+$e - $f + x2)";
+            
             var x4 = @"$c = $d - (-$e - $f + x2)";
 
             var x = RuleStructure.RemoveParenthesis(x4);
@@ -25,7 +28,7 @@ namespace AdhocTesting
 
             var xx = parseExp(exp);
 
-            var xxx = "";
+            
 
         }
 
