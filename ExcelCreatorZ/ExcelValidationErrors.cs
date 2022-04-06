@@ -21,11 +21,11 @@ namespace ExcelCreator
         public string TableBaseFormula { get; set; }
         public string Filter { get; set; }        
 
-        public int ErrorDocumentId { get; set; }
-        public int SheetId { get; set; }
-        public string Row { get; set; }
-        public string Col { get; set; }
-        public string DataType { get; set; }
+        //public int ErrorDocumentId { get; set; }
+        //public int SheetId { get; set; }
+        //public string Row { get; set; }
+        //public string Col { get; set; }
+        //public string DataType { get; set; }
 
         public string SheetCode { get; set; }
         public string DataValue { get; set; }
@@ -35,22 +35,11 @@ namespace ExcelCreator
 
     }
 
-    public class ExcelValidationErrors
-    {
-        public int DocumentId { get; }
-        public string FilePath { get; }
-        public XSSFWorkbook excelBook { get; private set; }
-        public const string InsuranceDatabaseConnectionString = "Data Source = KYR-RYZEN\\SQLEXPRESS ; Initial Catalog =InsuranceDatabase; Integrated Security = true; TrustServerCertificate=True;";
-
-
-        public ExcelValidationErrors(int documentId, string filePath)
-        {
-            DocumentId = documentId;
-            FilePath = filePath;
-        }
-
+    public static class ExcelValidationErrors
+    {        
         static public bool CreateErrorsExcelFile(int documentId, string filePath)
         {
+            const string InsuranceDatabaseConnectionString = "Data Source = KYR-RYZEN\\SQLEXPRESS ; Initial Catalog =InsuranceDatabase; Integrated Security = true; TrustServerCertificate=True;";
             using var connectionEiopa = new SqlConnection(InsuranceDatabaseConnectionString);
 
             var excelBook = new XSSFWorkbook();
@@ -60,8 +49,16 @@ namespace ExcelCreator
             var dataStyle = CreateDataStyle(excelBook);
 
             var errorFields = typeof(ERROR_Rule).GetProperties();
-            var titleRow = excelSheet.CreateRow(0);            
-            
+            var titleRow = excelSheet.CreateRow(0);
+
+            //create titles
+            for (var i = 0; i < errorFields.Length; i++)
+            {
+                var titleCell = titleRow.CreateCell(i);
+                titleCell.CellStyle = titleStyle;
+                titleCell.SetCellValue(errorFields[i].Name);
+            }
+
             var sqlErrors = @"
                     SELECT  Er.ErrorId
                            ,Er.RuleId
@@ -80,17 +77,9 @@ namespace ExcelCreator
                            ,Er.Scope
                            ,Er.rowCol
             ";
-            var errors = connectionEiopa.Query<ERROR_Rule>(sqlErrors, new { documentId }).ToList();
-
-            //create titles
-            for (var i = 0; i < errorFields.Length; i++)
-            {
-                var titleCell = titleRow.CreateCell(i);
-                titleCell.CellStyle = titleStyle;
-                titleCell.SetCellValue(errorFields[i].Name);
-            }
-
+                        
             var rowIdx = 1;
+            var errors = connectionEiopa.Query<ERROR_Rule>(sqlErrors, new { documentId }).ToList();
             foreach (var error in errors)
             {
                 var dataRow = excelSheet.CreateRow(rowIdx);                
