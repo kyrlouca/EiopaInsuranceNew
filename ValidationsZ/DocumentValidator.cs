@@ -414,9 +414,8 @@ namespace Validations
                     pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
 
                     var termLetterM = termParts[1];
-                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
-                    //var pattern = termParts[1].Replace("\"", ""); //                    
-                    var val = valueTerm.TextValue;
+                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);                    
+                    var val = valueTerm.TextValue.Trim();
                     term.IsMissing = valueTerm.IsMissing;
                     term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
                     term.BooleanValue = Regex.IsMatch(valueTerm.TextValue, pattern);
@@ -916,7 +915,7 @@ namespace Validations
 
                 var sqlTblKyr = @"SELECT  tk.TableCode ,tk.TableCodeKeyDim ,tk.FK_TableDim FROM dbo.mTableKyrKeys tk WHERE tk.TableCode = @tableCode";
                 var tblKyr = connectionEiopa.QuerySingle<MTableKyrKeys>(sqlTblKyr, new { sheet.TableCode });
-                if (string.IsNullOrEmpty(tblKyr.TableCodeKeyDim))
+                if (string.IsNullOrWhiteSpace(tblKyr.TableCodeKeyDim))
                 {
                     continue;
                 }
@@ -933,7 +932,11 @@ namespace Validations
                     ";
                 var keyDimension = $"%{tblKyr.TableCodeKeyDim.Trim()}%";
 
-                var KeyColumn = connectionEiopa.QuerySingleOrDefault<string>(sqKeyDim, new { sheet.TableCode, keyDimension });
+                var KeyColumn = connectionEiopa.QuerySingleOrDefault<string>(sqKeyDim, new { sheet.TableCode, keyDimension })??"";
+                if (string.IsNullOrEmpty(KeyColumn))
+                {
+                    continue;
+                }
 
 
                 var sqlDuplicate = "select  fact.TextValue  from TemplateSheetFact fact where fact.TemplateSheetId=@sheetId and fact.Col=@keyColumn group by TextValue having count(*) >1";
@@ -945,7 +948,7 @@ namespace Validations
                     isValid = false;
                     var errorRule = new ERROR_Rule
                     {
-                        RuleId = 10300,
+                        RuleId = 0,
                         ErrorDocumentId = documentId,
                         SheetId = sheet.TemplateSheetId,
                         SheetCode = sheet.SheetCode,
