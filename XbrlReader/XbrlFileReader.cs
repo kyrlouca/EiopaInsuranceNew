@@ -29,6 +29,7 @@ namespace XbrlReader
 
 
         public bool IsValidEiopaVersion { get; private set; }
+        public bool IsValidProcess { get; private set; } = true;
         public int CurrencyBatchId { get; private set; }
         public string DefaultCurrency { get; set; } = "EUR";
         public DateTime StartTime { get; } = DateTime.Now;
@@ -61,6 +62,118 @@ namespace XbrlReader
         //readonly XNamespace typedDimNs = "http://eiopa.europa.eu/xbrl/s2c/dict/typ";
         readonly XNamespace findNs = "http://www.eurofiling.info/xbrl/ext/filing-indicators";
 
+        public static void ProcessXbrlFile (string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        {
+            var reader = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+
+            var existingDocs = reader.GetExistingDocuments();
+
+            
+
+            if (existingDocs.Count == 1)
+            {
+                var existingDoc = existingDocs.First();
+                var existingDocId = existingDoc.InstanceId;
+                var status = existingDoc.Status.Trim();
+                var isLockedDocument = (status == "S" || status == "P");//validated or sumbmitted or processe3d
+                if (isLockedDocument)
+                {
+
+                    var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
+                    if (status == "P")
+                    {
+                        message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
+                    }
+                    Log.Error(message);
+                    Console.WriteLine(message);
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = reader.FundId,
+                        ModuleCode = reader.ModuleCode,
+                        ApplicableYear = reader.ApplicableYear,
+                        ApplicableQuarter = reader.ApplicableQuarter,
+                        Message = message,
+                        UserId = reader.UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = existingDoc.InstanceId,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
+                    reader.IsValidProcess = false;
+                    return;
+                }
+                if (existingDocId > 0)
+                {
+                    //delete any existing doc. It was checked before, if it was valid or processed
+                    reader.DeleteDocument(existingDocId);
+                }
+            }
+            else if (existingDocs.Count > 1)
+            {
+                var message = $"More than One Document exists: fund:{reader.FundId} module:{reader.ModuleCode} year:{reader.ApplicableYear} quarter{reader.ApplicableQuarter}";
+                Log.Error(message);
+                Console.WriteLine(message);
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = reader.FundId,
+                    ModuleCode = reader.ModuleCode,
+                    ApplicableYear = reader.ApplicableYear,
+                    ApplicableQuarter = reader.ApplicableQuarter,
+                    Message = message,
+                    UserId = reader.UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
+                reader.IsValidProcess = false;
+                return;
+            }
+
+
+            reader.WriteProcessStarted();
+
+            
+
+            var docId = reader.CreateFreeFacts( fileName);
+
+            if (docId == 0)
+            {
+                var message = $"Document not created";
+                Log.Error(message);
+                Console.WriteLine(message);
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = reader.FundId,
+                    ModuleCode = reader.ModuleCode,
+                    ApplicableYear = reader.ApplicableYear,
+                    ApplicableQuarter = reader.ApplicableQuarter,
+                    Message = message,
+                    UserId = reader.UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
+                reader.IsValidProcess = false;
+                return;
+            }
+
+            _ = new AssignFactsToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
+
+
+            var diffminutes = reader.StartTime.Subtract(DateTime.Now).TotalMinutes;
+            Log.Information($"XbrlFileReader Minutes:{diffminutes}");
+
+
+        }
+
 
         public static void MatchFacts(ConfigObject configObject, string signature)
         {
@@ -91,7 +204,8 @@ namespace XbrlReader
             FileName = fileName;
 
 
-            if (!GetConfiguration())
+            ConfigObject = GetConfiguration();
+            if (ConfigObject is null)
             {
                 return;
             }
@@ -121,103 +235,12 @@ namespace XbrlReader
 
                 return;
             }
+            ///
 
-            var existingDocs = GetExistingDocuments();
-            var existingDocId = 0;
-            
-            if (existingDocs.Count == 1)
-            {
-                var existingDoc = existingDocs.First();
-                existingDocId = existingDoc.InstanceId;
-                var status = existingDoc.Status.Trim();
-                var isLockedDocument = ( status == "S" || status=="P");//validated or sumbmitted or processe3d
-                if (isLockedDocument)
-                {
-                    
-                    var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
-                    if (status == "P")
-                    {
-                        message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
-                    }
-                    Log.Error(message);
-                    Console.WriteLine(message);
-
-                    var trans = new TransactionLog()
-                    {
-                        PensionFundId = FundId,
-                        ModuleCode = ModuleCode,
-                        ApplicableYear = ApplicableYear,
-                        ApplicableQuarter = ApplicableQuarter,
-                        Message = message,
-                        UserId = UserId,
-                        ProgramCode = ProgramCode.RX.ToString(),
-                        ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = existingDoc.InstanceId,
-                        MessageType = MessageType.ERROR.ToString()
-                    };
-                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
-
-                    return;
-                }
-            }
-            else if (existingDocs.Count>1)
-            {
-                var message = $"More than One Document exists: fund:{FundId} module:{ModuleCode} year:{ApplicableYear} quarter{ApplicableQuarter}";
-                Log.Error(message);
-                Console.WriteLine(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-
-                return;
-            }
-
-
-            WriteProcessStarted();
-
-            var docId = CreateFreeFacts(existingDocId, fileName);
-
-            if (docId==0)
-            {
-                var message = $"Document not created";
-                Log.Error(message);
-                Console.WriteLine(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return;
-            }
-
-            var diffminutes = StartTime.Subtract(DateTime.Now).TotalMinutes;
-            Log.Information($"XbrlFileReader Minutes:{diffminutes}");
         }
 
 
-        private bool GetConfiguration()
+        private ConfigObject GetConfiguration()
         {
 
             if (!Configuration.IsValidVersion(SolvencyVersion))
@@ -225,11 +248,11 @@ namespace XbrlReader
                 var errorMessage = $"XbrlFileReader --Invalid Eiopa Version: {SolvencyVersion}";
                 Console.WriteLine(errorMessage);
                 Log.Error(errorMessage);
-                return false;
+                return null ;
             }
 
-            ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
-            if (string.IsNullOrEmpty(ConfigObject.LoggerXbrlFile))
+            var configObject = Configuration.GetInstance(SolvencyVersion).Data;
+            if (string.IsNullOrEmpty(configObject.LoggerXbrlFile))
             {
                 var errorMessage = "LoggerXbrlFile is not defined in ConfigData.json";
                 Console.WriteLine(errorMessage);
@@ -238,11 +261,11 @@ namespace XbrlReader
 
             Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
-            .WriteTo.File(ConfigObject.LoggerXbrlReaderFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
+            .WriteTo.File(configObject.LoggerXbrlReaderFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
 
-            if (string.IsNullOrEmpty(ConfigObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(ConfigObject.LocalDatabaseConnectionString))
+            if (string.IsNullOrEmpty(configObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(configObject.LocalDatabaseConnectionString))
             {
                 var errorMessage = "Empty ConnectionStrings";
                 Console.WriteLine(errorMessage);
@@ -250,15 +273,13 @@ namespace XbrlReader
             }
 
 
-            return true;
+            return configObject;
         }
 
-        private int CreateFreeFacts(int existingDoc, string sourceFile)
+        private int CreateFreeFacts(string sourceFile)
         {
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
-            //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures
-
-            
+            //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
 
             if (!File.Exists(sourceFile))
             {
@@ -267,7 +288,6 @@ namespace XbrlReader
                 Log.Error(message);
                 return 0;
             }
-
             
 
 
@@ -312,15 +332,8 @@ namespace XbrlReader
                 return 0;
             }
 
-            Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
+            Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");            
             
-
-
-            if (existingDoc > 0)
-            {             
-                //delete any existing doc. It was checked before, if it was valid or processed
-                DeleteDocument(existingDoc);
-            }
             DocumentId = CreateDocInstanceInDb();
             
             AddValidFilingIndicators();
