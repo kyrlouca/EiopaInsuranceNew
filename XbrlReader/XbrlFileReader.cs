@@ -139,7 +139,7 @@ namespace XbrlReader
 
             
 
-            var docId = reader.CreateFreeFacts( fileName);
+            var docId = reader.CreateLooseFacts( fileName);
 
             if (docId == 0)
             {
@@ -175,22 +175,13 @@ namespace XbrlReader
         }
 
 
-        public static void MatchFacts(ConfigObject configObject, string signature)
-        {
-            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
-            var dims = signature.Split("|").ToList();
-
-
-        }
-
-        public XbrlFileReader()
+        private XbrlFileReader()
         {
             Console.WriteLine("ONLY for testing XbrlData");
             return;
         }
 
-        public XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        private XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
             //Then store document, sheets, and facts in database
@@ -276,7 +267,7 @@ namespace XbrlReader
             return configObject;
         }
 
-        private int CreateFreeFacts(string sourceFile)
+        private int CreateLooseFacts(string sourceFile)
         {
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
             //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
@@ -779,6 +770,7 @@ VALUES (
             return module;
 
         }
+        
 
     }
 }

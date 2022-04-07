@@ -61,11 +61,8 @@ namespace XbrlReader
                 var applicationQuarter = int.TryParse(args[6], out var arg6) ? arg6 : 0;
                 var xbrlFile = args[7];
                 Console.WriteLine($"XbrlReader v1: xbrlfile:{xbrlFile}");
-
-                //no need for module (it is found in xbrl file)
-                
-                var xbrlData = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);          
-                _ = new AssignFactsToSheets(solvencyVersion,  xbrlData.DocumentId,xbrlData.FilingsSubmitted);
+                                
+                XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);                          
 
                 return 0;
             }
