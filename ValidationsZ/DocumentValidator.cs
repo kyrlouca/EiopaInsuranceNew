@@ -105,9 +105,6 @@ namespace Validations
                 return;
             }
 
-
-
-
             DocumentInstance = document;
             DocumentId = document.InstanceId;
 
@@ -123,12 +120,13 @@ namespace Validations
             var message = $"---Validation started for Document:{DocumentId}";
             Log.Information(message);
 
-
             //to prevent anyone else validating when processed
             UpdateDocumentStatus("P");
 
-            //CreateErrorDocument the Error Document even if doc does not exist
             CreateErrorDocument();
+
+            //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
+            //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
             CreateModuleAndDocumentRules();
         }
 
@@ -282,7 +280,11 @@ namespace Validations
 
             Console.WriteLine($"Starting validating {DocumentId}");
             Console.WriteLine($"Create Module Rules");
+
+            //Module Rules
             CreateModuleRules();
+
+            //DocumentRules
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
 

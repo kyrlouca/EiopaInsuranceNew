@@ -101,6 +101,7 @@ namespace XbrlReader
             }
 
 
+            //delete older versions (except from locked or submitted)
             existingDocs.Where(doc => doc.Status != "P" && doc.Status != "S")
                 .ToList()
                 .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
@@ -196,7 +197,6 @@ namespace XbrlReader
             ///
 
         }
-
 
         private ConfigObject GetConfiguration()
         {
@@ -685,15 +685,6 @@ VALUES (
             return count;
         }
 
-        private void WriteProcessStarted()
-        {
-            var message = $"XBRL Reader Started -- Fund:{FundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion} file:{FileName}";
-            Console.WriteLine(message);
-            Log.Information(message);
-
-
-        }
-
         private List<DocInstance> GetExistingDocuments()
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -737,7 +728,14 @@ VALUES (
             return module;
 
         }
-        
+
+
+        private void WriteProcessStarted()
+        {
+            var message = $"XBRL Reader Started -- Fund:{FundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion} file:{FileName}";
+            Console.WriteLine(message);
+            Log.Information(message);
+        }
 
     }
 }
