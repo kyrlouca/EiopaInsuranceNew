@@ -68,51 +68,17 @@ namespace XbrlReader
 
             var existingDocs = reader.GetExistingDocuments();
 
-            
-
-            if (existingDocs.Count == 1)
-            {
+            var isLockedDocument = existingDocs.Any(doc => doc.Status == "P" && doc.Status == "S");
+            if (isLockedDocument){
                 var existingDoc = existingDocs.First();
                 var existingDocId = existingDoc.InstanceId;
                 var status = existingDoc.Status.Trim();
-                var isLockedDocument = (status == "S" || status == "P");//validated or sumbmitted or processe3d
-                if (isLockedDocument)
-                {
 
-                    var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
-                    if (status == "P")
-                    {
-                        message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
-                    }
-                    Log.Error(message);
-                    Console.WriteLine(message);
-
-                    var trans = new TransactionLog()
-                    {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
-                        Message = message,
-                        UserId = reader.UserId,
-                        ProgramCode = ProgramCode.RX.ToString(),
-                        ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = existingDoc.InstanceId,
-                        MessageType = MessageType.ERROR.ToString()
-                    };
-                    TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
-                    reader.IsValidProcess = false;
-                    return;
-                }
-                if (existingDocId > 0)
+                var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
+                if (status == "P")
                 {
-                    //delete any existing doc. It was checked before, if it was valid or processed
-                    reader.DeleteDocument(existingDocId);
+                    message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
                 }
-            }
-            else if (existingDocs.Count > 1)
-            {
-                var message = $"More than One Document exists: fund:{reader.FundId} module:{reader.ModuleCode} year:{reader.ApplicableYear} quarter{reader.ApplicableQuarter}";
                 Log.Error(message);
                 Console.WriteLine(message);
 
@@ -126,7 +92,7 @@ namespace XbrlReader
                     UserId = reader.UserId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
+                    InstanceId = existingDoc.InstanceId,
                     MessageType = MessageType.ERROR.ToString()
                 };
                 TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
@@ -135,13 +101,14 @@ namespace XbrlReader
             }
 
 
-            reader.WriteProcessStarted();
+            existingDocs.Where(doc => doc.Status != "P" && doc.Status != "S")
+                .ToList()
+                .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
+           
+            reader.WriteProcessStarted();            
 
-            
-
-            var docId = reader.CreateLooseFacts( fileName);
-
-            if (docId == 0)
+            var newDocumentId = reader.CreateLooseFacts( fileName);
+            if (newDocumentId == 0)
             {
                 var message = $"Document not created";
                 Log.Error(message);
@@ -165,10 +132,10 @@ namespace XbrlReader
                 return;
             }
 
-            _ = new AssignFactsToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
 
-
-            var diffminutes = reader.StartTime.Subtract(DateTime.Now).TotalMinutes;
+             FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
+            
+            var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
 
 

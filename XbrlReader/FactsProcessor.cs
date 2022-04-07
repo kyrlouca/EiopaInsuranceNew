@@ -15,7 +15,7 @@ namespace XbrlReader
 {
 
 
-    class AssignFactsToSheets
+    class FactsProcessor
     {        
         public int TestingTableId { get; set; } = 0;
         //65 S.05.02.01.02 ars error fin grawo
@@ -51,10 +51,43 @@ namespace XbrlReader
         public string SolvencyVersion { get; private set; }
         public ConfigObject ConfigObject { get; }
 
-        //n
+
+        public static void ProcessFactsAndAssignToSheets(string solvencyVersion, int documentId, List<string> filings)
+        {
+            //always use this factory method to create the instance
+            var factsProcessor = new FactsProcessor(solvencyVersion, documentId, filings);
+
+            if (factsProcessor.Document is null)
+            {
+                var message = $"Document id:{documentId} NOT Found";
+                Console.Write(message);
+                Log.Error(message);
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = 0,
+                    ModuleCode = "",
+                    ApplicableYear = 0,
+                    ApplicableQuarter = 0,
+                    Message = message,
+                    UserId = factsProcessor.UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 0,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(factsProcessor.SolvencyVersion, trans);
+                return;
+            }
+
+            Console.WriteLine($"\n Facts processing Started");
+            var countFacts = factsProcessor.ProcessModuleTables();
+            factsProcessor.UpdateDocumentStatus("L");
+            Console.WriteLine($"\ndocId: {factsProcessor.DocumentId} -- sheets: facts:{countFacts}");
+        }
 
 
-        public AssignFactsToSheets(string solvencyVersion, int documentId, List<string> filings)
+        private FactsProcessor(string solvencyVersion, int documentId, List<string> filings)
         {
             //process all the tables (S.01.01.01.01, S.01.01.02.01, etc ) related to the filings (S.01.01)
             //for each cell in each table, create a sheet and associate the mathcing facts (or create new facts if a fact should be in two tables)            
@@ -70,55 +103,23 @@ namespace XbrlReader
                 throw new SystemException(errorMessage);
             }
 
-            DocumentId = documentId;
-            if (documentId == 0)
-            {
-                var message = $"Document id:{0}. Abort";
-                Console.Write(message);
-                Log.Error(message);
-            }
+            Filings = filings;
 
-            Document = GetDocument(documentId);
+            DocumentId = documentId;            
+            Document= GetDocument(documentId);
             if (Document is null)
             {
-                var message = $"Document id:{DocumentId} NOT Found";
+                var message = $"Document:{DocumentId} not Found. Abort";
                 Console.Write(message);
                 Log.Error(message);
-                
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = 0,
-                    ModuleCode = "",
-                    ApplicableYear = 0,
-                    ApplicableQuarter =0,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return;
             }
 
+            ModuleCode = Document.ModuleCode.Trim();            
+            ModuleTablesFiled = GetFiledModuleTables();
 
-            Filings = filings;
-
-            ModuleCode = Document.ModuleCode.Trim();
-
-            //Testing1();
-            //return; //xx
-            Console.WriteLine($"\n Database Writer Started");
-
-            ModuleTablesFiled = GetFiledModuleTables();                        
-            var countFacts = ProcessModuleTables();
-
-            UpdateDocumentStatus("L");
-
-            Log.Information($"DocId:{DocumentId} DataProcessor time:{StartTime.Subtract(DateTime.Now).TotalSeconds}, facts :{countFacts}");
-            Console.WriteLine($"\ndocId: {DocumentId} -- sheets: facts:{countFacts}");
         }
+
 
         private void UpdateDocumentStatus(string status)
         {
@@ -162,8 +163,7 @@ namespace XbrlReader
 
         private int ProcessModuleTables()
         {
-            //iterate each table. For each table, read its cells, find the matching facts, and assign them rowcols
-            Console.WriteLine($"\nCreating facts");
+            //iterate each table. For each table, read its cells, find the matching facts, and assign them rowcols            
             var count = 0;
 
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
