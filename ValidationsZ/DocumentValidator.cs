@@ -262,6 +262,7 @@ namespace Validations
             connectionPension.Execute(sqlUpdate, new { isDocumentValid, eCounter = totalErrors > 0, wCounter = warningErrors > 0, DocumentId });
 
             var status = (totalErrors == 0) ? "V" : "E";
+            status = DocumentRules.Count > 0 ? status : "E";
             UpdateDocumentStatus(status);
 
 

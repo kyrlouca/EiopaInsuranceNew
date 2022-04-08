@@ -38,7 +38,7 @@ namespace XbrlReader
             var err = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\QESError.xbrl";
 
             (var fundIdT, var filePath) = (401, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\2138003JRMGVH8CGUR42-2022-02-20-QES.xbrl");
-             XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2022, 2,filePath);            
+             XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2022, 2,err);            
                         
 
             Console.WriteLine("Finish");
