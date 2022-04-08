@@ -163,7 +163,7 @@ namespace Validations
             }
 
             Console.WriteLine($"Check Unique Keys");
-            var isKeyValuesUnique = (1 == 1) && ValidateOpenTableKeysUnique(DocumentId);
+            //var isKeyValuesUnique = (1 == 1) && ValidateOpenTableKeysUnique(DocumentId);
             if (HasEmptySheets(DocumentId))
             {
                 //retrun

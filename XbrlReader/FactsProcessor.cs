@@ -54,7 +54,7 @@ namespace XbrlReader
 
         public static void ProcessFactsAndAssignToSheets(string solvencyVersion, int documentId, List<string> filings)
         {
-            //always use this factory method to create the instance
+            //**always use this factory method to create the instance
             var factsProcessor = new FactsProcessor(solvencyVersion, documentId, filings);
 
             if (factsProcessor.Document is null)
@@ -73,15 +73,17 @@ namespace XbrlReader
                     UserId = factsProcessor.UserId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
+                    InstanceId = documentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
                 TransactionLogger.LogTransaction(factsProcessor.SolvencyVersion, trans);
                 return;
             }
-
             Console.WriteLine($"\n Facts processing Started");
+
+            //***Process the facts in all module tables
             var countFacts = factsProcessor.ProcessModuleTables();
+
             factsProcessor.UpdateDocumentStatus("L");
             Console.WriteLine($"\ndocId: {factsProcessor.DocumentId} -- sheets: facts:{countFacts}");
         }

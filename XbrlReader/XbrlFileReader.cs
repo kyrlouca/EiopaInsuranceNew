@@ -68,7 +68,7 @@ namespace XbrlReader
 
             var existingDocs = reader.GetExistingDocuments();
 
-            var isLockedDocument = existingDocs.Any(doc => doc.Status == "P" && doc.Status == "S");
+            var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.Status.Trim() == "S");
             if (isLockedDocument){
                 var existingDoc = existingDocs.First();
                 var existingDocId = existingDoc.InstanceId;
@@ -102,33 +102,24 @@ namespace XbrlReader
 
 
             //delete older versions (except from locked or submitted)
-            existingDocs.Where(doc => doc.Status != "P" && doc.Status != "S")
+            existingDocs.Where(doc => doc.Status.Trim() != "P" && doc.Status.Trim() != "S")
                 .ToList()
                 .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
            
-            reader.WriteProcessStarted();            
+            reader.WriteProcessStarted();
 
-            var newDocumentId = reader.CreateLooseFacts( fileName);
-            if (newDocumentId == 0)
+            //*** create the document anyway so we can attach log errors
+            var documentId = reader.CreateDocInstanceInDb();
+
+            //***Create loose facts not assigned to sheets
+            var isValid = reader.CreateLooseFacts(documentId, fileName);
+            if (!isValid)
             {
                 var message = $"Document not created";
                 Log.Error(message);
                 Console.WriteLine(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = reader.FundId,
-                    ModuleCode = reader.ModuleCode,
-                    ApplicableYear = reader.ApplicableYear,
-                    ApplicableQuarter = reader.ApplicableQuarter,
-                    Message = message,
-                    UserId = reader.UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
+                //Update status
+                reader.UpdateDocumentStatus("E");
                 reader.IsValidProcess = false;
                 return;
             }
@@ -234,17 +225,36 @@ namespace XbrlReader
             return configObject;
         }
 
-        private int CreateLooseFacts(string sourceFile)
+        private bool CreateLooseFacts(int documentId, string sourceFile)
         {
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
             //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
+
+            DocumentId = documentId;
 
             if (!File.Exists(sourceFile))
             {
                 var message = $"XBRL CreateXbrlDocument ERROR: Document not Found : {sourceFile}";
                 Console.WriteLine($"**** {message}");
                 Log.Error(message);
-                return 0;
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = documentId,
+                    MessageType = MessageType.ERROR.ToString(),
+                    FileName= sourceFile
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                return false;
             }
             
 
@@ -260,7 +270,24 @@ namespace XbrlReader
                 Log.Error(message);
                 Log.Error(e.Message);
                 Console.WriteLine(e);
-                return 0;
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode =ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = documentId,
+                    MessageType = MessageType.ERROR.ToString(),
+                    FileName = sourceFile
+                };
+
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                return false;
             }
 
             RootNode = xmlDoc.Root;
@@ -269,7 +296,7 @@ namespace XbrlReader
             var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
             if (moduleCodeXbrl != Module.ModuleCode)
             {
-                var message = $" Module Code provided +{Module.ModuleCode}+ DIFFERENT THAN  Module in Xbrl : +{moduleCodeXbrl}+";
+                var message = @$" Module Code provided by Fund: ""{Module.ModuleCode}"" is DIFFERENT THAN  Module Code in Xbrl File : ""{moduleCodeXbrl}""";
                 Log.Error(message);
                 Console.WriteLine(message);
 
@@ -283,16 +310,18 @@ namespace XbrlReader
                     UserId = UserId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.INFO.ToString()
+                    InstanceId = documentId,
+                    MessageType = MessageType.ERROR.ToString(),
+                    FileName = sourceFile
                 };
+     
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return 0;
+                return false;
             }
 
             Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");            
             
-            DocumentId = CreateDocInstanceInDb();
+            //DocumentId = CreateDocInstanceInDb();
             
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
@@ -307,7 +336,7 @@ namespace XbrlReader
             AddFacts();
 
             DeleteContexts();
-            return DocumentId;
+            return  true;
 
         }
 
@@ -737,5 +766,11 @@ VALUES (
             Log.Information(message);
         }
 
+        private void UpdateDocumentStatus(string status)
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
+            var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
+        }
     }
 }
