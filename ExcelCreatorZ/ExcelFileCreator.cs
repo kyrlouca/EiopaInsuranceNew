@@ -411,6 +411,11 @@ namespace ExcelCreator
 
                 var fs = File.Create(ExcelOutputFile);
                 //var outStream = new FileStream(outFile, FileMode.Create, FileAccess.Write);
+
+                var xmlProps = DestExcelTemplateBook.GetProperties();
+                var coreProps = xmlProps.CoreProperties;
+                coreProps.Creator = "Novum International ICSS XBRL";
+
                 DestExcelTemplateBook.Write(fs);
 
             }
