@@ -317,7 +317,7 @@ namespace Validations
             //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
             functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
-            rule.RuleObjectTerms = RuleStructure.CreateObjectTerms(rule.RuleTerms, rule.SymbolFinalFormula);
+           
 
 
             //*******Filter terms
@@ -335,8 +335,7 @@ namespace Validations
                 //evaluate function Z Terms
                 var functionFilterZetTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
                 functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
-
-                rule.FilterObjectTerms = RuleStructure.CreateObjectTerms(rule.FilterTerms, rule.SymbolFilterFinalFormula);
+                
 
             }
 
@@ -1474,7 +1473,9 @@ namespace Validations
                     continue;
                 }
                 UpdateRuleAndFilterTerms(fakeFilterRule);
-                if ((bool)RuleStructure.AssertIfThenElseExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms,fakeFilterRule.FilterObjectTerms))
+                
+
+                if ((bool)RuleStructure.AssertIfThenElseExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
                     factSum += sumFact.NumericValue;
                 }

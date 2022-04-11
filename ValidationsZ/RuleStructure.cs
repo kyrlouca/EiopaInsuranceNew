@@ -30,8 +30,6 @@ namespace Validations
         public ConfigObject ConfigObject { get; set; }
         public List<RuleTerm> RuleTerms = new();
         public List<RuleTerm> FilterTerms = new();
-        public Dictionary<string, ObjTerm> RuleObjectTerms = new();
-        public Dictionary<string, ObjTerm> FilterObjectTerms = new();
 
 
         public int ValidationRuleId { get; private set; } = 0;
@@ -55,7 +53,7 @@ namespace Validations
         public string ScopeString { get; private set; } = "";
 
 
-        public static Dictionary<string, ObjTerm> CreateObjectTerms(List<RuleTerm> terms, string formula)
+        public static Dictionary<string, ObjTerm> CreateObjectTerms(string formula,List<RuleTerm> terms )
         {
             Dictionary<string, ObjTerm> xobjTerms = new();
             var xRuleTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
@@ -411,7 +409,7 @@ namespace Validations
                     IsValidRule = true;
                     return IsValidRule;
                 }
-                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms,rule.FilterObjectTerms);
+                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
 
 
                 if (isFilterValid is null || !(bool)isFilterValid)
@@ -422,7 +420,7 @@ namespace Validations
                 }
             }
 
-            var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms,rule.RuleObjectTerms);
+            var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
             return isValidRule;
 
@@ -431,7 +429,7 @@ namespace Validations
         }
 
 
-        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms,Dictionary<string,ObjTerm> objTerms)
+        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
@@ -452,20 +450,20 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms,objTerms);
+                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
                 if (!(bool)isIfPartTrue)
                 {
                     return true;
                 }
-                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms,objTerms);
+                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
                 return isThenPartValid;
             }
 
-            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms,objTerms);
+            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
             return isWholeValid;
         }
 
-        public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms, Dictionary<string,ObjTerm> objTerms)
+        public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //todo rule ID not necessary as parameter            
 
@@ -524,7 +522,9 @@ namespace Validations
                 dicObj.Add(term.Letter, objTerm);
             }
 
-            var usedObjTerms = objTerms.Where(tt => allTerms.Contains(tt.Key)).ToDictionary(tt=>tt.Key,tt=>tt.Value);
+            var xObjTerms = RuleStructure.CreateObjectTerms(symbolExpression,ruleTerms );
+
+            var usedObjTerms = xObjTerms.Where(tt => allTerms.Contains(tt.Key)).ToDictionary(tt=>tt.Key,tt=>tt.Value);
             if(usedObjTerms.Count!= dicObj.Count)
             {
                 var yy = 333;

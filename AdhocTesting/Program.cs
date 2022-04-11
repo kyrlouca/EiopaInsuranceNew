@@ -12,21 +12,19 @@ namespace AdhocTesting
     public class Program
     {
         
-
+        
         enum Fts{ exp,count,empty,isfallback,min,max,sum,matches,ftdv,ExDimVal };
         static void Main(string[] args)
         {
+
             var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
-            var xxx = ExcelValidationErrors.CreateErrorsExcelFile(9739, filename);
-            //var sdfasfd = Enum.GetValues
-            
+
+            var bbb = SimplifiedExpression.CreateExpression(@"X0 >= 0.25*X2 && X0 <= 0.45*X2 ");
+
+
             var x4 = @"$c = $d - (-$e - $f + x2)";
 
-            var x = RuleStructure.RemoveParenthesis(x4);
-
-            var exp= "X0 <= 0.2 * (X0 + X1) ";
-
-            var xx = parseExp(exp);
+            
 
             
 
