@@ -19,7 +19,7 @@ namespace Validations
     public class SimplifiedExpression
     {
         public string Expression { get; set; }
-        public string SymbolExpression { get; set; }
+        public string SymbolExpression { get; set; } = "";
         public Dictionary<string, RuleTerm> RuleTerms { get; set; } = new();
         public bool IsValid { get; set; }
         public List<TermExpression> TermExpressions { get; set; } = new();
@@ -33,8 +33,7 @@ namespace Validations
         }
         private SimplifiedExpression(string expression)
         {
-            Expression = expression;
-            //RuleTerms = ruleTerms;
+            Expression = expression;            
         }
 
 
