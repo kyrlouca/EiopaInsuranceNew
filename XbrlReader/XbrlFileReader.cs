@@ -634,7 +634,17 @@ VALUES (
 
                     SELECT CAST(SCOPE_IDENTITY() as int);
                    ";
+                try
+                {
+                    newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
+                }
+                catch (Exception e)
+                {
+                    var errMessage = $"{e.Message}";
+                    Log.Error(errMessage);
+                }
                 newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
+
                 CreateFactDimsDb(ConfigObject, newFact.FactId, newFact.DataPointSignature);
 
 

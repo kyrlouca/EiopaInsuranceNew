@@ -83,7 +83,7 @@ namespace ExcelCreator
                     {
                         continue;
                     }
-                    ExcelHelperFunctions.CopyRow(s62Row, s63Row, offset, true);
+                    ExcelHelperFunctions.CopyRow(s62Row, s63Row, offset, false);
                 }
 
             }
