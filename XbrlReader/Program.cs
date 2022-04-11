@@ -37,8 +37,9 @@ namespace XbrlReader
             //(var fundIdT, var filePath) = (301, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl");
             var err = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\QESError.xbrl";
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Atlantic.xbrl
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl 
 
-            (var fundIdT, var filePath) = (501, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Atlantic.xbrl");
+            (var fundIdT, var filePath) = (601, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl");
              XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2022, 0,filePath);            
                         
 

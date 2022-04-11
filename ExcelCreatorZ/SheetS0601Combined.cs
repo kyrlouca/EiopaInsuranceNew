@@ -76,14 +76,15 @@ namespace ExcelCreator
                 var s62RowIdx = FindS62LinkedRow(SheetS62, s61ColRowIdx + 1, key);
                 if (s62RowIdx > 0)
                 {
-                    Console.WriteLine(key);
+                    //Console.WriteLine(key);
+                    Console.Write("*");
                     var s62Row = SheetS62.GetRow(s62RowIdx);
                     var s63Row = SheetS63.GetRow(i);
                     if (s63Row is null)
                     {
                         continue;
                     }
-                    ExcelHelperFunctions.CopyRow(s62Row, s63Row, offset, false);
+                    ExcelHelperFunctions.CopyRowSameBook(s62Row, s63Row, offset, true);
                 }
 
             }

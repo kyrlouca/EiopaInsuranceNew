@@ -637,15 +637,18 @@ VALUES (
                 try
                 {
                     newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
+                    CreateFactDimsDb(ConfigObject, newFact.FactId, newFact.DataPointSignature);
                 }
                 catch (Exception e)
                 {
-                    var errMessage = $"{e.Message}";
-                    Log.Error(errMessage);
-                }
-                newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
+                    var errMessage = $"{e.Message}===>, fact text:{newFact.TextValue}, xbrl:{newFact.XBRLCode}";
+                    Console.WriteLine(errMessage);
+                     Log.Error(errMessage);
 
-                CreateFactDimsDb(ConfigObject, newFact.FactId, newFact.DataPointSignature);
+                }
+                
+
+                
 
 
                 Console.Write(".");

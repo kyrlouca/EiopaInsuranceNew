@@ -95,6 +95,48 @@ namespace ExcelCreator
         }
 
 
+
+        static public IRow CopyRowSameBook(IRow orgRow, IRow destRow, int offset = 0, bool doCopyFormatting = false)
+        {
+
+            if (orgRow is null || destRow is null)
+            {
+                return null;
+            }
+            for (var j = orgRow.FirstCellNum; j <= orgRow.LastCellNum; j++)
+            {
+                var destCell = destRow.GetCell(j + offset);
+                if (destCell is null)
+                {
+                    destCell = destRow.CreateCell(j + offset);
+                }
+
+                CopyCellWithFormatingSameBook((XSSFWorkbook)destCell.Sheet.Workbook, orgRow.GetCell(j), destCell);
+
+            }
+            return destRow;
+        }
+
+
+
+        static ICell CopyCellWithFormatingSameBook(XSSFWorkbook destBook, ICell originCell, ICell destCell)
+        {
+            if (destBook is null)
+            {
+                return null;
+            }
+            var cell = CopyCell(originCell, destCell);
+
+            if (cell?.CellStyle is not null)
+            {
+                var originStyle = originCell.CellStyle;
+                destCell.CellStyle = originStyle;
+            }
+
+            return cell;
+        }
+
+
         static ICell CopyCellWithFormating(XSSFWorkbook destBook, ICell originCell, ICell destCell)
         {
             if (destBook is null)
@@ -159,7 +201,6 @@ namespace ExcelCreator
             }
             return destCell;
         }
-
 
 
 
