@@ -369,14 +369,49 @@ namespace Validations
         }
 
 
+        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        {
+            //1. fix  the expression to make it ready for Eval 
+            //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
+
+            var fixedSymbolExpression = FixExpression(symbolExpression);
+            
+
+            if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
+            {
+                return null;
+            }
+            if (ruleTerms.Count == 0)
+            {
+                return null;
+            }
+
+
+            var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
+            if (isIfExpressionType)
+            {
+                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
+                if (!(bool)isIfPartTrue)
+                {
+                    return true;
+                }
+                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
+                return isThenPartValid;
+            }
+
+            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
+            return isWholeValid;
+        }
+
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
             //todo rule ID not necessary as parameter            
 
 
             //XZT only capitals
-            var allTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", symbolExpression);// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-
+            var allTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", symbolExpression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+            
+            //unique****************************
             //populate dicx with numeric, text, and boolean values accordingly            
             var dicObj = new Dictionary<string, ObjTerm>();
             var expressionTerms = ruleTerms.Where(rt => allTerms.Contains(rt.Letter));
@@ -535,6 +570,14 @@ namespace Validations
             return isValid;
         }
 
+
+        static public bool IsPlainNumbersEqual(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
+        {
+            var absoluteDiff = Math.Abs(leftNum - rightNum);
+            return cOperator == "==" && absoluteDiff <= maxAllowedDifference;
+        }
+
+
         public static List<string> GetLetterTerms(string expression)
         {
             //it will return the letter terms but with the MINUS sign in front
@@ -678,46 +721,6 @@ namespace Validations
                 var newVal = m.Value.Replace(m.Groups[1].Value, $"\"{m.Groups[1]}\"");
                 return newVal;
             }
-        }
-
-        static public bool IsPlainNumbersEqual(string cOperator, double maxAllowedDifference, double leftNum, double rightNum)
-        {
-            var absoluteDiff = Math.Abs(leftNum - rightNum);
-            return cOperator == "==" && absoluteDiff <= maxAllowedDifference;
-        }
-
-        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
-        {
-            //1. fix  the expression to make it ready for Eval 
-            //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
-
-             var fixedSymbolExpression = FixExpression(symbolExpression);
-            //fixedSymbolExpression = FixDecimalLiteral(fixedSymbolExpression);
-
-            if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
-            {
-                return null;
-            }
-            if (ruleTerms.Count == 0)
-            {
-                return null;
-            }
-
-
-            var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
-            if (isIfExpressionType)
-            {
-                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
-                if (!(bool)isIfPartTrue)
-                {
-                    return true;
-                }
-                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
-                return isThenPartValid;
-            }
-
-            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
-            return isWholeValid;
         }
 
     }
