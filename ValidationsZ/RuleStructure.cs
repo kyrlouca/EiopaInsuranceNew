@@ -14,11 +14,6 @@ using Z.Expressions;
 
 namespace Validations
 {
-    public class ObjTerm
-    {
-        public object obj;
-        public int decimals;
-    }
 
 
     public class RuleStructure
@@ -35,6 +30,10 @@ namespace Validations
         public ConfigObject ConfigObject { get; set; }
         public List<RuleTerm> RuleTerms = new();
         public List<RuleTerm> FilterTerms = new();
+        public Dictionary<string, ObjTerm> RuleObjectTerms = new();
+        public Dictionary<string, ObjTerm> FilterObjectTerms = new();
+
+
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
         public string FilterFormula { get; set; } = "";
@@ -54,6 +53,69 @@ namespace Validations
         public int SheetId { get; set; }
         public ScopeRangeAxis ApplicableAxis { get; private set; } = ScopeRangeAxis.Error;
         public string ScopeString { get; private set; } = "";
+
+
+        public static Dictionary<string, ObjTerm> CreateObjectTerms(List<RuleTerm> terms, string formula)
+        {
+            Dictionary<string, ObjTerm> xobjTerms = new();
+            var xRuleTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
+            
+
+            //get the terms for filter also
+            var xxTerms = terms.Where(rt => xRuleTerms.Contains(rt.Letter)).ToList();            
+            
+            foreach (var term in xxTerms)
+            {
+                object obj;
+                ObjTerm objTerm;
+                if (term.IsMissing)
+                {
+                    objTerm = new ObjTerm
+                    {
+                        obj = term.DataTypeOfTerm switch
+                        {
+                            DataTypeMajorUU.BooleanDtm => false,
+                            DataTypeMajorUU.StringDtm => "",
+                            DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
+                            _ => term.TextValue,
+                        },
+                        decimals = term.NumberOfDecimals,
+                    };
+                }
+                else
+                {
+                    objTerm = new ObjTerm
+                    {
+                        obj = term.DataTypeOfTerm switch
+                        {
+                            DataTypeMajorUU.BooleanDtm => term.BooleanValue,
+                            DataTypeMajorUU.StringDtm => term.TextValue,
+                            DataTypeMajorUU.DateDtm => term.DateValue,
+                            //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 1000) / 1000), // truncate to 3 decimals
+                            _ => term.TextValue,
+                        },
+                        decimals = term.NumberOfDecimals,
+                    };
+
+                }
+                obj = term.DataTypeOfTerm switch
+                {
+                    DataTypeMajorUU.BooleanDtm => term.BooleanValue,
+                    DataTypeMajorUU.StringDtm => term.TextValue,
+                    DataTypeMajorUU.DateDtm => term.DateValue,
+                    DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
+                    _ => term.TextValue,
+                };
+                if (!xobjTerms.ContainsKey(term.Letter))
+                {
+                    xobjTerms.Add(term.Letter, objTerm);
+                }
+                
+            }
+            return xobjTerms;
+        }
 
         public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
         {
@@ -349,7 +411,7 @@ namespace Validations
                     IsValidRule = true;
                     return IsValidRule;
                 }
-                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
+                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms,rule.FilterObjectTerms);
 
 
                 if (isFilterValid is null || !(bool)isFilterValid)
@@ -360,7 +422,7 @@ namespace Validations
                 }
             }
 
-            var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
+            var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms,rule.RuleObjectTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
             return isValidRule;
 
@@ -369,13 +431,13 @@ namespace Validations
         }
 
 
-        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms,Dictionary<string,ObjTerm> objTerms)
         {
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
 
             var fixedSymbolExpression = FixExpression(symbolExpression);
-            
+
 
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
             {
@@ -390,27 +452,27 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
+                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms,objTerms);
                 if (!(bool)isIfPartTrue)
                 {
                     return true;
                 }
-                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
+                var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms,objTerms);
                 return isThenPartValid;
             }
 
-            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
+            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms,objTerms);
             return isWholeValid;
         }
 
-        public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
+        public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms, Dictionary<string,ObjTerm> objTerms)
         {
             //todo rule ID not necessary as parameter            
 
 
             //XZT only capitals
             var allTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", symbolExpression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-            
+
             //unique****************************
             //populate dicx with numeric, text, and boolean values accordingly            
             var dicObj = new Dictionary<string, ObjTerm>();
@@ -421,7 +483,6 @@ namespace Validations
                 ObjTerm objTerm;
                 if (term.IsMissing)
                 {
-
                     objTerm = new ObjTerm
                     {
                         obj = term.DataTypeOfTerm switch
@@ -434,16 +495,6 @@ namespace Validations
                         },
                         decimals = term.NumberOfDecimals,
                     };
-
-
-                    obj = term.DataTypeOfTerm switch
-                    {
-                        DataTypeMajorUU.BooleanDtm => false,
-                        DataTypeMajorUU.StringDtm => "",
-                        DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
-                        _ => term.TextValue,
-                    };
                 }
                 else
                 {
@@ -454,32 +505,52 @@ namespace Validations
                             DataTypeMajorUU.BooleanDtm => term.BooleanValue,
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
-                            DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
+                            //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 1000) / 1000), // truncate to 3 decimals
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
                     };
 
-                    obj = term.DataTypeOfTerm switch
-                    {
-                        DataTypeMajorUU.BooleanDtm => term.BooleanValue,
-                        DataTypeMajorUU.StringDtm => term.TextValue,
-                        DataTypeMajorUU.DateDtm => term.DateValue,
-                        DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
-                        _ => term.TextValue,
-                    };
                 }
+                obj = term.DataTypeOfTerm switch
+                {
+                    DataTypeMajorUU.BooleanDtm => term.BooleanValue,
+                    DataTypeMajorUU.StringDtm => term.TextValue,
+                    DataTypeMajorUU.DateDtm => term.DateValue,
+                    DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
+                    _ => term.TextValue,
+                };
                 dicObj.Add(term.Letter, objTerm);
             }
+
+            var usedObjTerms = objTerms.Where(tt => allTerms.Contains(tt.Key)).ToDictionary(tt=>tt.Key,tt=>tt.Value);
+            if(usedObjTerms.Count!= dicObj.Count)
+            {
+                var yy = 333;
+            }
+            else
+            {
+                foreach(var xx in dicObj)
+                {
+                    var item = usedObjTerms[xx.Key];
+                    if(item.decimals!= xx.Value.decimals || item.obj.ToString()!= xx.Value.obj.ToString())
+                    {
+                        var ff = 33;
+                    }
+                }
+            }
+
+            
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(symbolExpression);
-            
+
             var isAllDouble = dicObj.All(obj => obj.Value.obj?.GetType() == typeof(double));
             var dicNormal = dicObj.ToDictionary(ff => ff.Key, ff => ff.Value.obj);
 
-            if ( isAllDouble && isAlgebraig)
+            if (isAllDouble && isAlgebraig)
             {
                 var result = false;
                 //if plain  > or < then let the normal eval check first
@@ -505,7 +576,7 @@ namespace Validations
                 }
 
                 //check equality with tolerance
-                var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);                
+                var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);
                 if ((dicObj.Count > 2 || hasFunctionTerm || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
                 {
                     return IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
@@ -647,7 +718,7 @@ namespace Validations
             //split if then expression            
             //if(A) then B=> A, B            
 
-            var rgxIfThen = @"if\s*(.*)\s*then(.*)";           
+            var rgxIfThen = @"if\s*(.*)\s*then(.*)";
             //var rgxIfThen = @"if\s*\((.*)\)\s*then(.*)";
 
             var terms = GeneralUtils.GetRegexSingleMatchManyGroups(rgxIfThen, stringExpression);
@@ -655,8 +726,8 @@ namespace Validations
             {
                 return (false, "", "");
             }
-            
-            
+
+
             return (true, terms[1], terms[2]);
         }
 
