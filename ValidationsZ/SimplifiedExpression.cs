@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-
+using Z.Expressions;
 
 namespace Validations
 {
@@ -60,27 +60,54 @@ namespace Validations
             
 
         }
-        private bool AssertExperssion(List<RuleTerm> ruleTerms)
+        public bool AssertExperssion(List<RuleTerm> ruleTerms)
         {
             ObjTerms = CreateObjectTerms(ruleTerms);
             foreach(var partialExpression in PartialExpressions)
             {
-                var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.Letter).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+                var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.Expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
                 var teObjTerms = ObjTerms.Where(obj => peLetters.Contains(obj.Key));
+                var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));                                
+                
+                var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
+                var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.Expression);
+
+                //check equality with tolerance
+                if ((teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")) && partialExpression.Expression.Contains("="))//only if more than two terms unless there is another term when formula contains *
+                {
+                    return IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
+                };
 
             }
             return true;
         }
-        
-        public bool AssertExpression(List<RuleTerm> ruleTerms)
+
+
+        static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssionNew(string expression)
         {
-            //var isAllDouble = ObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
-            ObjTerms = CreateObjectTerms(ruleTerms);
-            return false;
+            var containsLogical = Regex.IsMatch(expression, @"[!|&]");
+            if (string.IsNullOrEmpty(expression) || containsLogical)
+            {
+                return (false, "", "", "");
+            }
+
+            var partsSplit = expression.Split(new string[] { ">=", "<=", "==", ">", "<" }, StringSplitOptions.RemoveEmptyEntries);
+            if (partsSplit.Length == 2)
+            {
+                var left = partsSplit[0].Trim();
+                var right = partsSplit[1].Trim();
+                var regOps = @"(<=|>=|==|<|>)";
+                var oper = GeneralUtils.GetRegexSingleMatch(regOps, expression);
+                return (true, left, oper, right);
+            }
+
+            return (false, "", "", "");
+
         }
 
 
-        private  Dictionary<string, ObjTerm> CreateObjectTerms( List<RuleTerm> ruleTerms)
+
+        private static Dictionary<string, ObjTerm> CreateObjectTerms( List<RuleTerm> ruleTerms)
         {
             Dictionary<string, ObjTerm> xobjTerms = new();
             //var letters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
@@ -130,6 +157,64 @@ namespace Validations
 
             }
             return xobjTerms;
+        }
+
+
+        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, string leftOperand, string rightOperand)
+        {
+            //interval comparison if equality operator and more than two terms                    
+            //left site
+            if (leftOperand.Contains("("))
+            {
+                leftOperand = RemoveParenthesis(leftOperand);
+            }
+            var leftTerms = GetLetterTerms(leftOperand);
+            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
+            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
+
+            var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
+            var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
+            (leftNumSmall, leftNumBig) = SwapSmaller(leftNumSmall, leftNumBig);
+
+            //Right site
+            if (rightOperand.Contains("("))
+            {
+                rightOperand = RemoveParenthesis(rightOperand);
+            }
+            var rightTerms = GetLetterTerms(rightOperand);
+            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
+            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
+
+            var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
+            var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
+            (rightNumSmall, rightNumBig) = SwapSmaller(rightNumSmall, rightNumBig);
+
+
+            var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
+            return isValid;
+        }
+
+
+        public static Dictionary<string, double> ConvertDictionaryUsingInterval(List<string> letters, Dictionary<string, ObjTerm> normalDic, bool isAddInterval)
+        {
+            var newDictionary = new Dictionary<string, double>();
+            foreach (var letter in letters)
+            {
+                var signedNum = letter.Contains("-") ? -1.0 : 1.0;
+                var newLetter = letter.Replace("-", "").Trim();
+                var objItem = normalDic[newLetter];
+                var power = objItem.decimals;
+                var num = Convert.ToDouble(objItem.obj);
+                var interval = Math.Pow(10, -power) / 2.0;
+
+                //if it's a negative number, we need to make the number smaller to get the maximum interval
+                var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
+                newDictionary.Add(newLetter, newNum);
+
+            }
+
+            return newDictionary;
+
         }
 
 

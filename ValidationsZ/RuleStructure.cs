@@ -461,7 +461,7 @@ namespace Validations
             }
 
             var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
-            var yyy = simplified.AssertExpression(ruleTerms);
+            var yyy = simplified.AssertExperssion(ruleTerms);
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 

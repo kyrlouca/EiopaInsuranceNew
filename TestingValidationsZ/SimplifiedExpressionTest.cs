@@ -40,6 +40,13 @@ namespace TestingValidationsZ
             simplified.PartialExpressions.Count.Equals(1);
             simplified.PartialExpressions[0].Expression.Equals("X0 >= 0.25*X2");
 
+            str = @"(X0 == X2)";
+            simplified = SimplifiedExpression.CreateExpression(str);
+            simplified.Expression = "VV0 ";
+            simplified.PartialExpressions.Count.Equals(1);
+            simplified.PartialExpressions[0].Expression.Equals("X0 == X2");
+
+
             str = @" ";
             simplified = SimplifiedExpression.CreateExpression(str);
             simplified.Expression = "";

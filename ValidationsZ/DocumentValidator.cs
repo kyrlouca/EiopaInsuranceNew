@@ -153,9 +153,9 @@ namespace Validations
             }
             Console.WriteLine($"Validate Document doc:{DocumentId}");
 
-            //todo updateSheet needs to update fact with IsConversionError
+            
             Console.WriteLine($"Check Fact enum values");
-            var isFactValuesValid = (1 == 1) && ValidateFactEnumValues(); //validation withour rules
+            var isFactValuesValid = (1 == 2) && ValidateFactEnumValues(); //validation withour rules
             //var isFactValuesValid = true;
             if (!isFactValuesValid)
             {
