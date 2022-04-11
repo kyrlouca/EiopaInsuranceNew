@@ -53,68 +53,6 @@ namespace Validations
         public string ScopeString { get; private set; } = "";
 
 
-        public static Dictionary<string, ObjTerm> CreateObjectTerms(string formula,List<RuleTerm> terms )
-        {
-            Dictionary<string, ObjTerm> xobjTerms = new();
-            var xRuleTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
-            
-
-            //get the terms for filter also
-            var xxTerms = terms.Where(rt => xRuleTerms.Contains(rt.Letter)).ToList();            
-            
-            foreach (var term in xxTerms)
-            {
-                object obj;
-                ObjTerm objTerm;
-                if (term.IsMissing)
-                {
-                    objTerm = new ObjTerm
-                    {
-                        obj = term.DataTypeOfTerm switch
-                        {
-                            DataTypeMajorUU.BooleanDtm => false,
-                            DataTypeMajorUU.StringDtm => "",
-                            DataTypeMajorUU.DateDtm => new DateTime(2000, 1, 1),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(0.00),
-                            _ => term.TextValue,
-                        },
-                        decimals = term.NumberOfDecimals,
-                    };
-                }
-                else
-                {
-                    objTerm = new ObjTerm
-                    {
-                        obj = term.DataTypeOfTerm switch
-                        {
-                            DataTypeMajorUU.BooleanDtm => term.BooleanValue,
-                            DataTypeMajorUU.StringDtm => term.TextValue,
-                            DataTypeMajorUU.DateDtm => term.DateValue,
-                            //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 1000) / 1000), // truncate to 3 decimals
-                            _ => term.TextValue,
-                        },
-                        decimals = term.NumberOfDecimals,
-                    };
-
-                }
-                obj = term.DataTypeOfTerm switch
-                {
-                    DataTypeMajorUU.BooleanDtm => term.BooleanValue,
-                    DataTypeMajorUU.StringDtm => term.TextValue,
-                    DataTypeMajorUU.DateDtm => term.DateValue,
-                    DataTypeMajorUU.NumericDtm => Convert.ToDouble(term.DecimalValue),
-                    _ => term.TextValue,
-                };
-                if (!xobjTerms.ContainsKey(term.Letter))
-                {
-                    xobjTerms.Add(term.Letter, objTerm);
-                }
-                
-            }
-            return xobjTerms;
-        }
-
         public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
         {
             ConfigObject = configObject;
@@ -522,26 +460,8 @@ namespace Validations
                 dicObj.Add(term.Letter, objTerm);
             }
 
-            var xObjTerms = RuleStructure.CreateObjectTerms(symbolExpression,ruleTerms );
-
-            var usedObjTerms = xObjTerms.Where(tt => allTerms.Contains(tt.Key)).ToDictionary(tt=>tt.Key,tt=>tt.Value);
-            if(usedObjTerms.Count!= dicObj.Count)
-            {
-                var yy = 333;
-            }
-            else
-            {
-                foreach(var xx in dicObj)
-                {
-                    var item = usedObjTerms[xx.Key];
-                    if(item.decimals!= xx.Value.decimals || item.obj.ToString()!= xx.Value.obj.ToString())
-                    {
-                        var ff = 33;
-                    }
-                }
-            }
-
-            
+            var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
+            var yyy = simplified.AssertExpression(ruleTerms);
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 
