@@ -500,6 +500,7 @@ namespace Validations
                         if (simplified.IsValid != result)
                         {
                             var xx = 33;
+                            Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
                         }
                         return result;
                     }
@@ -513,6 +514,7 @@ namespace Validations
                     if (simplified.IsValid != res)
                     {
                         var yy = 3;
+                        Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
                     }
                     return res;
                 };
@@ -526,6 +528,7 @@ namespace Validations
                 if (simplified.IsValid != result)
                 {
                     var vv = 33;
+                    Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
                 }
                 return result;
 
