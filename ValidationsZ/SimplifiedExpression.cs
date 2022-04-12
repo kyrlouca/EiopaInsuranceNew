@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+
 using System.Threading.Tasks;
 using Z.Expressions;
 
@@ -22,7 +23,7 @@ namespace Validations
     {
         public int RuleId { get; set; }
         public string Expression { get; set; }
-        public string SymbolExpression { get; set; } = "";
+        public string SymbolExpressionFinal { get; set; } = "";
         public Dictionary<string, ObjTerm> ObjTerms { get; set; } = new();
         public Dictionary<string, object> PlainObjTerms { get; set; } = new();
         public bool IsValid { get; set; }
@@ -32,40 +33,44 @@ namespace Validations
         public static SimplifiedExpression CreateExpression(string expression)
         {
             var se = new SimplifiedExpression(expression);
-            se.CreateTerms();
+            se.PartialExpressions = se.CreatePartialExpressions();            
             return se;
         }
         private SimplifiedExpression(string expression)
         {
-            Expression = expression;
+            Expression = RemoveOutsideParenthesis(expression);            
+            
         }
 
 
-        public void CreateTerms()
+        public  List<PartialExpression> CreatePartialExpressions()
         {
+            var partialExpressions = new List<PartialExpression>();
             if (string.IsNullOrWhiteSpace(Expression))
-                return;
-
-            var newFormula = Expression;
-
+                return partialExpressions ;
+            
             var terms = Expression.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var count = 0;
             foreach (var term in terms)
             {
-                PartialExpressions.Add(new PartialExpression() { Letter = $"VV{count}", Expression = term.Trim() });
+                partialExpressions.Add(new PartialExpression() { Letter = $"VV{count}", Expression = term.Trim() });
                 count += 1;
             }
-
-            SymbolExpression = PartialExpressions
-                .Aggregate(newFormula, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
-                .Trim();
-
-
+            return partialExpressions;
         }
+
         public bool AssertExperssion(int ruleId, List<RuleTerm> ruleTerms)
         {
             RuleId = ruleId;
             ObjTerms = CreateObjectTerms(ruleTerms);
+
+            var newFormula = Expression;
+            
+            SymbolExpressionFinal = PartialExpressions
+                .Aggregate(newFormula, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
+                .Trim();
+            
+
             PlainObjTerms = ObjTerms.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
 
             //*** first assert expression using eval.
@@ -126,11 +131,11 @@ namespace Validations
             var peObjTerms = PartialExpressions.ToDictionary(pe => pe.Letter, pe => pe.IsValid);
             try
             {
-                IsValid = (bool)Eval.Execute(SymbolExpression, peObjTerms);
+                IsValid = (bool)Eval.Execute(SymbolExpressionFinal, peObjTerms);
             }
             catch (Exception e)
             {
-                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {SymbolExpression}\n{e.Message}";
+                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {SymbolExpressionFinal}\n{e.Message}";
                 var mess = e.Message;
                 Console.WriteLine(mess);
                 //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
@@ -223,7 +228,7 @@ namespace Validations
             //left site
             if (leftOperand.Contains("("))
             {
-                leftOperand = RemoveParenthesis(leftOperand);
+                leftOperand = ExpressionWithoutParenthesis(leftOperand);
             }
             var leftTerms = GetLetterTerms(leftOperand);
             var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
@@ -236,7 +241,7 @@ namespace Validations
             //Right site
             if (rightOperand.Contains("("))
             {
-                rightOperand = RemoveParenthesis(rightOperand);
+                rightOperand = ExpressionWithoutParenthesis(rightOperand);
             }
             var rightTerms = GetLetterTerms(rightOperand);
             var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
@@ -275,7 +280,7 @@ namespace Validations
         }
 
 
-        public static string RemoveParenthesis(string expression)
+        public static string ExpressionWithoutParenthesis(string expression)
         {
             //rename
             //remove parenthesis
@@ -320,6 +325,21 @@ namespace Validations
             return list;
         }
 
+        public static string RemoveOutsideParenthesis(string expression)
+        {
+            expression = expression.Trim();            
+
+            var balancedParenRegexStr = @$"\(((?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)";
+            Regex balancedParenRegex = new(balancedParenRegexStr, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var match = balancedParenRegex.Match(expression);
+            //to avoid geting only (abc) from  (abc)+ (bc)
+            var val = match.Success && match.Captures[0].Value==expression
+                ? match.Groups[1].Value            
+                : expression;
+
+            return val;
+            
+        }
 
     }
 }

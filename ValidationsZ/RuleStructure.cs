@@ -407,7 +407,7 @@ namespace Validations
         }
 
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
-        {
+        {   
 
             var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
             var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
@@ -708,7 +708,7 @@ namespace Validations
 
             var myEvaluator = new MatchEvaluator(PutQuotesAroundTerm);
 
-            fixedExpression = Regex.Replace(fixedExpression, @"=\s?(x\d{1,3})[\s$""]", myEvaluator);
+            fixedExpression = Regex.Replace(fixedExpression, @"=\s?(x\d{1,3})[\s$""]", myEvaluator);// x0=>"x0"
 
             fixedExpression = fixedExpression.Replace("[", qt);//used for domain members which are strings
             fixedExpression = fixedExpression.Replace("]", qt);
