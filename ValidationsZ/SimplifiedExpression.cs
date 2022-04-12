@@ -15,11 +15,12 @@ namespace Validations
     {
         public string Letter { get; set; }
         public string Expression { get; set; }
-        public bool IsValid { get; }
+        public bool IsValid { get; set; }
     }
 
     public class SimplifiedExpression
     {
+        public int RuleId { get; set; }
         public string Expression { get; set; }
         public string SymbolExpression { get; set; } = "";
         public Dictionary<string, ObjTerm> ObjTerms { get; set; } = new();
@@ -35,7 +36,7 @@ namespace Validations
         }
         private SimplifiedExpression(string expression)
         {
-            Expression = expression;            
+            Expression = expression;
         }
 
 
@@ -50,43 +51,96 @@ namespace Validations
             var count = 0;
             foreach (var term in terms)
             {
-                PartialExpressions.Add(new PartialExpression() {Letter=$"VV{count}", Expression = term.Trim() });
+                PartialExpressions.Add(new PartialExpression() { Letter = $"VV{count}", Expression = term.Trim() });
                 count += 1;
             }
 
             SymbolExpression = PartialExpressions
                 .Aggregate(newFormula, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
                 .Trim();
-            
+
 
         }
-        public bool AssertExperssion(List<RuleTerm> ruleTerms)
+        public bool AssertExperssion(int ruleId, List<RuleTerm> ruleTerms)
         {
+            RuleId = ruleId;
             ObjTerms = CreateObjectTerms(ruleTerms);
-            foreach(var partialExpression in PartialExpressions)
+
+            //*** first assert expression using eval.
+            try
+            {
+                IsValid = (bool)Eval.Execute(Expression, ObjTerms);
+            }
+            catch (Exception e)
+            {
+                var mess = e.Message;
+                Console.WriteLine(mess);
+                //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                throw;
+            }
+
+            if (IsValid)
+                return IsValid;
+
+            //*** If invalid, give another go. Check every partial expression and check with equality tolerance where appropriate
+            foreach (var partialExpression in PartialExpressions)
             {
                 var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.Expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-                var teObjTerms = ObjTerms.Where(obj => peLetters.Contains(obj.Key));
-                var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));                                
-                
-                var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
+                var teObjTerms = ObjTerms.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
+                var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
+
+                var teRuleTerms = ruleTerms.Where(rt => peLetters.Contains(rt.Letter));
+                var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
+
                 var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.Expression);
 
                 //check equality with tolerance
-                if ((teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")) && partialExpression.Expression.Contains("="))//only if more than two terms unless there is another term when formula contains *
+                if (isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
                 {
-                    return IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
-                };
-
+                    partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
+                }
+                else
+                {
+                    //check partial expression using eval
+                    try
+                    {
+                        IsValid = (bool)Eval.Execute(partialExpression.Expression, ObjTerms);
+                    }
+                    catch (Exception e)
+                    {
+                        var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.Expression}\n{e.Message}";
+                        var mess = e.Message;
+                        Console.WriteLine(mess);
+                        //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                        throw;
+                    }
+                }                                
             }
-            return true;
+
+
+            //*** Now evaluate the outcome of all PartialExpressions
+            var peObjTerms = PartialExpressions.ToDictionary(pe => pe.Letter, pe => pe.IsValid);
+            try
+            {
+                IsValid = (bool)Eval.Execute(Expression, peObjTerms);
+            }
+            catch (Exception e)
+            {
+                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {Expression}\n{e.Message}";
+                var mess = e.Message;
+                Console.WriteLine(mess);
+                //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                throw;
+            }
+            return IsValid;
+
         }
 
 
         static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssionNew(string expression)
         {
-            var containsLogical = Regex.IsMatch(expression, @"[!|&]");
-            if (string.IsNullOrEmpty(expression) || containsLogical)
+            //var containsLogical = Regex.IsMatch(expression, @"[!|&]");
+            if (string.IsNullOrEmpty(expression))
             {
                 return (false, "", "", "");
             }
@@ -105,22 +159,20 @@ namespace Validations
 
         }
 
-
-
-        private static Dictionary<string, ObjTerm> CreateObjectTerms( List<RuleTerm> ruleTerms)
+        private static Dictionary<string, ObjTerm> CreateObjectTerms(List<RuleTerm> ruleTerms)
         {
             Dictionary<string, ObjTerm> xobjTerms = new();
             //var letters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
-            
+
             //var xxTerms = terms.Where(rt => letters.Contains(rt.Letter)).ToList();
 
             foreach (var term in ruleTerms)
-            {                
+            {
                 ObjTerm objTerm;
                 if (term.IsMissing)
                 {
                     objTerm = new ObjTerm
-                    { 
+                    {
                         obj = term.DataTypeOfTerm switch
                         {
                             DataTypeMajorUU.BooleanDtm => false,
@@ -149,7 +201,7 @@ namespace Validations
                     };
 
                 }
-                
+
                 if (!xobjTerms.ContainsKey(term.Letter))
                 {
                     xobjTerms.Add(term.Letter, objTerm);
@@ -215,6 +267,52 @@ namespace Validations
 
             return newDictionary;
 
+        }
+
+
+        public static string RemoveParenthesis(string expression)
+        {
+            //rename
+            //remove parenthesis
+            //@"$c = $d - (-$e - $f + x2)";=>@"$c = $d + $e + $f - x2";
+            var wholeParen = GeneralUtils.GetRegexSingleMatch(@"(-\s*\(.*?\))", expression);
+            if (string.IsNullOrEmpty(wholeParen))
+            {
+                //to catch (x1*x3) without the minus sign
+                return expression;
+            }
+            var x1 = wholeParen.Replace("+", "?");
+            var x2 = x1.Replace("-", "+");
+            var x3 = x2.Replace("?", "-");
+            var x4 = x3.Replace("(", "");
+            var x5 = x4.Replace(")", "");//do not replace if string is empty
+            var nn = expression.Replace(wholeParen, x5);
+            var n1 = Regex.Replace(nn, @"\-\s*\-", "+");
+            var n2 = Regex.Replace(n1, @"\+\s*\+", "+");
+            var n3 = Regex.Replace(n2, @"\+\s*?\-", "-");
+
+            return n3;
+        }
+
+
+        public static (double, double) SwapSmaller(double a, double b)
+        {
+            if (a < b)
+            {
+                return (a, b);
+            }
+            else
+            {
+                return (b, a);
+            }
+        }
+
+
+        public static List<string> GetLetterTerms(string expression)
+        {
+            //it will return the letter terms but with the MINUS sign in front
+            var list = GeneralUtils.GetRegexListOfMatchesWithCase(@"(-?\s*[XZ]\d{1,2})", expression);
+            return list;
         }
 
 
