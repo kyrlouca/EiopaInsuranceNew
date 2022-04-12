@@ -28,27 +28,59 @@ namespace Validations
         public Dictionary<string, object> PlainObjTerms { get; set; } = new();
         public bool IsValid { get; set; }
         public List<PartialExpression> PartialExpressions { get; set; } = new();
+        public Dictionary<string, SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new();
         private SimplifiedExpression() { }
 
         public static SimplifiedExpression CreateExpression(string expression)
         {
             var se = new SimplifiedExpression(expression);
-            se.PartialExpressions = se.CreatePartialExpressions();            
+            var newFormula = se.Expression;
+            se.PartialSimplifiedExpressions = se.CreatePartialSimplifiedExpressions();
+            se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
+                .Aggregate(newFormula, (currValue, partialSimplified) => currValue.Replace(partialSimplified.Value.Expression, $" {partialSimplified.Key} "))
+                .Trim();
+
+            se.PartialExpressions = se.CreateTermExpressions();
+
+            se.SymbolExpressionFinal = se.PartialExpressions
+                .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
+                .Trim();
             return se;
         }
+
         private SimplifiedExpression(string expression)
         {
-            Expression = RemoveOutsideParenthesis(expression);            
-            
+            Expression = RemoveOutsideParenthesis(expression);
         }
 
 
-        public  List<PartialExpression> CreatePartialExpressions()
+        public Dictionary<string, SimplifiedExpression> CreatePartialSimplifiedExpressions()
+        {
+            var partialSimplifiedExpressions = new Dictionary<string, SimplifiedExpression>();
+            if (string.IsNullOrWhiteSpace(Expression))
+                return partialSimplifiedExpressions;
+
+            var ParenthesisPartialRegStr = @$"\((?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!))\)";
+            Regex ParenthesisPartialReg = new(ParenthesisPartialRegStr, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+            var distinctMatches = ParenthesisPartialReg.Matches(Expression)
+                .Select(item => item.Captures[0].Value.Trim())
+                .Distinct();
+
+
+            var partialSimplified = distinctMatches
+                .Select((item, Idx) => (dIdx: $"ZZ{Idx}", dSimplified: new SimplifiedExpression(item)))
+                .ToDictionary(dMatch => dMatch.dIdx, item => item.dSimplified);
+            return partialSimplified;
+        }
+
+
+        public List<PartialExpression> CreateTermExpressions()
         {
             var partialExpressions = new List<PartialExpression>();
             if (string.IsNullOrWhiteSpace(Expression))
-                return partialExpressions ;
-            
+                return partialExpressions;
+
             var terms = Expression.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var count = 0;
             foreach (var term in terms)
@@ -63,15 +95,18 @@ namespace Validations
         {
             RuleId = ruleId;
             ObjTerms = CreateObjectTerms(ruleTerms);
-
-            var newFormula = Expression;
-            
-            SymbolExpressionFinal = PartialExpressions
-                .Aggregate(newFormula, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
-                .Trim();
-            
-
             PlainObjTerms = ObjTerms.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
+
+
+            //create an ObjTerm for each partial simplified expression
+            var partialSimplifiedObjs = PartialSimplifiedExpressions.ToDictionary(pe => pe.Key, pe => pe.Value.AssertExperssion(ruleId, ruleTerms));
+
+            foreach (var partialSimplifiedObj in partialSimplifiedObjs)
+            {
+                PlainObjTerms.Add(partialSimplifiedObj.Key, partialSimplifiedObj.Value);
+            }
+
+
 
             //*** first assert expression using eval.
             try
@@ -123,7 +158,7 @@ namespace Validations
                 {
                     partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
                 }
-                
+
             }
 
 
@@ -267,7 +302,7 @@ namespace Validations
                 var objItem = normalDic[newLetter];
                 var power = objItem.decimals;
 
-                
+
                 try
                 {
                     var num = Convert.ToDouble(objItem.obj);
@@ -281,7 +316,7 @@ namespace Validations
                 {
                     newDictionary.Add(newLetter, 0);
                 }
-                
+
 
             }
 
@@ -337,18 +372,19 @@ namespace Validations
 
         public static string RemoveOutsideParenthesis(string expression)
         {
-            expression = expression.Trim();            
+
+            expression = expression?.Trim()??"";
 
             var balancedParenRegexStr = @$"\(((?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!)))\)";
             Regex balancedParenRegex = new(balancedParenRegexStr, RegexOptions.Compiled | RegexOptions.IgnoreCase);
             var match = balancedParenRegex.Match(expression);
             //to avoid geting only (abc) from  (abc)+ (bc)
-            var val = match.Success && match.Captures[0].Value==expression
-                ? match.Groups[1].Value            
+            var val = match.Success && match.Captures[0].Value == expression
+                ? match.Groups[1].Value
                 : expression;
 
             return val;
-            
+
         }
 
     }

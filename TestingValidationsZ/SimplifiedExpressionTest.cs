@@ -20,14 +20,14 @@ namespace TestingValidationsZ
 
             var str = @"X0 >= 0.25*X2 && X0 <= 0.45*X2 ";
             var simplified = SimplifiedExpression.CreateExpression(str);
-            simplified.Expression = "VV0 && VV1";
+            simplified.SymbolExpressionFinal.Equals("VV0 && VV1");
             simplified.PartialExpressions.Count.Equals(2);
             simplified.PartialExpressions[0].Expression.Equals("X0 >= 0.25*X2");
             simplified.PartialExpressions[1].Expression.Equals("X0 <= 0.45*X2");
 
              str = @"X0 >= 0.25*X2 && X0 <= 0.45*X2 ||  X4";
             simplified = SimplifiedExpression.CreateExpression(str);
-            simplified.Expression = "VV0 && VV1 || VV2";
+            simplified.SymbolExpressionFinal.Equals("VV0 && VV1 || VV2");
             simplified.PartialExpressions.Count.Equals(3);
             simplified.PartialExpressions[0].Expression.Equals("X0 >= 0.25*X2");
             simplified.PartialExpressions[1].Expression.Equals("X0 <= 0.45*X2");
@@ -36,25 +36,25 @@ namespace TestingValidationsZ
 
             str = @"X0 >= 0.25*X2  ";
             simplified = SimplifiedExpression.CreateExpression(str);
-            simplified.Expression = "VV0 ";
+            simplified.SymbolExpressionFinal.Equals("VV0");
             simplified.PartialExpressions.Count.Equals(1);
             simplified.PartialExpressions[0].Expression.Equals("X0 >= 0.25*X2");
 
             str = @"(X0 == X2)";
             simplified = SimplifiedExpression.CreateExpression(str);
-            simplified.Expression = "VV0 ";
+            simplified.SymbolExpressionFinal.Equals("VV0");
             simplified.PartialExpressions.Count.Equals(1);
             simplified.PartialExpressions[0].Expression.Equals("X0 == X2");
 
 
             str = @" ";
             simplified = SimplifiedExpression.CreateExpression(str);
-            simplified.Expression = "";
+            simplified.SymbolExpressionFinal.Equals("");
             simplified.PartialExpressions.Count.Equals(0);
 
             string str2=null;
             simplified = SimplifiedExpression.CreateExpression(str2);
-            simplified.Expression = "";
+            simplified.SymbolExpressionFinal.Equals("");
             simplified.PartialExpressions.Count.Equals(0);
 
         }

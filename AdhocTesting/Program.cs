@@ -17,8 +17,8 @@ namespace AdhocTesting
         static void Main(string[] args)
         {
 
-            //var xx = SimplifiedExpression.RemoveOutsideParenthesis(@"(abc+efg)");
-            var xx = SimplifiedExpression.RemoveOutsideParenthesis(@"((abc) + (efg) )");
+            //var xx = SimplifiedExpression.RemoveOutsideParenthesis(@"abc+(efg)");
+            var xx = SimplifiedExpression.CreateExpression(@"abc + (efg) ");
 
             var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
 
