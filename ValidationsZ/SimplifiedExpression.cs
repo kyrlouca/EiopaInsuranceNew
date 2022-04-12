@@ -118,8 +118,8 @@ namespace Validations
                 var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
                 var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.Expression);
 
-                
-                if (isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+
+                if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
                 {
                     partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
                 }
@@ -266,12 +266,22 @@ namespace Validations
                 var newLetter = letter.Replace("-", "").Trim();
                 var objItem = normalDic[newLetter];
                 var power = objItem.decimals;
-                var num = Convert.ToDouble(objItem.obj);
-                var interval = Math.Pow(10, -power) / 2.0;
 
-                //if it's a negative number, we need to make the number smaller to get the maximum interval
-                var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
-                newDictionary.Add(newLetter, newNum);
+                
+                try
+                {
+                    var num = Convert.ToDouble(objItem.obj);
+                    var interval = Math.Pow(10, -power) / 2.0;
+
+                    //if it's a negative number, we need to make the number smaller to get the maximum interval
+                    var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
+                    newDictionary.Add(newLetter, newNum);
+                }
+                catch
+                {
+                    newDictionary.Add(newLetter, 0);
+                }
+                
 
             }
 
