@@ -24,6 +24,7 @@ namespace Validations
         public string Expression { get; set; }
         public string SymbolExpression { get; set; } = "";
         public Dictionary<string, ObjTerm> ObjTerms { get; set; } = new();
+        public Dictionary<string, object> PlainObjTerms { get; set; } = new();
         public bool IsValid { get; set; }
         public List<PartialExpression> PartialExpressions { get; set; } = new();
         private SimplifiedExpression() { }
@@ -65,11 +66,12 @@ namespace Validations
         {
             RuleId = ruleId;
             ObjTerms = CreateObjectTerms(ruleTerms);
+            PlainObjTerms = ObjTerms.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
 
             //*** first assert expression using eval.
             try
             {
-                IsValid = (bool)Eval.Execute(Expression, ObjTerms);
+                IsValid = (bool)Eval.Execute(Expression, PlainObjTerms);
             }
             catch (Exception e)
             {
@@ -85,36 +87,38 @@ namespace Validations
             //*** If invalid, give another go. Check every partial expression and check with equality tolerance where appropriate
             foreach (var partialExpression in PartialExpressions)
             {
+
+                //check partial expression using eval
+                try
+                {
+                    partialExpression.IsValid = (bool)Eval.Execute(partialExpression.Expression, PlainObjTerms);
+                }
+                catch (Exception e)
+                {
+                    var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.Expression}\n{e.Message}";
+                    var mess = e.Message;
+                    Console.WriteLine(mess);
+                    //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                    throw;
+                }
+                if (partialExpression.IsValid)
+                    continue;
+
+                //another go, now check equality with tolerance if appropriate
                 var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.Expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
                 var teObjTerms = ObjTerms.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
                 var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
 
                 var teRuleTerms = ruleTerms.Where(rt => peLetters.Contains(rt.Letter));
                 var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
-
                 var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.Expression);
 
-                //check equality with tolerance
+                
                 if (isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
                 {
                     partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
                 }
-                else
-                {
-                    //check partial expression using eval
-                    try
-                    {
-                        IsValid = (bool)Eval.Execute(partialExpression.Expression, ObjTerms);
-                    }
-                    catch (Exception e)
-                    {
-                        var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.Expression}\n{e.Message}";
-                        var mess = e.Message;
-                        Console.WriteLine(mess);
-                        //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
-                        throw;
-                    }
-                }                                
+                
             }
 
 
@@ -122,11 +126,11 @@ namespace Validations
             var peObjTerms = PartialExpressions.ToDictionary(pe => pe.Letter, pe => pe.IsValid);
             try
             {
-                IsValid = (bool)Eval.Execute(Expression, peObjTerms);
+                IsValid = (bool)Eval.Execute(SymbolExpression, peObjTerms);
             }
             catch (Exception e)
             {
-                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {Expression}\n{e.Message}";
+                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {SymbolExpression}\n{e.Message}";
                 var mess = e.Message;
                 Console.WriteLine(mess);
                 //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
@@ -162,6 +166,7 @@ namespace Validations
         private static Dictionary<string, ObjTerm> CreateObjectTerms(List<RuleTerm> ruleTerms)
         {
             Dictionary<string, ObjTerm> xobjTerms = new();
+
             //var letters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", formula).Distinct();// get X0,X1,Z0,... to avoid x0 
 
             //var xxTerms = terms.Where(rt => letters.Contains(rt.Letter)).ToList();
@@ -194,7 +199,7 @@ namespace Validations
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
                             //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 1000) / 1000), // truncate to 3 decimals
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 100000) / 100000), // truncate to 3 decimals
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
