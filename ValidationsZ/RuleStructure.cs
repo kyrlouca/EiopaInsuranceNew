@@ -388,14 +388,19 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
+            
+
                 var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
                 if (!(bool)isIfPartTrue)
                 {
                     return true;
                 }
+            
                 var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
                 return isThenPartValid;
             }
+
+            
 
             var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
             return isWholeValid;
@@ -403,7 +408,9 @@ namespace Validations
 
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
-            //todo rule ID not necessary as parameter            
+
+            var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
+            var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
 
 
             //XZT only capitals
@@ -460,8 +467,7 @@ namespace Validations
                 dicObj.Add(term.Letter, objTerm);
             }
 
-            var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
-            var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
+            
 
             //if algebraic expression like x0= X1 + X2*X3 we cannot use the eval because of decimals. We need to compare manually x0, x1+x2*3 
 
@@ -491,6 +497,10 @@ namespace Validations
                     // otherwise => the  operator is >=  or false => it will have antother chance for tolerance equality
                     if (!operatorUsed.Contains("=") || result)
                     {
+                        if (simplified.IsValid != result)
+                        {
+                            var xx = 33;
+                        }
                         return result;
                     }
                 }
@@ -499,7 +509,12 @@ namespace Validations
                 var hasFunctionTerm = ruleTerms.Any(term => term.IsFunctionTerm);
                 if ((dicObj.Count > 2 || hasFunctionTerm || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
                 {
-                    return IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
+                    var res= (bool)IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
+                    if (simplified.IsValid != res)
+                    {
+                        var yy = 3;
+                    }
+                    return res;
                 };
 
 
@@ -508,6 +523,10 @@ namespace Validations
                 var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
 
                 result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);
+                if (simplified.IsValid != result)
+                {
+                    var vv = 33;
+                }
                 return result;
 
             }
