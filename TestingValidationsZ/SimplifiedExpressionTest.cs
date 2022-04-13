@@ -19,14 +19,14 @@ namespace TestingValidationsZ
             //Do not test nested Terms here-- use other test
 
             var str = @"X0 >= 0.25*X2 && X0 <= 0.45*X2 ";
-            var simplified = SimplifiedExpression.CreateExpression(str);
+            var simplified = SimplifiedExpression.Create(1,null,str);
             simplified.SymbolExpressionFinal.Equals("VV0 && VV1");
             simplified.TermExpressions.Count.Equals(2);
             simplified.TermExpressions[0].TermExpressionStr.Equals("X0 >= 0.25*X2");
             simplified.TermExpressions[1].TermExpressionStr.Equals("X0 <= 0.45*X2");
 
              str = @"X0 >= 0.25*X2 && X0 <= 0.45*X2 ||  X4";
-            simplified = SimplifiedExpression.CreateExpression(str);
+            simplified = SimplifiedExpression.Create(1,null,str);
             simplified.SymbolExpressionFinal.Equals("VV0 && VV1 || VV2");
             simplified.TermExpressions.Count.Equals(3);
             simplified.TermExpressions[0].TermExpressionStr.Equals("X0 >= 0.25*X2");
@@ -35,25 +35,25 @@ namespace TestingValidationsZ
 
 
             str = @"X0 >= 0.25*X2  ";
-            simplified = SimplifiedExpression.CreateExpression(str);
+            simplified = SimplifiedExpression.Create(1, null, str);
             simplified.SymbolExpressionFinal.Equals("VV0");
             simplified.TermExpressions.Count.Equals(1);
             simplified.TermExpressions[0].TermExpressionStr.Equals("X0 >= 0.25*X2");
 
             str = @"(X0 == X2)";
-            simplified = SimplifiedExpression.CreateExpression(str);
+            simplified = SimplifiedExpression.Create(1, null, str);
             simplified.SymbolExpressionFinal.Equals("VV0");
             simplified.TermExpressions.Count.Equals(1);
             simplified.TermExpressions[0].TermExpressionStr.Equals("X0 == X2");
 
 
             str = @" ";
-            simplified = SimplifiedExpression.CreateExpression(str);
+            simplified = SimplifiedExpression.Create(1, null, str);
             simplified.SymbolExpressionFinal.Equals("");
             simplified.TermExpressions.Count.Equals(0);
 
             string str2=null;
-            simplified = SimplifiedExpression.CreateExpression(str2);
+            simplified = SimplifiedExpression.Create(1,null,str2);
             simplified.SymbolExpressionFinal.Equals("");
             simplified.TermExpressions.Count.Equals(0);
 
@@ -66,7 +66,7 @@ namespace TestingValidationsZ
             //Do not test nested Terms here-- use other test
 
             var str = @"!(Z0) && (!(Z1) || !(Z2) || !(Z3) || !(Z4))";
-            var simplified = SimplifiedExpression.CreateExpression(str);
+            var simplified = SimplifiedExpression.Create(1, null, str);
             simplified.SymbolExpressionFinal.Equals("VV0 && VV1");
             simplified.TermExpressions.Count.Equals(2);
             //simplified.TermExpressions[0].TermExpressionStr.Equals("VV0");

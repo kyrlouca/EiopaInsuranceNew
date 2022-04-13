@@ -409,7 +409,7 @@ namespace Validations
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {   
 
-            var simplified = SimplifiedExpression.CreateExpression(symbolExpression);
+            var simplified = SimplifiedExpression.Create(ruleId,ruleTerms, symbolExpression);
             var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
 
 

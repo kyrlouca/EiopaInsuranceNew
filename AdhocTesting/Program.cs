@@ -18,8 +18,9 @@ namespace AdhocTesting
         {
 
             //var xx = SimplifiedExpression.RemoveOutsideParenthesis(@"abc+(efg)");
-            //var xx = xxSimplifiedExpression.ParseExpression(@"abc||de&&ff", 0);
-            var x3 = xxSimplifiedExpression.ParseExpression(@"abcef", 0);
+            //var xx = SimplifiedExpression.Create(1,null,@"X1>X2+3||X1=X3 && X4");
+            var xx = SimplifiedExpression.Create(1, null, @"X1>X2+3||(X1=X3 && X4)");
+            //var x3 = SimplifiedExpression.ParseExpression(@"abcef", 0);
 
             var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
 
