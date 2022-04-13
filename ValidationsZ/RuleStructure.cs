@@ -410,7 +410,7 @@ namespace Validations
         {   
 
             var simplified = SimplifiedExpression.Create(ruleId,ruleTerms, symbolExpression);
-            var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
+            //var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
 
 
             //XZT only capitals

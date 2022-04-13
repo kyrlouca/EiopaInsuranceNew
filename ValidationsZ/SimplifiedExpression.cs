@@ -81,7 +81,13 @@ namespace Validations
         }
 
 
-
+        private void AssertSimplified()
+        {
+            foreach (var termExpression in TermExpressions)
+            {
+                //var isValidTerm=  AssertExperssion(RuleId,RuleTerms)
+            }
+        }
 
 
         public List<SimplifiedExpression> CreatePartialSimplifiedExpressions()
@@ -132,27 +138,13 @@ namespace Validations
             return partial;
         }
 
-        public bool AssertExperssion(int ruleId, List<RuleTerm> ruleTerms)
+        public bool AssertSingleTermExperssionNew(string expression)
         {
-            RuleId = ruleId;
-            TolerantObjValues = CreateObjectTerms(ruleTerms);
-            PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
-
-
-            //create an ObjTerm for each partial simplified expression
-            //var partialSimplifiedObjs = PartialSimplifiedExpressions.ToDictionary(pe => pe.Key, pe => pe.Value.AssertExperssion(ruleId, ruleTerms));
-
-            //foreach (var partialSimplifiedObj in partialSimplifiedObjs)
-            //{
-            //    PlainObjValues.Add(partialSimplifiedObj.Key, partialSimplifiedObj.Value);
-            //}
-
-
-
+            var isValid = true;
             //*** first assert expression using eval.
             try
             {
-                IsValid = (bool)Eval.Execute(Expression, PlainObjValues);
+                isValid = (bool)Eval.Execute(expression, PlainObjValues);
             }
             catch (Exception e)
             {
@@ -162,65 +154,26 @@ namespace Validations
                 throw;
             }
 
-            if (IsValid)
-                return IsValid;
+            if (isValid)
+                return isValid;
 
-            //*** If invalid, give another go. Check every partial expression and check with equality tolerance where appropriate
-            foreach (var partialExpression in TermExpressions)
+            //another go, now check equality with tolerance if appropriate
+            var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+            var teObjTerms = TolerantObjValues.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
+            var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
+
+            var teRuleTerms = RuleTerms.Where(rt => peLetters.Contains(rt.Letter));
+            var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
+            var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(expression);
+
+
+            if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
             {
-
-                //check partial expression using eval
-                try
-                {
-                    partialExpression.IsValid = (bool)Eval.Execute(partialExpression.TermExpressionStr, PlainObjValues);
-                }
-                catch (Exception e)
-                {
-                    var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.TermExpressionStr}\n{e.Message}";
-                    var mess = e.Message;
-                    Console.WriteLine(mess);
-                    //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
-                    throw;
-                }
-                if (partialExpression.IsValid)
-                    continue;
-
-                //another go, now check equality with tolerance if appropriate
-                var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.TermExpressionStr).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-                var teObjTerms = TolerantObjValues.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
-                var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
-
-                var teRuleTerms = ruleTerms.Where(rt => peLetters.Contains(rt.Letter));
-                var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
-                var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.TermExpressionStr);
-
-
-                if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.TermExpressionStr.Contains("*")))//only if more than two terms unless there is another term when formula contains *
-                {
-                    partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
-                }
-
+                isValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
             }
-
-
-            //*** Now evaluate the outcome of all PartialExpressions
-            var peObjTerms = TermExpressions.ToDictionary(pe => pe.LetterId, pe => pe.IsValid);
-            try
-            {
-                IsValid = (bool)Eval.Execute(SymbolExpressionFinal, peObjTerms);
-            }
-            catch (Exception e)
-            {
-                var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {SymbolExpressionFinal}\n{e.Message}";
-                var mess = e.Message;
-                Console.WriteLine(mess);
-                //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
-                throw;
-            }
-            return IsValid;
+            return isValid;
 
         }
-
 
         static (bool isValid, string leftOperand, string operatorUsed, string rightOperand) SplitAlgebraExpresssionNew(string expression)
         {
