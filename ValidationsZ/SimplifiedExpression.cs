@@ -42,7 +42,7 @@ namespace Validations
         {
             //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
             //TermsExressions x2>=X1+X2
-            //expressionFactors (letter, bool)  from both PartialSimplifed and ExpressionObjects
+            
 
 
             //find other simplified in parenthesis (replace with letter ts without paren)
@@ -198,10 +198,11 @@ namespace Validations
 
             var teRuleTerms = RuleTerms.Where(rt => peLetters.Contains(rt.Letter));
             var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
+            var hasCalculationTerm = teObjTerms.Any(obj => Regex.IsMatch(obj.Key, @"SE|PS|VV"));
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(expression);
 
 
-            if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+            if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
             {
                 result = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
             }
