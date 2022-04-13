@@ -193,14 +193,22 @@ namespace Validations
 
             //another go, now check equality with tolerance if appropriate
             var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+           
             var teObjTerms = TolerantObjValues.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
             var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
+            //var teDerivedTerms= 
 
             var teRuleTerms = RuleTerms.Where(rt => peLetters.Contains(rt.Letter));
             var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
-            var hasCalculationTerm = teObjTerms.Any(obj => Regex.IsMatch(obj.Key, @"SE|PS|VV"));
+            var hasCalculationTerm = Regex.IsMatch(expression, @"SE|PS|VV");
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(expression);
 
+            var ddLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([SV].\d\d)", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+            var teObjDerived = PlainObjValues.Where(obj => ddLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
+            foreach(var teObjDer in teObjDerived)
+            {
+                teObjTerms.Add(teObjDer.Key, new ObjTerm() {obj=teObjDer.Value,decimals=2 });
+            }
 
             if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
             {
@@ -272,7 +280,7 @@ namespace Validations
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
                             //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 100000) / 100000), // truncate to 3 decimals
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 100) / 100), // truncate to 3 decimals
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
@@ -290,7 +298,7 @@ namespace Validations
         }
 
 
-        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, string leftOperand, string rightOperand)
+        private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> tolerantValues, string leftOperand, string rightOperand)
         {
             //interval comparison if equality operator and more than two terms                    
             //left site
@@ -299,8 +307,8 @@ namespace Validations
                 leftOperand = ExpressionWithoutParenthesis(leftOperand);
             }
             var leftTerms = GetLetterTerms(leftOperand);
-            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, dicObj, false);
-            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, dicObj, true);
+            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, false);
+            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, true);
 
             var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
             var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
@@ -312,8 +320,8 @@ namespace Validations
                 rightOperand = ExpressionWithoutParenthesis(rightOperand);
             }
             var rightTerms = GetLetterTerms(rightOperand);
-            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, dicObj, false);
-            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, dicObj, true);
+            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, false);
+            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, true);
 
             var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
             var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
@@ -399,7 +407,7 @@ namespace Validations
         public static List<string> GetLetterTerms(string expression)
         {
             //it will return the letter terms but with the MINUS sign in front
-            var list = GeneralUtils.GetRegexListOfMatchesWithCase(@"(-?\s*[XZ]\d{1,2})", expression);
+            var list = GeneralUtils.GetRegexListOfMatchesWithCase(@"((?:[XZ]\d{1,2})|(?:SE\d\d)|(?:PS\d\d)|(?:VV\d{1,2}))", expression);
             return list;
         }
 
