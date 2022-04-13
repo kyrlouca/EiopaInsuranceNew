@@ -114,10 +114,9 @@ namespace Validations
                 partialSimplifiedExpression.IsValid = (bool)isValidPartial;
                 //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
             }
-            var result = (bool)Eval.Execute(SymbolExpressionFinal, PlainObjValues);
-            IsValid = result;
+            var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
+            IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result :true;            
             PlainObjValues.Add(LetterId, result);
-
         }
 
 
