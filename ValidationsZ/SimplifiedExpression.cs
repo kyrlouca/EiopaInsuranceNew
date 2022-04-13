@@ -38,7 +38,7 @@ namespace Validations
         public static Dictionary<string, object> PlainObjValues { get; set; }
 
 
-        public static SimplifiedExpression Create(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser=false)
+        public static SimplifiedExpression Process(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser=false)
         {
             //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
             //TermsExressions x2>=X1+X2
@@ -138,7 +138,7 @@ namespace Validations
 
 
             var partialSimplified = distinctMatches
-                .Select(expr => SimplifiedExpression.Create(RuleId, RuleTerms, expr))
+                .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr))
                 .ToList();
 
             return partialSimplified;
