@@ -280,7 +280,7 @@ namespace Validations
                             DataTypeMajorUU.StringDtm => term.TextValue,
                             DataTypeMajorUU.DateDtm => term.DateValue,
                             //DataTypeMajorUU.NumericDtm => Math.Round( Convert.ToDouble(term.DecimalValue),5),
-                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 100) / 100), // truncate to 3 decimals
+                            DataTypeMajorUU.NumericDtm => Convert.ToDouble(Math.Truncate(term.DecimalValue * 10000) / 10000), // truncate to 3 decimals
                             _ => term.TextValue,
                         },
                         decimals = term.NumberOfDecimals,
