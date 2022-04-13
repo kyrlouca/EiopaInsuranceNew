@@ -101,13 +101,17 @@ namespace Validations
             foreach (var termExpression in TermExpressions)
             {
                 var isValidTerm = AssertSingleTermExperssionNew(termExpression.TermExpressionStr);
-                termExpression.IsValid = isValidTerm;
+
+
+                var isBooleanType = Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
+                termExpression.IsValid = isBooleanType ? (bool)isValidTerm : false;
+                
                 PlainObjValues.Add(termExpression.LetterId, isValidTerm);                
             }
             foreach(var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
                 var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
-                partialSimplifiedExpression.IsValid = isValidPartial;
+                partialSimplifiedExpression.IsValid = (bool)isValidPartial;
                 //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
             }
             var result = (bool)Eval.Execute(SymbolExpressionFinal, PlainObjValues);
@@ -165,13 +169,15 @@ namespace Validations
             return partial;
         }
 
-        public bool AssertSingleTermExperssionNew(string expression)
+        public object AssertSingleTermExperssionNew(string expression)
         {
-            var isValid = true;
+            //var isValid = true;
+            object result;
             //*** first assert expression using eval.
             try
             {
-                isValid = (bool)Eval.Execute(expression, PlainObjValues);
+                //var isBooleanType = Regex.Match(expression, @"(>|<|==)").Success;
+                result = Eval.Execute(expression, PlainObjValues);                                
             }
             catch (Exception e)
             {
@@ -180,9 +186,11 @@ namespace Validations
                 //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
                 throw;
             }
-
-            if (isValid)
-                return isValid;
+            if (result.GetType() == typeof(bool) )
+            {
+                if ((bool)result)
+                    return result;
+            }            
 
             //another go, now check equality with tolerance if appropriate
             var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
@@ -196,9 +204,9 @@ namespace Validations
 
             if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
             {
-                isValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
+                result = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
             }
-            return isValid;
+            return result;
 
         }
 

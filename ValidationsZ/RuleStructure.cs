@@ -501,7 +501,7 @@ namespace Validations
                         var mess = e.Message;
                         Console.WriteLine(mess);
                         Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
-                        throw;
+                        //throw;
                     }
                     //if operator is only ">" or "<" or isValid return 
                     // otherwise => the  operator is >=  or false => it will have antother chance for tolerance equality
@@ -521,11 +521,23 @@ namespace Validations
 
 
                 //check for plain Equality without tolerances               
-                var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
-                var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
+                try
+                {
+                    var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
+                    var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
+                    result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);
+                    return result;
+                }
+                catch (Exception e)
+                {
+                    var mess = e.Message;
+                    Console.WriteLine(mess);
+                    Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                    //throw;
+                }
+                
 
-                result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);                
-                return result;
+                
 
             }
 
@@ -540,8 +552,9 @@ namespace Validations
                 var mess = e.Message;
                 Console.WriteLine(mess);
                 Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
-                throw;
+                //throw;
             }
+            return false;
         }
 
         private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> dicObj, string leftOperand, string rightOperand)
