@@ -12,51 +12,102 @@ using Z.Expressions;
 namespace Validations
 {
 
-    public class PartialExpression
+    public class TermExpression
     {
-        public string Letter { get; set; }
-        public string Expression { get; set; }
+        public string LetterId { get; set; }
+        public string TermExpressionStr { get; set; }
         public bool IsValid { get; set; }
     }
 
     public class SimplifiedExpression
     {
+        public string LetterId { get; set; }
         public int RuleId { get; set; }
         public string Expression { get; set; }
         public string SymbolExpressionFinal { get; set; } = "";
-        public Dictionary<string, ObjTerm> ObjTerms { get; set; } = new();
-        public Dictionary<string, object> PlainObjTerms { get; set; } = new();
+        public Dictionary<string, ObjTerm> TolerantObjValues { get; set; } = new();
+        public Dictionary<string, object> PlainObjValues { get; set; } = new();
         public bool IsValid { get; set; }
-        public List<PartialExpression> PartialExpressions { get; set; } = new();
-        public Dictionary<string, SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new();
+        public List<TermExpression> TermExpressions { get; set; } = new(); //x2>=X1+X2
+        public List<SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new(); //make it a list  (x2>=X1+X2 && X3>3) 
+        public Dictionary<string, bool> Factors { get; set; } = new();
         private SimplifiedExpression() { }
+        private static int SECounter { get; set; }=0;
+        private static int TECounter { get; set; } = 0;
+
+
+
+        public static SimplifiedExpression Create(int ruleId, List<RuleTerm> ruleTerms, string expression)
+        {
+            //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
+            //TermsExressions x2>=X1+X2
+            //expressionFactors (letter, bool)  from both PartialSimplifed and ExpressionObjects
+
+
+            //find other simplified in parenthesis (replace with letter ts without paren)
+            //for each simplified, create a PlainObjTerm 
+            //-- evalatue also
+            //create a list of 
+            var se = new SimplifiedExpression(ruleId,ruleTerms,expression);
+            
+
+
+            var newFormula = se.Expression;
+            se.PartialSimplifiedExpressions = se.CreatePartialSimplifiedExpressions();
+            se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
+               .Aggregate(newFormula, (currValue, partialSimplified) => currValue.Replace(partialSimplified.Value.Expression, $" {partialSimplified.Key} "))
+               .Trim();
+
+
+
+            se.TermExpressions = se.CreateTermExpressions();
+
+            se.SymbolExpressionFinal = se.TermExpressions
+                .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
+                .Trim();
+            return se;
+        }
+
+
+        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression)
+        {
+            LetterId=$"SE{SimplifiedExpression.SECounter}";
+            RuleId = ruleId;
+            TolerantObjValues = CreateObjectTerms(ruleTerms);
+            PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
+            Expression = RemoveOutsideParenthesis(expression);
+        }
+
 
         public static SimplifiedExpression CreateExpression(string expression)
         {
             var se = new SimplifiedExpression(expression);
             var newFormula = se.Expression;
             se.PartialSimplifiedExpressions = se.CreatePartialSimplifiedExpressions();
-            se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
+             se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
                 .Aggregate(newFormula, (currValue, partialSimplified) => currValue.Replace(partialSimplified.Value.Expression, $" {partialSimplified.Key} "))
                 .Trim();
 
-            se.PartialExpressions = se.CreateTermExpressions();
+            
 
-            se.SymbolExpressionFinal = se.PartialExpressions
-                .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.Expression, $" {termExpression.Letter} "))
+            se.TermExpressions = se.CreateTermExpressions();
+
+            se.SymbolExpressionFinal = se.TermExpressions
+                .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
                 .Trim();
             return se;
         }
 
+     
         private SimplifiedExpression(string expression)
         {
             Expression = RemoveOutsideParenthesis(expression);
         }
 
 
-        public Dictionary<string, SimplifiedExpression> CreatePartialSimplifiedExpressions()
+        public List<SimplifiedExpression> CreatePartialSimplifiedExpressions()
         {
-            var partialSimplifiedExpressions = new Dictionary<string, SimplifiedExpression>();
+            var partialSimplifiedExpressions = new List<SimplifiedExpression>();
             if (string.IsNullOrWhiteSpace(Expression))
                 return partialSimplifiedExpressions;
 
@@ -68,24 +119,29 @@ namespace Validations
                 .Distinct();
 
 
+            //var partialSimplified = distinctMatches
+            //    .Select((item, Idx) => (dIdx: $"PS{Idx}", dSimplified: new SimplifiedExpression(item)))
+            //    .ToDictionary(dMatch => dMatch.dIdx, item => item.dSimplified);
+
             var partialSimplified = distinctMatches
-                .Select((item, Idx) => (dIdx: $"ZZ{Idx}", dSimplified: new SimplifiedExpression(item)))
-                .ToDictionary(dMatch => dMatch.dIdx, item => item.dSimplified);
+                .Select(expr => new SimplifiedExpression(expr))
+                .ToList();
+                
             return partialSimplified;
         }
 
 
-        public List<PartialExpression> CreateTermExpressions()
+        public List<TermExpression> CreateTermExpressions()
         {
-            var partialExpressions = new List<PartialExpression>();
-            if (string.IsNullOrWhiteSpace(Expression))
+            var partialExpressions = new List<TermExpression>();
+            if (string.IsNullOrWhiteSpace(SymbolExpressionFinal))
                 return partialExpressions;
 
-            var terms = Expression.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            var terms = SymbolExpressionFinal.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             var count = 0;
             foreach (var term in terms)
             {
-                partialExpressions.Add(new PartialExpression() { Letter = $"VV{count}", Expression = term.Trim() });
+                partialExpressions.Add(new TermExpression() { LetterId = $"VV{count}", TermExpressionStr = term.Trim() });
                 count += 1;
             }
             return partialExpressions;
@@ -94,8 +150,8 @@ namespace Validations
         public bool AssertExperssion(int ruleId, List<RuleTerm> ruleTerms)
         {
             RuleId = ruleId;
-            ObjTerms = CreateObjectTerms(ruleTerms);
-            PlainObjTerms = ObjTerms.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
+            TolerantObjValues = CreateObjectTerms(ruleTerms);
+            PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
 
 
             //create an ObjTerm for each partial simplified expression
@@ -103,7 +159,7 @@ namespace Validations
 
             foreach (var partialSimplifiedObj in partialSimplifiedObjs)
             {
-                PlainObjTerms.Add(partialSimplifiedObj.Key, partialSimplifiedObj.Value);
+                PlainObjValues.Add(partialSimplifiedObj.Key, partialSimplifiedObj.Value);
             }
 
 
@@ -111,7 +167,7 @@ namespace Validations
             //*** first assert expression using eval.
             try
             {
-                IsValid = (bool)Eval.Execute(Expression, PlainObjTerms);
+                IsValid = (bool)Eval.Execute(Expression, PlainObjValues);
             }
             catch (Exception e)
             {
@@ -125,17 +181,17 @@ namespace Validations
                 return IsValid;
 
             //*** If invalid, give another go. Check every partial expression and check with equality tolerance where appropriate
-            foreach (var partialExpression in PartialExpressions)
+            foreach (var partialExpression in TermExpressions)
             {
 
                 //check partial expression using eval
                 try
                 {
-                    partialExpression.IsValid = (bool)Eval.Execute(partialExpression.Expression, PlainObjTerms);
+                    partialExpression.IsValid = (bool)Eval.Execute(partialExpression.TermExpressionStr, PlainObjValues);
                 }
                 catch (Exception e)
                 {
-                    var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.Expression}\n{e.Message}";
+                    var messs2 = $"Rule Id:{ruleId} => INVALID Rule expression {partialExpression.TermExpressionStr}\n{e.Message}";
                     var mess = e.Message;
                     Console.WriteLine(mess);
                     //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
@@ -145,16 +201,16 @@ namespace Validations
                     continue;
 
                 //another go, now check equality with tolerance if appropriate
-                var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.Expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-                var teObjTerms = ObjTerms.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
+                var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", partialExpression.TermExpressionStr).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+                var teObjTerms = TolerantObjValues.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
                 var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
 
                 var teRuleTerms = ruleTerms.Where(rt => peLetters.Contains(rt.Letter));
                 var hasFunctionTerm = teRuleTerms.Any(term => term.IsFunctionTerm);  //sum, max, min
-                var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.Expression);
+                var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(partialExpression.TermExpressionStr);
 
 
-                if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.Expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+                if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || partialExpression.TermExpressionStr.Contains("*")))//only if more than two terms unless there is another term when formula contains *
                 {
                     partialExpression.IsValid = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
                 }
@@ -163,7 +219,7 @@ namespace Validations
 
 
             //*** Now evaluate the outcome of all PartialExpressions
-            var peObjTerms = PartialExpressions.ToDictionary(pe => pe.Letter, pe => pe.IsValid);
+            var peObjTerms = TermExpressions.ToDictionary(pe => pe.LetterId, pe => pe.IsValid);
             try
             {
                 IsValid = (bool)Eval.Execute(SymbolExpressionFinal, peObjTerms);
