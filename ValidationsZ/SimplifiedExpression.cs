@@ -65,6 +65,8 @@ namespace Validations
             se.SymbolExpressionFinal = se.TermExpressions
                 .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
                 .Trim();
+
+            se.AssertSimplified();
             return se;
         }
 
@@ -85,8 +87,18 @@ namespace Validations
         {
             foreach (var termExpression in TermExpressions)
             {
-                //var isValidTerm=  AssertExperssion(RuleId,RuleTerms)
+                var isValidTerm = AssertSingleTermExperssionNew(termExpression.TermExpressionStr);
+                termExpression.IsValid = isValidTerm;
+                Factors.Add(termExpression.LetterId, isValidTerm);
             }
+            foreach(var partialSimplifiedExpression in PartialSimplifiedExpressions)
+            {
+                var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
+                partialSimplifiedExpression.IsValid = isValidPartial;
+                Factors.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
+            }
+            var result = (bool)Eval.Execute(SymbolExpressionFinal, Factors);
+
         }
 
 

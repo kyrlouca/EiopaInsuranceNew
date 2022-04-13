@@ -374,7 +374,6 @@ namespace Validations
 
             var fixedSymbolExpression = FixExpression(symbolExpression);
 
-
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
             {
                 return null;
@@ -385,33 +384,40 @@ namespace Validations
             }
 
 
+
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-            
+                var validSimplifiedIf = SimplifiedExpression.Create(ruleId, ruleTerms, ifExpression).IsValid;
+                var isIfPartTrue = (bool) AssertSingleExpression(ruleId, ifExpression, ruleTerms);
+                if (validSimplifiedIf != isIfPartTrue)
+                {
+                    var xx = 333;
+                }
 
-                var isIfPartTrue = AssertSingleExpression(ruleId, ifExpression, ruleTerms);
                 if (!(bool)isIfPartTrue)
                 {
-                    return true;
+                    return true; 
                 }
-            
+
+                var validSimplifiedThen = SimplifiedExpression.Create(ruleId, ruleTerms, thenExpression).IsValid;
                 var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
+                if (validSimplifiedThen != isThenPartValid)
+                {
+                    var xx33 = 333;
+                }
                 return isThenPartValid;
             }
 
-            
-
+            var validSimplifiedWhole = SimplifiedExpression.Create(ruleId, ruleTerms, fixedSymbolExpression);
             var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
             return isWholeValid;
         }
 
+
         public static object AssertSingleExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {   
-
-            var simplified = SimplifiedExpression.Create(ruleId,ruleTerms, symbolExpression);
-            //var yyy = simplified.AssertExperssion(ruleId, ruleTerms);
-
+       
 
             //XZT only capitals
             var allTerms = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", symbolExpression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
@@ -497,11 +503,6 @@ namespace Validations
                     // otherwise => the  operator is >=  or false => it will have antother chance for tolerance equality
                     if (!operatorUsed.Contains("=") || result)
                     {
-                        if (simplified.IsValid != result)
-                        {
-                            var xx = 33;
-                            Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
-                        }
                         return result;
                     }
                 }
@@ -511,11 +512,6 @@ namespace Validations
                 if ((dicObj.Count > 2 || hasFunctionTerm || symbolExpression.Contains("*")) && operatorUsed.Contains("="))//only if more than two terms unless there is another term when formula contains *
                 {
                     var res= (bool)IsNumbersEqualWithTolerances(dicObj, leftOperand, rightOperand);
-                    if (simplified.IsValid != res)
-                    {
-                        var yy = 3;
-                        Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
-                    }
                     return res;
                 };
 
@@ -524,12 +520,7 @@ namespace Validations
                 var leftNum = Convert.ToDouble(Eval.Execute(leftOperand, dicNormal));
                 var rightNum = Convert.ToDouble(Eval.Execute(rightOperand, dicNormal));
 
-                result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);
-                if (simplified.IsValid != result)
-                {
-                    var vv = 33;
-                    Log.Error($"Rule Id:{ruleId} => Different Result {symbolExpression}");
-                }
+                result = IsPlainNumbersEqual(operatorUsed, 0.01, leftNum, rightNum);                
                 return result;
 
             }
