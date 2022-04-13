@@ -24,21 +24,21 @@ namespace Validations
         public string LetterId { get; set; }
         public int RuleId { get; set; }
         public string Expression { get; set; }
-        public List<RuleTerm> RuleTerms { get; set; }
+        public static List<RuleTerm> RuleTerms { get; set; }
         public string SymbolExpressionFinal { get; set; } = "";
-        public Dictionary<string, ObjTerm> TolerantObjValues { get; set; } = new();
-        public Dictionary<string, object> PlainObjValues { get; set; } = new();
+        
         public bool IsValid { get; set; }
         public List<TermExpression> TermExpressions { get; set; } = new(); //x2>=X1+X2
         public List<SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new(); //make it a list  (x2>=X1+X2 && X3>3) 
-        public Dictionary<string, bool> Factors { get; set; } = new();
+        //public Dictionary<string, bool> Factors { get; set; } = new();
         private SimplifiedExpression() { }
         private static int SECounter { get; set; } = 0;
         private static int TECounter { get; set; } = 0;
+        public static Dictionary<string, ObjTerm> TolerantObjValues { get; set; } 
+        public static Dictionary<string, object> PlainObjValues { get; set; }
 
 
-
-        public static SimplifiedExpression Create(int ruleId, List<RuleTerm> ruleTerms, string expression)
+        public static SimplifiedExpression Create(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser=false)
         {
             //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
             //TermsExressions x2>=X1+X2
@@ -49,7 +49,16 @@ namespace Validations
             //for each simplified, create a PlainObjTerm 
             //-- evalatue also
             //create a list of 
-            var se = new SimplifiedExpression(ruleId, ruleTerms, expression);
+
+            if (comesFromUser)
+            {
+                SECounter = 0;
+                TECounter = 0;
+                PlainObjValues = new();
+                TolerantObjValues = new();
+                RuleTerms = new();
+            }
+            var se = new SimplifiedExpression(ruleId, ruleTerms, expression,comesFromUser);
 
 
             //find and create *recursively* the simplifiedExpressions (they are in parenthesis)
@@ -71,15 +80,19 @@ namespace Validations
         }
 
 
-        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression)
+        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser)
         {
             RuleId = ruleId;
             RuleTerms = ruleTerms;
             Expression = expression;
             //Expression = RemoveOutsideParenthesis(expression);
             LetterId = $"SE{SimplifiedExpression.SECounter++:D2}";
-            TolerantObjValues = CreateObjectTerms(ruleTerms);
-            PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
+            if (comesFromUser)
+            {
+                TolerantObjValues = CreateObjectTerms(ruleTerms);
+                PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
+            }
+            
         }
 
 
@@ -89,15 +102,17 @@ namespace Validations
             {
                 var isValidTerm = AssertSingleTermExperssionNew(termExpression.TermExpressionStr);
                 termExpression.IsValid = isValidTerm;
-                Factors.Add(termExpression.LetterId, isValidTerm);
+                PlainObjValues.Add(termExpression.LetterId, isValidTerm);                
             }
             foreach(var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
                 var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
                 partialSimplifiedExpression.IsValid = isValidPartial;
-                Factors.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
+                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
             }
-            var result = (bool)Eval.Execute(SymbolExpressionFinal, Factors);
+            var result = (bool)Eval.Execute(SymbolExpressionFinal, PlainObjValues);
+            IsValid = result;
+            PlainObjValues.Add(LetterId, result);
 
         }
 

@@ -388,7 +388,7 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-                var validSimplifiedIf = SimplifiedExpression.Create(ruleId, ruleTerms, ifExpression).IsValid;
+                var validSimplifiedIf = SimplifiedExpression.Create(ruleId, ruleTerms, ifExpression,true).IsValid;
                 var isIfPartTrue = (bool) AssertSingleExpression(ruleId, ifExpression, ruleTerms);
                 if (validSimplifiedIf != isIfPartTrue)
                 {
@@ -400,7 +400,7 @@ namespace Validations
                     return true; 
                 }
 
-                var validSimplifiedThen = SimplifiedExpression.Create(ruleId, ruleTerms, thenExpression).IsValid;
+                var validSimplifiedThen = SimplifiedExpression.Create(ruleId, ruleTerms, thenExpression,true).IsValid;
                 var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
                 if (validSimplifiedThen != isThenPartValid)
                 {
@@ -409,8 +409,12 @@ namespace Validations
                 return isThenPartValid;
             }
 
-            var validSimplifiedWhole = SimplifiedExpression.Create(ruleId, ruleTerms, fixedSymbolExpression);
-            var isWholeValid = AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
+            var validSimplifiedWhole = SimplifiedExpression.Create(ruleId, ruleTerms, fixedSymbolExpression,true).IsValid;
+            var isWholeValid = (bool)AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
+            if (validSimplifiedWhole != isWholeValid)
+            {
+                var xx33 = 333;
+            }
             return isWholeValid;
         }
 
