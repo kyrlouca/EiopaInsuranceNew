@@ -63,7 +63,7 @@ namespace XbrlReader
                 var applicationYear = int.TryParse(args[5], out var arg5) ? arg5 : 0;
                 var applicationQuarter = int.TryParse(args[6], out var arg6) ? arg6 : 0;
                 var xbrlFile = args[7];
-                Console.WriteLine($"XbrlReader v1: xbrlfile:{xbrlFile}");
+                Console.WriteLine($"XbrlReader v1.001: xbrlfile:{xbrlFile}");
                                 
                 XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);                          
 

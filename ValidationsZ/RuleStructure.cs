@@ -144,7 +144,7 @@ namespace Validations
 
 
             var ruleTerms = distinctMatches
-                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx}", item, true)).ToList();
+                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
 
             if (ruleTerms.Count == 0)
                 return (expression, new List<RuleTerm>());

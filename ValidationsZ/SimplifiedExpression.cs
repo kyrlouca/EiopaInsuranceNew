@@ -150,19 +150,19 @@ namespace Validations
 
         public List<TermExpression> CreateTermExpressions()
         {
-            var partialExpressions = new List<TermExpression>();
+            var termExpressions = new List<TermExpression>();
             if (string.IsNullOrWhiteSpace(SymbolExpressionFinal))
-                return partialExpressions;
+                return termExpressions;
 
             var cleanExpression = RemoveOutsideParenthesis(SymbolExpressionFinal);
             var terms = cleanExpression.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (var term in terms)
             {
-                partialExpressions.Add(new TermExpression() { LetterId = $"VV{TECounter++:D2}", TermExpressionStr = term.Trim() });
+                termExpressions.Add(new TermExpression() { LetterId = $"VV{TECounter++:D2}", TermExpressionStr = term.Trim() });
             }
 
 
-            var partial = partialExpressions
+            var partial = termExpressions
                 .Where(pe => !pe.TermExpressionStr.StartsWith("SE"))
                 .ToList();
             return partial;

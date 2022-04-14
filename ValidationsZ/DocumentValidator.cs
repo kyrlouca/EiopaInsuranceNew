@@ -151,7 +151,7 @@ namespace Validations
             {
                 return false;
             }
-            Console.WriteLine($"Validate Document doc:{DocumentId}");
+            Console.WriteLine($"v1.000 : Validate Document doc:{DocumentId}");
 
             
             Console.WriteLine($"Check Fact enum values");
