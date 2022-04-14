@@ -133,12 +133,7 @@ namespace Validations
             var distinctMatches = ParenthesisPartialReg.Matches(cleanExpression)
                 .Select(item => item.Captures[0].Value.Trim())
                 .Distinct();
-
-
-            //var partialSimplified = distinctMatches
-            //    .Select((item, Idx) => (dIdx: $"PS{Idx}", dSimplified: new SimplifiedExpression(item)))
-            //    .ToDictionary(dMatch => dMatch.dIdx, item => item.dSimplified);
-
+           
 
             var partialSimplified = distinctMatches
                 .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr))

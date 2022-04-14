@@ -131,7 +131,7 @@ namespace Validations
             //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
             //2 Create one new term  for each function     
             //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
-            //*** Distinct letters for duplicate terms ***
+            //*** Same distinct letter for exactly the same terms ***
 
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
@@ -171,7 +171,7 @@ namespace Validations
             .Distinct();
 
             var ruleTerms = distinctMatches
-                .Select((item, Idx) => new RuleTerm($"X{Idx}", item, false)).ToList();
+                .Select((item, Idx) => new RuleTerm($"X{Idx:D2}", item, false)).ToList();
 
             if (ruleTerms.Count == 0)
                 return ("", new List<RuleTerm>());
