@@ -55,7 +55,12 @@ namespace EntityClasses
 
             DataPointSignature = BuildFactSignature(xbrlCode,  ctxLines);            
 
-            DataPointSignatureFilled = DataPointSignature;            
+            DataPointSignatureFilled = DataPointSignature;
+            if (TextValue.Trim().Length > 1200)
+            {
+                TextValue = GeneralUtils.TruncateString(TextValue, 1200);
+            }
+
             ConvertTextValue();
             return this;
         }
