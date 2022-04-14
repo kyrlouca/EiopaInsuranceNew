@@ -112,11 +112,12 @@ namespace Validations
             {
                 var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
                 partialSimplifiedExpression.IsValid = (bool)isValidPartial;
-                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);             
+                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);
+                throw new Exception("check if it is really true");
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result :true;            
-            PlainObjValues.Add(LetterId, result);
+            PlainObjValues.Add(LetterId, result);//inserts itself so the parent will find it
         }
 
 
@@ -129,7 +130,7 @@ namespace Validations
             var ParenthesisPartialRegStr = @$"\((?>\((?<c>)|[^()]+|\)(?<-c>))*(?(c)(?!))\)";
             Regex ParenthesisPartialReg = new(ParenthesisPartialRegStr, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-            var cleanExpression = RemoveOutsideParenthesis(Expression);
+            var cleanExpression = RemoveOuterParenthesis(Expression);
             var distinctMatches = ParenthesisPartialReg.Matches(cleanExpression)
                 .Select(item => item.Captures[0].Value.Trim())
                 .Distinct();
@@ -149,7 +150,7 @@ namespace Validations
             if (string.IsNullOrWhiteSpace(SymbolExpressionFinal))
                 return termExpressions;
 
-            var cleanExpression = RemoveOutsideParenthesis(SymbolExpressionFinal);
+            var cleanExpression = RemoveOuterParenthesis(SymbolExpressionFinal);
             var terms = cleanExpression.Split(new string[] { "&&", "||" }, StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (var term in terms)
             {
@@ -299,7 +300,7 @@ namespace Validations
             //left site
             if (leftOperand.Contains("("))
             {
-                leftOperand = ExpressionWithoutParenthesis(leftOperand);
+                leftOperand = FlattenExpressionWithoutParenthesis(leftOperand);
             }
             var leftTerms = GetLetterTerms(leftOperand);
             var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, false);
@@ -312,7 +313,7 @@ namespace Validations
             //Right site
             if (rightOperand.Contains("("))
             {
-                rightOperand = ExpressionWithoutParenthesis(rightOperand);
+                rightOperand = FlattenExpressionWithoutParenthesis(rightOperand);
             }
             var rightTerms = GetLetterTerms(rightOperand);
             var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, false);
@@ -361,10 +362,10 @@ namespace Validations
         }
 
 
-        public static string ExpressionWithoutParenthesis(string expression)
+        public static string FlattenExpressionWithoutParenthesis(string expression)
         {
-            //rename
-            //remove parenthesis
+            
+            //remove parenthesis to use smaller and larger tolerances
             //@"$c = $d - (-$e - $f + x2)";=>@"$c = $d + $e + $f - x2";
             var wholeParen = GeneralUtils.GetRegexSingleMatch(@"(-\s*\(.*?\))", expression);
             if (string.IsNullOrEmpty(wholeParen))
@@ -406,7 +407,7 @@ namespace Validations
             return list;
         }
 
-        public static string RemoveOutsideParenthesis(string expression)
+        public static string RemoveOuterParenthesis(string expression)
         {
 
             expression = expression?.Trim() ?? "";

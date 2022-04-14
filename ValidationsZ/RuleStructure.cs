@@ -71,26 +71,27 @@ namespace Validations
         {
             //Create symbol formula and finalSymbol formula. Same for filter
             //Two kind of terms: normal and function terms. 
-            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X0,X1
+            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
             //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
-            //--if there are nested functions  we have nested function terms T1,T2, 
+            //--if there are nested functions  we have nested function terms T01,T02, ,the first digit is from its father Z letter
             //formula = @"{S.23.01.01.01,r0540,c0050}=max(0,min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})) ";
             //-- NotmalTerms:{S.23.01.01.01,r0540,c0050}
             //-- FunctionTerms min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})
             //var resmm = new RuleStructure(formula);
-            //resmm.SymbolFormula.Should().Be("X0=max(0,min(0.5*X1-3*X2))");
-            //resmm.SymbolFinalFormula.Should().Be("X0=Z0");
+            //resmm.SymbolFormula.Should().Be("X00=max(0,min(0.5*X01-3*X02))");
+            //resmm.SymbolFinalFormula.Should().Be("X00=Z00");  Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
             //resmm.RuleTerms.Count.Should().Be(5);
 
-
+            //*********************************************************************************
             //Create the plain Terms "X".
-            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X0) . X0 term will be created
+            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
             (var symbolFormula, var ruleTerms) = CreateRuleTermsNew(theFormulaExpression);
             var theFormula = symbolFormula;
             var theTerms = ruleTerms;
 
+            //*********************************************************************************
             //Create the Function Terms "Z".
-            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z0. Z0 term will be created (Z0 may have a nested term)
+            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
             (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTermsNew(theFormula, "Z");
             var theSymbolFinalFormula = finalSymbolFormula;
             foreach (var newTerm in newFunctionTerms)
@@ -98,9 +99,10 @@ namespace Validations
                 theTerms.Add(newTerm);
             }
 
+
+            //*********************************************************************************
             //"Z" function terms may have  nested function terms            
-            //if a function Term "Z" has a nested term, the FinalFormula will remain the same but its termText will change from 
-            //"X0=max(0,min(0.5*X1-3*X2))")
+            //if a function Term "Z" has a nested term, the FinalFormula will remain the same but its termText will have a T00 term
             var count = 0;
             foreach (var newFunctionTerm in newFunctionTerms)
             {
