@@ -990,8 +990,8 @@ namespace XbrlReader
             if (inTableDims.Count != filterDims.Count)
             {
                 var message = $"filterDimd different table:{table.TableCode}";
-                Console.WriteLine(message);
-                Log.Error(message);
+                //Console.WriteLine(message);
+                //Log.Error(message);
             }
 
             if (filterDims.Count > 0)
