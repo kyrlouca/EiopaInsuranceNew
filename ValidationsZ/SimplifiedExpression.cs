@@ -21,12 +21,13 @@ namespace Validations
 
     public class SimplifiedExpression
     {
+        public bool IsTesting { get; set; }
         public string LetterId { get; set; }
         public int RuleId { get; set; }
         public string Expression { get; set; }
         public static List<RuleTerm> RuleTerms { get; set; }
         public string SymbolExpressionFinal { get; set; } = "";
-        
+
         public bool IsValid { get; set; }
         public List<TermExpression> TermExpressions { get; set; } = new(); //x2>=X1+X2
         public List<SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new(); //make it a list  (x2>=X1+X2 && X3>3) 
@@ -34,15 +35,15 @@ namespace Validations
         private SimplifiedExpression() { }
         private static int SECounter { get; set; } = 0;
         private static int TECounter { get; set; } = 0;
-        public static Dictionary<string, ObjTerm> TolerantObjValues { get; set; } 
+        public static Dictionary<string, ObjTerm> TolerantObjValues { get; set; }
         public static Dictionary<string, object> PlainObjValues { get; set; }
 
 
-        public static SimplifiedExpression Process(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser=false)
+        public static SimplifiedExpression Process(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser, bool isTesting = false)
         {
             //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
             //TermsExressions x2>=X1+X2
-            
+
 
 
             //find other simplified in parenthesis (replace with letter ts without paren)
@@ -58,7 +59,7 @@ namespace Validations
                 TolerantObjValues = new();
                 RuleTerms = new();
             }
-            var se = new SimplifiedExpression(ruleId, ruleTerms, expression,comesFromUser);
+            var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser,isTesting);
 
 
             //find and create *recursively* the simplifiedExpressions (they are in parenthesis)
@@ -75,16 +76,17 @@ namespace Validations
                 .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
                 .Trim();
 
-            se.AssertSimplified();
+            if (!isTesting)
+                se.AssertSimplified();
             return se;
         }
 
 
-        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression,bool comesFromUser)
+        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser,bool isTesting=false)
         {
             RuleId = ruleId;
             RuleTerms = ruleTerms;
-            Expression = expression;
+            Expression = expression ?? "";
             //Expression = RemoveOutsideParenthesis(expression);
             LetterId = $"SE{SimplifiedExpression.SECounter++:D2}";
             if (comesFromUser)
@@ -92,7 +94,7 @@ namespace Validations
                 TolerantObjValues = CreateObjectTerms(ruleTerms);
                 PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
             }
-            
+            IsTesting = isTesting;
         }
 
 
@@ -105,18 +107,18 @@ namespace Validations
 
                 var isBooleanType = Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
                 termExpression.IsValid = isBooleanType ? (bool)isValidTerm : false;
-                
-                PlainObjValues.Add(termExpression.LetterId, isValidTerm);                
+
+                PlainObjValues.Add(termExpression.LetterId, isValidTerm);
             }
-            foreach(var partialSimplifiedExpression in PartialSimplifiedExpressions)
+            foreach (var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
-                var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
+                var isValidPartial = AssertSingleTermExperssionNew(SymbolExpressionFinal);
                 partialSimplifiedExpression.IsValid = (bool)isValidPartial;
                 //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);
                 //throw new Exception("check if it is really true");
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
-            IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result :true;            
+            IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result : true;
             PlainObjValues.Add(LetterId, result);//inserts itself so the parent will find it
         }
 
@@ -134,10 +136,10 @@ namespace Validations
             var distinctMatches = ParenthesisPartialReg.Matches(cleanExpression)
                 .Select(item => item.Captures[0].Value.Trim())
                 .Distinct();
-           
+
 
             var partialSimplified = distinctMatches
-                .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr))
+                .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr, false,IsTesting))
                 .ToList();
 
             return partialSimplified;
@@ -172,7 +174,7 @@ namespace Validations
             try
             {
                 //var isBooleanType = Regex.Match(expression, @"(>|<|==)").Success;
-                result = Eval.Execute(expression, PlainObjValues);                                
+                result = Eval.Execute(expression, PlainObjValues);
             }
             catch (Exception e)
             {
@@ -181,15 +183,15 @@ namespace Validations
                 //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
                 throw;
             }
-            if (result.GetType() == typeof(bool) )
+            if (result.GetType() == typeof(bool))
             {
                 if ((bool)result)
                     return result;
-            }            
+            }
 
             //another go, now check equality with tolerance if appropriate
             var peLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([XZT]\d{1,2})", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
-           
+
             var teObjTerms = TolerantObjValues.Where(obj => peLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
             var isAllDouble = teObjTerms.All(obj => obj.Value.obj?.GetType() == typeof(double));
             //var teDerivedTerms= 
@@ -201,9 +203,9 @@ namespace Validations
 
             var ddLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([SV].\d\d)", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
             var teObjDerived = PlainObjValues.Where(obj => ddLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
-            foreach(var teObjDer in teObjDerived)
+            foreach (var teObjDer in teObjDerived)
             {
-                teObjTerms.Add(teObjDer.Key, new ObjTerm() {obj=teObjDer.Value,decimals=2 });
+                teObjTerms.Add(teObjDer.Key, new ObjTerm() { obj = teObjDer.Value, decimals = 2 });
             }
 
             if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
@@ -364,7 +366,7 @@ namespace Validations
 
         public static string FlattenExpressionWithoutParenthesis(string expression)
         {
-            
+
             //remove parenthesis to use smaller and larger tolerances
             //@"$c = $d - (-$e - $f + x2)";=>@"$c = $d + $e + $f - x2";
             var wholeParen = GeneralUtils.GetRegexSingleMatch(@"(-\s*\(.*?\))", expression);
