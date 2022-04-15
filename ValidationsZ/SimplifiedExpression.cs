@@ -114,12 +114,12 @@ namespace Validations
             {
                 var isValidPartial = AssertSingleTermExperssionNew(SymbolExpressionFinal);
                 partialSimplifiedExpression.IsValid = (bool)isValidPartial;
-                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);
-                //throw new Exception("check if it is really true");
+                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);  // NOT here because of recursion. The recursed should be validated first 
+                
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result : true;
-            PlainObjValues.Add(LetterId, result);//inserts itself so the parent will find it
+            PlainObjValues.Add(LetterId, result);// the recursed will come first and it will insert itself so the parent will find it
         }
 
 
