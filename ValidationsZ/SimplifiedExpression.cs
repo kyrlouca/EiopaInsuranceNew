@@ -113,7 +113,7 @@ namespace Validations
                 var isValidPartial = AssertSingleTermExperssionNew( SymbolExpressionFinal);
                 partialSimplifiedExpression.IsValid = (bool)isValidPartial;
                 //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);
-                throw new Exception("check if it is really true");
+                //throw new Exception("check if it is really true");
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result :true;            
