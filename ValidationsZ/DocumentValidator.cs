@@ -690,7 +690,8 @@ namespace Validations
             //** construct and save the validation rules for the Module
             foreach (var validationRule in validationRules)
             {
-                var ruleStructure = new RuleStructure(validationRule);
+                
+                var ruleStructure = new RuleStructure(validationRule.TableBasedFormula,validationRule.Filter, false,validationRule);
                 Console.Write(".");
                 ModuleRules.Add(ruleStructure);
             }

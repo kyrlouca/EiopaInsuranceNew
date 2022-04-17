@@ -59,26 +59,67 @@ namespace Validations
             //to prevent user from creating default constructor;
         }
 
-        public RuleStructure(string tableBaseFormula, string filterFormula = "")
+
+        public RuleStructure(string tableBaseFormula, string filterFormula,bool isTechnical, C_ValidationRuleExpression validationRuleDb)
         {
-            //this is the main Constructor
+            if (validationRuleDb is not null)
+            {
+                
+                ValidationRuleId = validationRuleDb.ValidationRuleID ;
+                TableBaseFormula = validationRuleDb.TableBasedFormula?.Trim() ?? "";
+                FilterFormula = validationRuleDb.Filter?.Trim() ?? "";
+                ValidationRuleDb = validationRuleDb;
+                ScopeString = ValidationRuleDb.Scope?.Trim() ?? ""; //scopestring not needed
+                ScopeTableCode = GetTableCode();
+                IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
+            }
+            else
+            {
+                //this is used for testing where only the formula is required and NOT the rule record from the Db
+                TableBaseFormula = tableBaseFormula?.Trim() ?? "";
+                FilterFormula = filterFormula.Trim() ?? "";
+                IsTechnical = isTechnical;
+            }
+                        
+
+            if (IsTechnical)
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTermsTechincalRule(TableBaseFormula);
+            }
+            else
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
+                (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
+            }
+
+        }
+
+        public RuleStructure(string tableBaseFormula, string filterFormula)
+        {
+
+            //This constructor can be used for testing because it only requires the TableBaseFormula string
+            //It is used as the first Parent in chained constructors
             TableBaseFormula = tableBaseFormula?.Trim();
             FilterFormula = filterFormula?.Trim();
 
-            (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
-            (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
+            if (IsTechnical)
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTermsTechincalRule(TableBaseFormula);
+            }
+            else
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
+                (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
+            }
+
         }
 
-        public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
-        {
-            ConfigObject = configObject;
-        }
 
-        
 
         public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
         {
-
+            //this is the constructions which is actually used for assertions becaused it has the rule record as read from the db
+            //it will execure the chained this first.
             if (validationRuleDb is null)
             {
                 return;
@@ -89,8 +130,7 @@ namespace Validations
             ValidationRuleDb = validationRuleDb;
             ScopeString = ValidationRuleDb.Scope ?? "";
             ScopeTableCode = GetTableCode();
-            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
-
+            
         }
 
 
@@ -109,7 +149,7 @@ namespace Validations
             //resmm.SymbolFinalFormula.Should().Be("X00=Z00");  Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
             //resmm.RuleTerms.Count.Should().Be(5);
 
-            
+
 
 
             //*********************************************************************************
@@ -157,6 +197,33 @@ namespace Validations
             }
             return (theFormula, theSymbolFinalFormula, theTerms);
         }
+
+
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolFormulaAndFunctionTermsTechincalRule(string theFormulaExpression)
+        {
+            //Create symbol formula and finalSymbol formula. Same for filter
+            //Two kind of terms: normal and function terms. 
+
+            //*********************************************************************************
+            //Create the plain Terms "X".
+            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
+            (var symbolFormula, var ruleTerms) = CreateRuleTermsNew(theFormulaExpression);
+            var theFormula = symbolFormula;
+            var theTerms = ruleTerms;
+
+            //*********************************************************************************
+            //Create the Function Terms "Z".
+            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTermsTechnical(theFormula, "Z");
+            var theSymbolFinalFormula = finalSymbolFormula;
+            foreach (var newTerm in newFunctionTerms)
+            {
+                theTerms.Add(newTerm);
+            }
+            return (theFormula, theSymbolFinalFormula, theTerms);
+        }
+
+
 
         public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTermsNew(string expression, string termLetter)
         {
@@ -212,6 +279,38 @@ namespace Validations
                 .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
             return (symbolExpression, ruleTerms);
         }
+
+
+        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTermsTechnical(string expression, string termLetter)
+        {
+            //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
+            //2 Create one new term  for each function     
+            //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
+            //*** Same distinct letter for exactly the same terms ***
+
+            if (string.IsNullOrWhiteSpace(expression))
+                return ("", new List<RuleTerm>());
+
+            return ("", new List<RuleTerm>());
+
+            //var distinctMatches = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
+            //    .Select(item => item.Captures[0].Value.Trim()).ToList()
+            //    .Distinct()
+            //    .ToList();
+
+
+            //var ruleTerms = distinctMatches
+            //    .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
+
+            //if (ruleTerms.Count == 0)
+            //    return (expression, new List<RuleTerm>());
+
+            //var symbolExpression = ruleTerms
+            //    .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
+            //return (symbolExpression, ruleTerms);
+        }
+
+
 
         public void SetApplicableAxis(ScopeRangeAxis applicableAxis)
         {
@@ -282,57 +381,6 @@ namespace Validations
             }
         }
 
-        public static List<RuleTerm> CreateRuleTerms(string expression)
-        {
-            //a term is something like sum({ PFE.06.02.30.01,c0100,snnn}) or just { PFE.02.01.30.01,r0030,c0040}. it has a function and a value. 
-            // value terms get the value from the db
-            //{ PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=> {{ PFE.02.01.30.01,r0030,c0040},sum({ PFE.06.02.30.01,c0100,snnn})}            
-            //we will also build the corresponding symbol list (X1, X2) using the index of each term
-            //the function sum, isFallback, etc will be converted to proper symbols in AssertExpression
-
-            if (string.IsNullOrWhiteSpace(expression))
-            {
-                return new List<RuleTerm>();
-            }
-            //it will capture the terms as listed in the regex, the last one is a plain term without function
-            //?: means non-capturing 
-            //(?<!) means negative lookbehind
-            //usemore capture groups. we do not have or need groups here
-            //we get the value of the whole match for every term. We will build the cellCordinate for each term  when new CellCoordinates(term)
-
-
-            //(?<!{) is a lookbehind of "{" to prevent greedy of previous term
-            //?: non-capture to be able to use Matches instead of groups
-            //var sumReg = @"(?:sum\(\{.*?(?<!{)\}\))";
-            var sumReg = @"((sum)\(\{.*?(?<!{)\}\))";
-            var minReg = @"(?:min\(.*\))";  //non greedy to catch min(max
-            var maxReg = @"(?:max\(.*\))"; //non greedy to catch max(min
-            var countReg = @"(?:count\(\{.*?(?<!{)\}\))";
-            var emptyReg = @"(?:empty\(\{.*?(?<!{)\}\))";
-            var fdtvReg = @"(?:(matches)\((ftdv\(\{.*?(?<!{)\},.*?\),"".*?""\)))";
-            //var matchesReg = @"(?:(matches)\(({.*?(?<!{)},"".*?)""\))";
-            var matchesReg = @"((matches)\(({.*?(?<!{)},"".*?)""\))";
-            var isFallbackReg = @"(?:isfallback\(\{.*?(?<!{)\}\))";
-            var compareEnum = @"({\w{1,3}(?:\.\d\d){4}.*?(?<!{)}\s{0,1}!?=\s{0,1}\[.*?\])";
-            var exDimVal = @"(?:ExDimVal\(({.*?(?<!{)}\s*?,\s*?\w\w\)))";
-            var xTerm = @"(?:\=\s*?(x\d))";
-            var plainReg = @"(?:\{.*?(?<!{)\})";
-
-            var rgxTerms = $@"{countReg}|{sumReg}|{minReg}|{maxReg}|{emptyReg}|{fdtvReg}|{matchesReg}|{isFallbackReg}|{compareEnum}|{exDimVal}|{xTerm}|{plainReg}";
-            var rg = new Regex(rgxTerms, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-            var matches = rg.Matches(expression);
-            var termlist = matches.Select(item => item.Value).ToList(); //{PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=> {{ PFE.02.01.30.01,r0030,c0040},sum({ PFE.06.02.30.01,c0100,snnn})}
-            var symbolList = termlist.Select((item, index) => $"X{index }").ToList(); //{ PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=>{x1,x2}
-
-            var list = termlist.Select((term, index) => new RuleTerm(symbolList[index], termlist[index], false)).ToList();
-
-
-
-            return list;
-
-        }
-
         public bool ValidateTheRule()
         {
             var rule = this;
@@ -398,7 +446,7 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-                var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression,true).IsValid;
+                var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression, true).IsValid;
                 //var isIfPartTrue = (bool) AssertSingleExpression(ruleId, ifExpression, ruleTerms);
 
                 //if (!(bool)isIfPartTrue)
@@ -410,15 +458,15 @@ namespace Validations
                     return true;
                 }
 
-                var validSimplifiedThen = SimplifiedExpression.Process(ruleId, ruleTerms, thenExpression,true).IsValid;
+                var validSimplifiedThen = SimplifiedExpression.Process(ruleId, ruleTerms, thenExpression, true).IsValid;
                 //var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
-                
+
                 return validSimplifiedThen;
             }
 
-            var validSimplifiedWhole = SimplifiedExpression.Process(ruleId, ruleTerms, fixedSymbolExpression,true).IsValid;
+            var validSimplifiedWhole = SimplifiedExpression.Process(ruleId, ruleTerms, fixedSymbolExpression, true).IsValid;
             //var isWholeValid = (bool)AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
-            
+
             return validSimplifiedWhole;
         }
 
@@ -441,7 +489,7 @@ namespace Validations
             return (true, terms[1], terms[2]);
         }
 
-        public static string FixExpression(string symbolExpression)
+        private static string FixExpression(string symbolExpression)
         {
             var qt = @"""";
             var fixedExpression = symbolExpression;
@@ -482,5 +530,5 @@ namespace Validations
             }
         }
     }
-        
+
 }
