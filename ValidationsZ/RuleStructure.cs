@@ -60,12 +60,12 @@ namespace Validations
         }
 
 
-        public RuleStructure(string tableBaseFormula, string filterFormula,bool isTechnical, C_ValidationRuleExpression validationRuleDb)
+        public RuleStructure(string tableBaseFormula, string filterFormula, bool isTechnical, C_ValidationRuleExpression validationRuleDb)
         {
             if (validationRuleDb is not null)
             {
-                
-                ValidationRuleId = validationRuleDb.ValidationRuleID ;
+
+                ValidationRuleId = validationRuleDb.ValidationRuleID;
                 TableBaseFormula = validationRuleDb.TableBasedFormula?.Trim() ?? "";
                 FilterFormula = validationRuleDb.Filter?.Trim() ?? "";
                 ValidationRuleDb = validationRuleDb;
@@ -80,7 +80,7 @@ namespace Validations
                 FilterFormula = filterFormula.Trim() ?? "";
                 IsTechnical = isTechnical;
             }
-                        
+
 
             if (IsTechnical)
             {
@@ -130,7 +130,7 @@ namespace Validations
             ValidationRuleDb = validationRuleDb;
             ScopeString = ValidationRuleDb.Scope ?? "";
             ScopeTableCode = GetTableCode();
-            
+
         }
 
 
@@ -290,25 +290,48 @@ namespace Validations
 
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
+            
+            var technicalRegex = new Regex(@"(.*?).\s*like\s*('.*')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var distinctMatches = technicalRegex.Matches(expression)
+                .Select(item => item.Captures[0].Value.Trim()).ToList()
+                .Distinct()
+                .ToList();
 
-            return ("", new List<RuleTerm>());
 
-            //var distinctMatches = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
-            //    .Select(item => item.Captures[0].Value.Trim()).ToList()
-            //    .Distinct()
-            //    .ToList();
+            var ruleTerms = distinctMatches
+                .Select((item, Idx) => CreateTechnicalTerm($"{termLetter}{Idx:D2}", item)).ToList();
 
+            //.Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
 
-            //var ruleTerms = distinctMatches
-            //    .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
+            if (ruleTerms.Count == 0)
+                return (expression, new List<RuleTerm>());
 
-            //if (ruleTerms.Count == 0)
-            //    return (expression, new List<RuleTerm>());
+            var symbolExpression = ruleTerms
+                .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
 
-            //var symbolExpression = ruleTerms
-            //    .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
-            //return (symbolExpression, ruleTerms);
+            return (symbolExpression, ruleTerms);
+            static RuleTerm CreateTechnicalTerm(string termLetter, string technicalExpression)
+            {
+                var newTerm = new RuleTerm(termLetter, technicalExpression ?? "", true)
+                {
+                    DataTypeOfTerm = DataTypeMajorUU.BooleanDtm,
+                    FunctionType = FunctionTypes.LIKE
+                };
+
+                var expression = "";
+                var regEx = @"(.*).\s*like\s*('.*')";
+                var parts = GeneralUtils.GetRegexSingleMatchManyGroups(regEx, technicalExpression);
+
+                expression = (parts.Count != 3)
+                    ? ""
+                    : $"LIKE({parts[0]},{parts[1]})";
+
+                newTerm.TermText = expression;
+                return newTerm;
+
+            }
         }
+
 
 
 
