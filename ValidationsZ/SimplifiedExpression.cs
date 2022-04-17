@@ -41,18 +41,13 @@ namespace Validations
 
         public static SimplifiedExpression Process(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser, bool isTesting = false)
         {
-            //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
-            //TermsExressions x2>=X1+X2
-
-
-
-            //find other simplified in parenthesis (replace with letter ts without paren)
-            //for each simplified, create a PlainObjTerm 
-            //-- evalatue also
-            //create a list of 
+            //Simplified<SimplifiedExpression>  x2>=X1+X2 && X3>3 && (X3==x5)
+            //PartialSimplied => (x3==X5)  ***recursive ,find other simplified in parenthesis (replace with letter ts without paren)            
+            //TermsExressions x2>=X1+X2, X3>3, X3==X5
 
             if (comesFromUser)
             {
+                //to avaoid intiliazing counters and Static Lists when recursive Simplified
                 SECounter = 0;
                 TECounter = 0;
                 PlainObjValues = new();
@@ -62,14 +57,15 @@ namespace Validations
             var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser,isTesting);
 
 
-            //find and create *recursively* the simplifiedExpressions (they are in parenthesis)
+            //find and create *recursively* the simplifiedExpressions (they are in parenthesis such as (x3==X5) ) 
+            //each *recursive Simplified* will be replaced by a Letter in the SymbolExpressionfinal 
             var newFormula = se.Expression;
             se.PartialSimplifiedExpressions = se.CreatePartialSimplifiedExpressions();
             se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
                .Aggregate(newFormula, (currValue, partialSimplified) => currValue.Replace(partialSimplified.Expression, $" {partialSimplified.LetterId} "))
                .Trim();
 
-
+            //find the terms X2>=X1+X2, X3>3
             se.TermExpressions = se.CreateTermExpressions();
 
             se.SymbolExpressionFinal = se.TermExpressions

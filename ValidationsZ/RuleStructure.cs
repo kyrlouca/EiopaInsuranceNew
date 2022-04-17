@@ -33,6 +33,7 @@ namespace Validations
 
 
         public int ValidationRuleId { get; private set; } = 0;
+        public bool IsTechnical { get; set; } = false;
         public string TableBaseFormula { get; set; } = "";
         public string FilterFormula { get; set; } = "";
 
@@ -53,19 +54,45 @@ namespace Validations
         public string ScopeString { get; private set; } = "";
 
 
-        public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
+        private RuleStructure()
         {
-            ConfigObject = configObject;
+            //to prevent user from creating default constructor;
         }
 
-        public RuleStructure(string tableBaseForumla, string filterFormula = "")
+        public RuleStructure(string tableBaseFormula, string filterFormula = "")
         {
-            TableBaseFormula = tableBaseForumla?.Trim();
+            //this is the main Constructor
+            TableBaseFormula = tableBaseFormula?.Trim();
             FilterFormula = filterFormula?.Trim();
 
             (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
             (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
         }
+
+        public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
+        {
+            ConfigObject = configObject;
+        }
+
+        
+
+        public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
+        {
+
+            if (validationRuleDb is null)
+            {
+                return;
+            }
+            ValidationRuleId = validationRuleDb.ValidationRuleID;
+            TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
+            FilterFormula = validationRuleDb.Filter ?? "";
+            ValidationRuleDb = validationRuleDb;
+            ScopeString = ValidationRuleDb.Scope ?? "";
+            ScopeTableCode = GetTableCode();
+            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
+
+        }
+
 
         private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolFormulaAndFunctionTerms(string theFormulaExpression)
         {
@@ -81,6 +108,9 @@ namespace Validations
             //resmm.SymbolFormula.Should().Be("X00=max(0,min(0.5*X01-3*X02))");
             //resmm.SymbolFinalFormula.Should().Be("X00=Z00");  Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
             //resmm.RuleTerms.Count.Should().Be(5);
+
+            
+
 
             //*********************************************************************************
             //Create the plain Terms "X".
@@ -186,27 +216,6 @@ namespace Validations
         public void SetApplicableAxis(ScopeRangeAxis applicableAxis)
         {
             ApplicableAxis = applicableAxis;
-        }
-
-        private RuleStructure()
-        {
-            //to prevent user from creating default constructor;
-        }
-
-        public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
-        {
-
-            if (validationRuleDb is null)
-            {
-                return;
-            }
-            ValidationRuleId = validationRuleDb.ValidationRuleID;
-            TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
-            FilterFormula = validationRuleDb.Filter ?? "";
-            ValidationRuleDb = validationRuleDb;
-            ScopeString = ValidationRuleDb.Scope ?? "";
-            ScopeTableCode = GetTableCode();
-
         }
 
         private string GetTableCode()
@@ -472,6 +481,6 @@ namespace Validations
                 return newVal;
             }
         }
-
     }
+        
 }

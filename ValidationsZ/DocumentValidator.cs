@@ -390,9 +390,7 @@ namespace Validations
                     break;
                 case FunctionTypes.MAX:
                     //TermText = max(xx,X1,X2)
-                    var allTermsDictM = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));
-                    //var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"\((.*?)\)", term.TermText).Split(",");
-
+                    var allTermsDictM = allTerms.ToDictionary(term => term.Letter, term => (double)(term.DecimalValue));                    
                     var maxTermsStr = GeneralUtils.GetRegexSingleMatch(@"max\((.*)\)", term.TermText).Split(",");
 
                     var maxValArray = maxTermsStr.Select(term => Eval.Execute<double>(term, allTermsDictM));
@@ -459,6 +457,11 @@ namespace Validations
                     term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                     term.IsMissing = false;
                     term.DecimalValue = Convert.ToDecimal(FunctionForExp(allTerms, term));
+                    break;
+                case FunctionTypes.LIKE:
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+                    term.IsMissing = false;
+                    term.BooleanValue = false;
                     break;
                 default:
 
@@ -652,8 +655,8 @@ namespace Validations
 
 
             var sqlSelectModuleRules = @"
-            SELECT 
-		        vr.ValidationRuleID
+		  SELECT 
+		         vr.ValidationRuleID
 	            ,vr.ExpressionID
 	            ,vr.ValidationCode
 	            ,vr.Severity
@@ -667,10 +670,12 @@ namespace Validations
                 join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
             WHERE 1=1
-                and (ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL'  and  ex.ExpressionType <> 'NotImplementedInKYR') )                
-                and ValidationCode  like '%BV%'
+				and(
+				(ValidationCode  like 'BV%' AND (  ex.ExpressionType <> 'NotImplementedInKYR' OR ex.ExpressionType is null) )
+				OR (ValidationCode  like 'TV%'  AND ex.ExpressionType <> 'NotImplementedInKYR')   				
+				)                
 	            and vrs.ModuleID = @ModuleId
-            ORDER BY vr.ValidationRuleID
+            ORDER BY vr.ValidationRuleID		
             ";
 
             var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlSelectModuleRules, new { ModuleId });
