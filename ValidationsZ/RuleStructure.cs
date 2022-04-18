@@ -290,44 +290,39 @@ namespace Validations
 
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
-            
+
             var technicalRegex = new Regex(@"(.*?).\s*like\s*('.*')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             var distinctMatches = technicalRegex.Matches(expression)
                 .Select(item => item.Captures[0].Value.Trim()).ToList()
                 .Distinct()
                 .ToList();
 
-
             var ruleTerms = distinctMatches
-                .Select((item, Idx) => CreateTechnicalTerm($"{termLetter}{Idx:D2}", item)).ToList();
-
-            //.Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
-
-            if (ruleTerms.Count == 0)
-                return (expression, new List<RuleTerm>());
-
+                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true))
+                .ToList();                                
+           
             var symbolExpression = ruleTerms
                 .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
 
+            ruleTerms.ForEach(term => TransformTechnicalTerm(term));
             return (symbolExpression, ruleTerms);
-            static RuleTerm CreateTechnicalTerm(string termLetter, string technicalExpression)
+            static RuleTerm TransformTechnicalTerm(RuleTerm term)
             {
-                var newTerm = new RuleTerm(termLetter, technicalExpression ?? "", true)
-                {
-                    DataTypeOfTerm = DataTypeMajorUU.BooleanDtm,
-                    FunctionType = FunctionTypes.LIKE
-                };
+                //
+
+                term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+                term.FunctionType = FunctionTypes.LIKE;
 
                 var expression = "";
                 var regEx = @"(.*).\s*like\s*('.*')";
-                var parts = GeneralUtils.GetRegexSingleMatchManyGroups(regEx, technicalExpression);
+                var parts = GeneralUtils.GetRegexSingleMatchManyGroups(regEx, term.TermText);
 
                 expression = (parts.Count != 3)
                     ? ""
-                    : $"LIKE({parts[0]},{parts[1]})";
+                    : $"LIKE({parts[1]},{parts[2]})";
 
-                newTerm.TermText = expression;
-                return newTerm;
+                term.TermText = expression;
+                return term;
 
             }
         }

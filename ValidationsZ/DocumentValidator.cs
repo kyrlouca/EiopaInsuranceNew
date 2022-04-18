@@ -461,7 +461,7 @@ namespace Validations
                 case FunctionTypes.LIKE:
                     term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
                     term.IsMissing = false;
-                    term.BooleanValue = false;
+                    term.BooleanValue = FunctionForTechnicalLIKE(allTerms, term);
                     break;
                 default:
 
@@ -1621,6 +1621,31 @@ namespace Validations
             var res = Math.Pow(value, powerNominator / powerDenominator);
 
             return (double)res;
+        }
+
+
+
+        private static bool FunctionForTechnicalLIKE(List<RuleTerm> allTerms, RuleTerm term)
+        {            
+            
+
+            var allTermsDict = allTerms.ToDictionary(term => term.Letter, term => (term.TermText));
+            var parts = GeneralUtils.GetRegexSingleMatchManyGroups(@"LIKE\((.*),'(.*)'\)", term.TermText);
+
+            if (parts.Count != 3)
+            {
+                return false;
+            }
+            var termLetter = parts[1];
+            var val = allTerms.FirstOrDefault(term => term.Letter == termLetter).TextValue;
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                return true;
+            }
+
+            var regexStr = parts[2];
+            var res = Regex.IsMatch(val, regexStr);
+            return res;
         }
 
 
