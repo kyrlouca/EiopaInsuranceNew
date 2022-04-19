@@ -63,6 +63,7 @@ namespace ValidationCall
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 994);// sum of a closed table
                 //var validatorDg = new DocumentValidator(solvencyVer, docId, 1355); // ==x0
 
+
                 int docId;
                 docId = 8685; //uinversal//4822, 4427,4407
                 docId = 8694;//hellenic alico                
@@ -83,7 +84,7 @@ namespace ValidationCall
                 docId = 9770;//797,4669 ,4782,1405,3015
                 
 
-                var validatorDg = new DocumentValidator("IU260", 9776,4802);
+                var validatorDg = new DocumentValidator("IU260", 9780,4706);
                 var x = validatorDg.ValidateDocument();
 
                 return 1;

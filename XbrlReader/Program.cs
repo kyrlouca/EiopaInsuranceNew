@@ -42,9 +42,14 @@ namespace XbrlReader
             //(var fundIdT, var filePath) = (601, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl");
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Minerva Annual 2021 v2.xbrl
 
-            (var fundIdT, var filePath) = (540, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Minerva Annual 2021 v2.xbrl");
+            //(var fundIdT, var filePath) = (540, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Minerva Annual 2021 v2.xbrl");
 
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2022, 0,filePath);            
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Hydra.xbrl
+
+
+            (var fundIdT, var filePath) = (552, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\American Steamship.xbrl");
+
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2021, 0,filePath);            
                         
 
             Console.WriteLine("Finish");

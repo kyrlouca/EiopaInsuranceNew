@@ -430,18 +430,18 @@ namespace Validations
                     var termLetterS = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
                     var sumTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterS);
                     var isOpenTableSum = IsOpenTable(ConfigObject, sumTerm.TableCode);
+                    term.NumberOfDecimals = -1;
                     if (!isOpenTableSum || !sumTerm.TermText.ToUpper().Contains("SNNN"))
                     {
                         //sumTerm.SheetId = rule.SheetId;
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForSumTermForCloseTableNew(rule, sumTerm);
+                        term.DecimalValue = FunctionForSumTermForCloseTableNew(rule, sumTerm);                        
                     }
                     else
                     {
 
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);
-
+                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);                        
                     };
 
                     break;
