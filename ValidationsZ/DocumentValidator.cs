@@ -1637,7 +1637,7 @@ namespace Validations
                 return false;
             }
             var termLetter = parts[1];
-            var val = allTerms.FirstOrDefault(term => term.Letter == termLetter).TextValue;
+            var val = allTerms.FirstOrDefault(term => term.Letter == termLetter)?.TextValue??"";
             if (string.IsNullOrWhiteSpace(val))
             {
                 return true;
