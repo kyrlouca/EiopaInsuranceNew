@@ -44,13 +44,10 @@ namespace Validations
         {
             //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
             //TermsExressions x2>=X1+X2
-
-
-
-            //find other simplified in parenthesis (replace with letter ts without paren)
+            //********************* This is a recursive Procedure*********************************
+            ////find other simplified expressinons in parenthesis and replace with letter ts without paren
             //for each simplified, create a PlainObjTerm 
-            //-- evalatue also
-            //create a list of 
+            //**********************************************************************************
 
             if (comesFromUser)
             {
@@ -190,7 +187,7 @@ namespace Validations
             {
                 var mess = e.Message;
                 Console.WriteLine(mess);
-                //Log.Error($"Rule Id:{ruleId} => INVALID Rule expression {symbolExpression}\n{e.Message}");
+                Log.Error($"Rule Id:{RuleId} => INVALID Rule expression {mess}");
                 throw;
             }
             if (result.GetType() == typeof(bool))
@@ -364,6 +361,8 @@ namespace Validations
                 catch
                 {
                     newDictionary.Add(newLetter, 0);
+                    Log.Error($"Conversion Error for Exp;{objItem.obj}");
+                    Console.WriteLine($"Conversion Error for Exp;{objItem.obj}");
                 }
 
 
