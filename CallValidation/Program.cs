@@ -83,8 +83,8 @@ namespace ValidationCall
                 docId = 9741;//  5261
                 docId = 9770;//797,4669 ,4782,1405,3015
                 
-
-                var validatorDg = new DocumentValidator("IU260", 9780,4706);
+                //3814
+                var validatorDg = new DocumentValidator("IU260", 9784,3916);
                 var x = validatorDg.ValidateDocument();
 
                 return 1;

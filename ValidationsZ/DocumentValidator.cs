@@ -403,14 +403,17 @@ namespace Validations
                     term.DecimalValue = Convert.ToDecimal(maxVal);
                     break;
                 case FunctionTypes.MATCHES:
-                    //"matches(X0,\"^..((71)|(75)|(8.)|(95))$\")"=> "^..((71)|(75)|(8.)|(95))$"
-                    //matches(ftdv({S.06.02.01.02,c0290},"s2c_dim:UI"),"^CAU/(ISIN/.*)|(INDEX/.*)"))	
+                    //matches(ftdv({S.06.02.01.02,c0290},"s2c_dim:UI"),"^CAU/(ISIN/.*)|(INDEX/.*)"))	ftdv will becoume X00
+                    //"matches(X00,\"^..((71)|(75)|(8.)|(95))$\")"=> "^..((71)|(75)|(8.)|(95))$"
 
                     var test = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText);
                     var termText = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2].Value;
 
-                    var splitReg = @"(.+),""(.+)""";
-                    var termParts = GeneralUtils.GetRegexSingleMatchManyGroups(splitReg, termText);
+                    var splitRegNew = @"([XZT]\d{2,3})\s*,\s*?""(.*)""";                    
+                    //var splitReg = @"(.+),""(.+)""";
+                    var termParts = GeneralUtils.GetRegexSingleMatchManyGroups(splitRegNew, termText);
+                    
+
                     if (termParts.Count != 3)
                     {
                         term.BooleanValue = true;

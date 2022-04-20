@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 
 using System.Threading.Tasks;
 using Z.Expressions;
+using Serilog;
 
 namespace Validations
 {
@@ -113,9 +114,18 @@ namespace Validations
             foreach (var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
                 var isValidPartial = AssertSingleTermExperssionNew(SymbolExpressionFinal);
-                partialSimplifiedExpression.IsValid = (bool)isValidPartial;
-                //PlainObjValues.Add(partialSimplifiedExpression.LetterId, isValidPartial);  // NOT here because of recursion. The recursed should be validated first 
+                try
+                {
+                    partialSimplifiedExpression.IsValid = (bool)isValidPartial;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"{RuleId}--{ex.Message}");
+                    Console.WriteLine(ex.Message);
+                    partialSimplifiedExpression.IsValid = false;
+                }
                 
+                                
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result : true;

@@ -344,14 +344,7 @@ namespace Validations
             //However, do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             {
-                if (rule.FilterTerms.Any(term => term.IsMissing))
-                {
-                    IsValidRule = true;
-                    return IsValidRule;
-                }
                 var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
-
-
                 if (isFilterValid is null || !(bool)isFilterValid)
                 {
                     //filter is invalid, return VALID RULE

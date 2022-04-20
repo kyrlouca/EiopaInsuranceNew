@@ -46,10 +46,12 @@ namespace XbrlReader
 
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Hydra.xbrl
 
+            //
 
-            (var fundIdT, var filePath) = (552, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\American Steamship.xbrl");
+            (var fundIdT, var filePath) = (701, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Maria\262-American Hellenic Hull Q4 2021.xbrl");
 
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2021, 0,filePath);            
+
+            XbrlFileReader.ProcessXbrlFile("IU250", 1, 99, fundIdT, "qrs", 2021, 3,filePath);            
                         
 
             Console.WriteLine("Finish");
