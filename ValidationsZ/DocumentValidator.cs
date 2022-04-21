@@ -294,7 +294,7 @@ namespace Validations
             {
                 //Console.WriteLine(".");
                 Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
-                UpdateRuleAndFilterTerms(rule);
+                    UpdateRuleAndFilterTerms(rule);
             }
 
             return;

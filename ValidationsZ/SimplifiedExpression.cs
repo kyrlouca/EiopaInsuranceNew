@@ -42,11 +42,17 @@ namespace Validations
 
         public static SimplifiedExpression Process(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser, bool isTesting = false)
         {
-            //PartialSimplified<SimplifiedExpression>  (x2>=X1+X2 && X3>3) 
-            //TermsExressions x2>=X1+X2
-            //********************* This is a recursive Procedure*********************************
-            ////find other simplified expressinons in parenthesis and replace with letter ts without paren
-            //for each simplified, create a PlainObjTerm 
+            //********************* This is a recursive Procedure*********************************            
+            // Take an expression and evaluate to true or false
+            // However, an expression may consists of other expressions and terms
+            // So, this static function will find other simplified expressions within the expression and the terms of the expression
+            // the simplified expressinons are  replaced with letter
+            // the results of both simplified expressions and terms are stored as plain objects
+            // ** recursion is used
+            //  initial simplified : (x2>=X1+X2 && X3>3) || X1>4
+            //  => SE01 || X1>4
+            //        SE01= (x2>=X1+X2 && X3>3) and has two terms 
+
             //**********************************************************************************
 
             if (comesFromUser)
@@ -57,7 +63,7 @@ namespace Validations
                 TolerantObjValues = new();
                 RuleTerms = new();
             }
-            var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser,isTesting);
+            var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser, isTesting);
 
 
             //find and create *recursively* the simplifiedExpressions (they are in parenthesis)
@@ -80,7 +86,7 @@ namespace Validations
         }
 
 
-        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser,bool isTesting=false)
+        private SimplifiedExpression(int ruleId, List<RuleTerm> ruleTerms, string expression, bool comesFromUser, bool isTesting = false)
         {
             RuleId = ruleId;
             RuleTerms = ruleTerms;
@@ -98,8 +104,11 @@ namespace Validations
 
         private void AssertSimplified()
         {
+            //it will assert all the terms and all the recursed  simplifed 
+            //to debug check the AssertSingleTemrExpression
             foreach (var termExpression in TermExpressions)
             {
+                //DEBUG here
                 var isValidTerm = AssertSingleTermExperssionNew(termExpression.TermExpressionStr);
 
 
@@ -121,8 +130,8 @@ namespace Validations
                     Console.WriteLine(ex.Message);
                     partialSimplifiedExpression.IsValid = false;
                 }
-                
-                                
+
+
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result : true;
@@ -146,7 +155,7 @@ namespace Validations
 
 
             var partialSimplified = distinctMatches
-                .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr, false,IsTesting))
+                .Select(expr => SimplifiedExpression.Process(RuleId, RuleTerms, expr, false, IsTesting))
                 .ToList();
 
             return partialSimplified;
@@ -215,7 +224,8 @@ namespace Validations
                 teObjTerms.Add(teObjDer.Key, new ObjTerm() { obj = teObjDer.Value, decimals = 2 });
             }
 
-            if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+            //if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+            if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") )
             {
                 result = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);
             }

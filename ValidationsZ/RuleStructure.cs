@@ -383,26 +383,15 @@ namespace Validations
             if (isIfExpressionType)
             {
                 var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression,true).IsValid;
-                //var isIfPartTrue = (bool) AssertSingleExpression(ruleId, ifExpression, ruleTerms);
-
-                //if (!(bool)isIfPartTrue)
-                //{
-                //    return true; 
-                //}
                 if (!validSimplifiedIf)
                 {
                     return true;
                 }
 
                 var validSimplifiedThen = SimplifiedExpression.Process(ruleId, ruleTerms, thenExpression,true).IsValid;
-                //var isThenPartValid = (bool)AssertSingleExpression(ruleId, thenExpression, ruleTerms);
-                
                 return validSimplifiedThen;
             }
-
             var validSimplifiedWhole = SimplifiedExpression.Process(ruleId, ruleTerms, fixedSymbolExpression,true).IsValid;
-            //var isWholeValid = (bool)AssertSingleExpression(ruleId, fixedSymbolExpression, ruleTerms);
-            
             return validSimplifiedWhole;
         }
 
