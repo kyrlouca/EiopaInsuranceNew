@@ -1,21 +1,17 @@
-﻿using System;
+﻿using ConfigurationNs;
+using Dapper;
+using EiopaConstants;
+using EntityClasses;
+using GeneralUtilsNs;
+using HelperInsuranceFunctions;
+using Microsoft.Data.SqlClient;
+using Serilog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
-using HelperInsuranceFunctions;
-using EntityClassesZ;
-using Serilog;
-using GeneralUtilsNs;
-using EiopaConstants;
-using ConfigurationNs;
 using TransactionLoggerNs;
-using EntityClasses;
-using Microsoft.Data.SqlClient;
-using Dapper;
-using System.Text.RegularExpressions;
 
 namespace XbrlReader
 {
@@ -62,14 +58,15 @@ namespace XbrlReader
         //readonly XNamespace typedDimNs = "http://eiopa.europa.eu/xbrl/s2c/dict/typ";
         readonly XNamespace findNs = "http://www.eurofiling.info/xbrl/ext/filing-indicators";
 
-        public static void ProcessXbrlFile (string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        public static void ProcessXbrlFile(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             var reader = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
 
             var existingDocs = reader.GetExistingDocuments();
 
             var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.Status.Trim() == "S");
-            if (isLockedDocument){
+            if (isLockedDocument)
+            {
                 var existingDoc = existingDocs.First();
                 var existingDocId = existingDoc.InstanceId;
                 var status = existingDoc.Status.Trim();
@@ -105,13 +102,17 @@ namespace XbrlReader
             existingDocs.Where(doc => doc.Status.Trim() != "P" && doc.Status.Trim() != "S")
                 .ToList()
                 .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
-           
+
             reader.WriteProcessStarted();
 
-            //*** create the document anyway so we can attach log errors
+            //*************************************************
+            //create the document anyway so we can attach log errors
+
             var documentId = reader.CreateDocInstanceInDb();
 
+            //*************************************************
             //***Create loose facts not assigned to sheets
+            //*************************************************
             var isValid = reader.CreateLooseFacts(documentId, fileName);
             if (!isValid)
             {
@@ -124,16 +125,54 @@ namespace XbrlReader
                 return;
             }
 
+            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
+            var xbrlFund = GetFundByLei(reader.ConfigObject, factWithLei?.TextValue);
+            if (1 == 2)// to avoid when testing
+            {
+                if (xbrlFund is null || xbrlFund.FundId != reader.FundId)
+                {
+                    var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
+                    Log.Error(message);
+                    Console.WriteLine(message);
+                    //Update status
+                    reader.UpdateDocumentStatus("E");
+                    reader.IsValidProcess = false;
+                    return;
 
-             FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
-            
+                }
+            }
+
+
+            FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
+
             var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
 
 
         }
 
+        private static TemplateSheetFact GetFactByXbrl(ConfigObject configObject, int documentId, string xbrlCode)
+        {
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            var SqlfactWithLei = "select   fact.TemplateSheetId, fact.Row,fact.Col,fact.TextValue  from TemplateSheetFact fact where fact.InstanceId=@documentId and fact.XBRLCode=@XbrlCode";
 
+            var factWithLei = connectionLocal.QueryFirstOrDefault<TemplateSheetFact>(SqlfactWithLei, new { documentId, xbrlCode });
+            return factWithLei;
+        }
+
+        private static Fund GetFundByLei(ConfigObject configObject, string lei)
+        {
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+           
+            if (lei == null)
+                return null;
+            
+            lei = lei.Replace(@"LEI/", "");//lei = "LEI/2138003JRMGVH8CGUR42"
+            lei = "ss";
+            var sqlFund = "select  fnd.FundId, fnd.FundName, fnd.IsActive, fnd.Lei from Fund fnd where fnd.Lei=@Lei";
+            var fund = connectionLocal.QuerySingleOrDefault<Fund>(sqlFund, new { lei });
+            return fund;
+        }
         private XbrlFileReader()
         {
             Console.WriteLine("ONLY for testing XbrlData");
@@ -179,7 +218,7 @@ namespace XbrlReader
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = 0,
-                    MessageType = MessageType.INFO.ToString(),                    
+                    MessageType = MessageType.INFO.ToString(),
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
@@ -197,7 +236,7 @@ namespace XbrlReader
                 var errorMessage = $"XbrlFileReader --Invalid Eiopa Version: {SolvencyVersion}";
                 Console.WriteLine(errorMessage);
                 Log.Error(errorMessage);
-                return null ;
+                return null;
             }
 
             var configObject = Configuration.GetInstance(SolvencyVersion).Data;
@@ -250,13 +289,13 @@ namespace XbrlReader
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = documentId,
                     MessageType = MessageType.ERROR.ToString(),
-                    FileName= sourceFile
+                    FileName = sourceFile
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
                 return false;
             }
-            
+
 
 
             XDocument xmlDoc;
@@ -274,7 +313,7 @@ namespace XbrlReader
                 var trans = new TransactionLog()
                 {
                     PensionFundId = FundId,
-                    ModuleCode =ModuleCode,
+                    ModuleCode = ModuleCode,
                     ApplicableYear = ApplicableYear,
                     ApplicableQuarter = ApplicableQuarter,
                     Message = message,
@@ -314,15 +353,15 @@ namespace XbrlReader
                     MessageType = MessageType.ERROR.ToString(),
                     FileName = sourceFile
                 };
-     
+
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return false;
             }
 
-            Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");            
-            
+            Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
+
             //DocumentId = CreateDocInstanceInDb();
-            
+
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
 
@@ -336,7 +375,7 @@ namespace XbrlReader
             AddFacts();
 
             DeleteContexts();
-            return  true;
+            return true;
 
         }
 
@@ -413,7 +452,7 @@ namespace XbrlReader
                 FileName,
                 CurrencyBatchId,
                 Status = "P",
-                EiopaVersion=SolvencyVersion,
+                EiopaVersion = SolvencyVersion,
             };
 
 
@@ -537,10 +576,10 @@ namespace XbrlReader
                 var unitRef = fe.Attribute("unitRef")?.Value ?? "";
                 var metric = fe.Name.LocalName.ToString(); //maybe not needed in Db                
                 var xbrlCode = $"{prefix.Trim()}:{metric.Trim()}";
-                
+
                 var mMetric = FindFactMetricId(xbrlCode);  //"s2md_met:ei1633"                
 
-                var dataTypeUse = mMetric is not null ? CntConstants.SimpleDataTypes[mMetric.DataType] : ""; 
+                var dataTypeUse = mMetric is not null ? CntConstants.SimpleDataTypes[mMetric.DataType] : "";
                 //var dataTypeUse = CntConstants.SimpleDataTypes[mMetric.DataType]; //N, S,B,E..
 
                 //var unitNN = XbuFact.Units.ContainsKey(unitRef) ? Units[unitRef] : unitRef;
@@ -559,7 +598,7 @@ namespace XbrlReader
                     CellID = 0,
                     CurrencyDim = "",
                     //Metric = fe.Name.LocalName.ToString(),
-                    MetricID=mMetric?.MetricID??0 ,
+                    MetricID = mMetric?.MetricID ?? 0,
                     //nsPrefix = prefix,
                     XBRLCode = xbrlCode,
                     ContextId = contextId,
@@ -571,7 +610,7 @@ namespace XbrlReader
                     NumericValue = 0,
                     DateTimeValue = new DateTime(1999, 12, 31),
                     BooleanValue = false,
-                    DataType = mMetric?.DataType ??  "" ,
+                    DataType = mMetric?.DataType ?? "",
                     DataTypeUse = dataTypeUse,
                     DataPointSignature = "",
                     DataPointSignatureFilled = "",
@@ -643,12 +682,12 @@ VALUES (
                 {
                     var errMessage = $"{e.Message}===>, fact text:{newFact.TextValue}, xbrl:{newFact.XBRLCode}";
                     Console.WriteLine(errMessage);
-                     Log.Error(errMessage);
+                    Log.Error(errMessage);
 
                 }
-                
 
-                
+
+
 
 
                 Console.Write(".");
