@@ -92,7 +92,7 @@ namespace Validations
             //*********************************************************************************
             //Create the Function Terms "Z".
             //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
-            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTermsNew(theFormula, "Z");
+            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTerms(theFormula, "Z");
             var theSymbolFinalFormula = finalSymbolFormula;
             foreach (var newTerm in newFunctionTerms)
             {
@@ -117,7 +117,7 @@ namespace Validations
                 //Term Z0= min(max(X1,3*X1)) => min(T0) and nested term is T0= max(x1,3*x1) is added
                 // recursion could have been used , but then I would have to change the evaluate term also            
 
-                (var nestedFormula, var nestedTerms) = PrepareFunctionTermsNew(internalText, $"T{count}");
+                (var nestedFormula, var nestedTerms) = PrepareFunctionTerms(internalText, $"T{count}");
                 newFunctionTerm.TermText = newFunctionTerm.TermText.Replace(internalText, nestedFormula);
                 foreach (var nestedTerm in nestedTerms)
                 {
@@ -128,7 +128,7 @@ namespace Validations
             return (theFormula, theSymbolFinalFormula, theTerms);
         }
 
-        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTermsNew(string expression, string termLetter)
+        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTerms(string expression, string termLetter)
         {
             //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
             //2 Create one new term  for each function     

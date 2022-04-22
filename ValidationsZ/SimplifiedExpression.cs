@@ -31,8 +31,7 @@ namespace Validations
 
         public bool IsValid { get; set; }
         public List<TermExpression> TermExpressions { get; set; } = new(); //x2>=X1+X2
-        public List<SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new(); //make it a list  (x2>=X1+X2 && X3>3) 
-        //public Dictionary<string, bool> Factors { get; set; } = new();
+        public List<SimplifiedExpression> PartialSimplifiedExpressions { get; set; } = new(); //make it a list  (x2>=X1+X2 && X3>3)         
         private SimplifiedExpression() { }
         private static int SECounter { get; set; } = 0;
         private static int TECounter { get; set; } = 0;
@@ -45,7 +44,7 @@ namespace Validations
             //********************* This is a recursive Procedure*********************************            
             // Take an expression and evaluate to true or false
             // However, an expression may consists of other expressions and terms
-            // So, this static function will find other simplified expressions within the expression and the terms of the expression
+            // So, this static function will find other simplified expressions within the simplified expression and also the terms of the expression
             // the simplified expressinons are  replaced with letter
             // the results of both simplified expressions and terms are stored as plain objects
             // ** recursion is used
@@ -66,16 +65,15 @@ namespace Validations
             var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser, isTesting);
 
 
-            //find and create *recursively* the simplifiedExpressions (they are in parenthesis)
+            //create *recursively* the simplifiedExpressions within the simplifed expression (they are in parenthesis)
             var newFormula = se.Expression;
             se.PartialSimplifiedExpressions = se.CreatePartialSimplifiedExpressions();
             se.SymbolExpressionFinal = se.PartialSimplifiedExpressions
                .Aggregate(newFormula, (currValue, partialSimplified) => currValue.Replace(partialSimplified.Expression, $" {partialSimplified.LetterId} "))
                .Trim();
 
-
+            //now create the terms
             se.TermExpressions = se.CreateTermExpressions();
-
             se.SymbolExpressionFinal = se.TermExpressions
                 .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
                 .Trim();
@@ -106,10 +104,12 @@ namespace Validations
         {
             //it will assert all the terms and all the recursed  simplifed 
             //to debug check the AssertSingleTemrExpression
+
+            //Assert the terms first (X1>X2)
             foreach (var termExpression in TermExpressions)
             {
                 //DEBUG here
-                var isValidTerm = AssertSingleTermExperssionNew(termExpression.TermExpressionStr);
+                var isValidTerm = AssertTerm(termExpression.TermExpressionStr);
 
 
                 var isBooleanType = Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
@@ -117,11 +117,14 @@ namespace Validations
 
                 PlainObjValues.Add(termExpression.LetterId, isValidTerm);
             }
+
+            //Assert the partial expressions (which may contain other partial expressions  as this is recursive)
             foreach (var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
-                var isValidPartial = AssertSingleTermExperssionNew(SymbolExpressionFinal);
+                var isValidPartial = AssertTerm(SymbolExpressionFinal);
                 try
                 {
+                    //if the result of the term expression is a number isnstead of a bool, it means that the whole rule was wrong and had a mix of bools and numbers
                     partialSimplifiedExpression.IsValid = (bool)isValidPartial;
                 }
                 catch (Exception ex)
@@ -130,7 +133,6 @@ namespace Validations
                     Console.WriteLine(ex.Message);
                     partialSimplifiedExpression.IsValid = false;
                 }
-
 
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
@@ -182,7 +184,7 @@ namespace Validations
             return partial;
         }
 
-        public object AssertSingleTermExperssionNew(string expression)
+        public object AssertTerm(string expression)
         {
             //var isValid = true;
             object result;
