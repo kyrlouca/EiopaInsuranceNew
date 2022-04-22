@@ -85,7 +85,7 @@ namespace Validations
             //*********************************************************************************
             //Create the plain Terms "X".
             //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
-            (var symbolFormula, var ruleTerms) = CreateRuleTermsNew(theFormulaExpression);
+            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
             var theFormula = symbolFormula;
             var theTerms = ruleTerms;
 
@@ -156,7 +156,7 @@ namespace Validations
             return (symbolExpression, ruleTerms);
         }
 
-        public static (string symbolExpression, List<RuleTerm>) CreateRuleTermsNew(string expression)
+        public static (string symbolExpression, List<RuleTerm>) CreateRuleTerms(string expression)
         {
 
             //an expression is like below. It has terms and functions
@@ -271,57 +271,6 @@ namespace Validations
                 }
 
             }
-        }
-
-        public static List<RuleTerm> CreateRuleTerms(string expression)
-        {
-            //a term is something like sum({ PFE.06.02.30.01,c0100,snnn}) or just { PFE.02.01.30.01,r0030,c0040}. it has a function and a value. 
-            // value terms get the value from the db
-            //{ PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=> {{ PFE.02.01.30.01,r0030,c0040},sum({ PFE.06.02.30.01,c0100,snnn})}            
-            //we will also build the corresponding symbol list (X1, X2) using the index of each term
-            //the function sum, isFallback, etc will be converted to proper symbols in AssertExpression
-
-            if (string.IsNullOrWhiteSpace(expression))
-            {
-                return new List<RuleTerm>();
-            }
-            //it will capture the terms as listed in the regex, the last one is a plain term without function
-            //?: means non-capturing 
-            //(?<!) means negative lookbehind
-            //usemore capture groups. we do not have or need groups here
-            //we get the value of the whole match for every term. We will build the cellCordinate for each term  when new CellCoordinates(term)
-
-
-            //(?<!{) is a lookbehind of "{" to prevent greedy of previous term
-            //?: non-capture to be able to use Matches instead of groups
-            //var sumReg = @"(?:sum\(\{.*?(?<!{)\}\))";
-            var sumReg = @"((sum)\(\{.*?(?<!{)\}\))";
-            var minReg = @"(?:min\(.*\))";  //non greedy to catch min(max
-            var maxReg = @"(?:max\(.*\))"; //non greedy to catch max(min
-            var countReg = @"(?:count\(\{.*?(?<!{)\}\))";
-            var emptyReg = @"(?:empty\(\{.*?(?<!{)\}\))";
-            var fdtvReg = @"(?:(matches)\((ftdv\(\{.*?(?<!{)\},.*?\),"".*?""\)))";
-            //var matchesReg = @"(?:(matches)\(({.*?(?<!{)},"".*?)""\))";
-            var matchesReg = @"((matches)\(({.*?(?<!{)},"".*?)""\))";
-            var isFallbackReg = @"(?:isfallback\(\{.*?(?<!{)\}\))";
-            var compareEnum = @"({\w{1,3}(?:\.\d\d){4}.*?(?<!{)}\s{0,1}!?=\s{0,1}\[.*?\])";
-            var exDimVal = @"(?:ExDimVal\(({.*?(?<!{)}\s*?,\s*?\w\w\)))";
-            var xTerm = @"(?:\=\s*?(x\d))";
-            var plainReg = @"(?:\{.*?(?<!{)\})";
-
-            var rgxTerms = $@"{countReg}|{sumReg}|{minReg}|{maxReg}|{emptyReg}|{fdtvReg}|{matchesReg}|{isFallbackReg}|{compareEnum}|{exDimVal}|{xTerm}|{plainReg}";
-            var rg = new Regex(rgxTerms, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-            var matches = rg.Matches(expression);
-            var termlist = matches.Select(item => item.Value).ToList(); //{PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=> {{ PFE.02.01.30.01,r0030,c0040},sum({ PFE.06.02.30.01,c0100,snnn})}
-            var symbolList = termlist.Select((item, index) => $"X{index }").ToList(); //{ PFE.02.01.30.01,r0030,c0040} = sum({ PFE.06.02.30.01,c0100,snnn})=>{x1,x2}
-
-            var list = termlist.Select((term, index) => new RuleTerm(symbolList[index], termlist[index], false)).ToList();
-
-
-
-            return list;
-
         }
 
         public bool ValidateTheRule()
