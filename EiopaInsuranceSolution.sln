@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30804.86
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32414.318
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConfigurationZ", "ConfigurationZ\ConfigurationZ.csproj", "{C40A3184-463C-43F7-A61A-8C7686C37C5D}"
 EndProject
@@ -38,6 +38,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionLoggerZ", "TransactionLogger\TransactionLoggerZ.csproj", "{98214B3E-C746-4E29-A682-AD13660F0CF6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdhocTesting", "AdhocTesting\AdhocTesting.csproj", "{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurrencyRates", "CurrencyRates\CurrencyRates.csproj", "{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -93,6 +95,10 @@ Global
 		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
