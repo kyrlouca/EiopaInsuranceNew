@@ -37,9 +37,10 @@ namespace CurrencyRates
 
         public static List<ExchangeRate>? ReadExcelFile(string fileName)
         {
-            var currencyColumn = -1;
-            var rateColumn = -1;
-            fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Currencies.xlsx";
+            var currencyColIdx = -1;
+            var rateColIdx = -1;
+            var headerRowIdx = -1;
+            fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
 
             var rates = new List<ExchangeRate>();
             ISheet sheet;
@@ -59,9 +60,29 @@ namespace CurrencyRates
             
             
             sheet = excelFile.GetSheetAt(0);
-            var headerRow = sheet.GetRow(0);
+
+            //*************************************************************
+            // header row is the first non-empty line
+            for (var i = 0; i <= sheet.LastRowNum; i++)
+            {
+                var row=sheet.GetRow(i);
+                
+                var isEmptyLine =  row is null || !row.Cells.Any(cell => cell is not null || !string.IsNullOrEmpty(cell?.ToString()));
+                if (isEmptyLine)
+                    continue;
+                headerRowIdx = i;
+                break;
+            }
+            if (headerRowIdx < 0)
+            {
+                return null;
+            }
+
+            //*************************************************************
+            //check if the header row has Currency and ExchangeRate titles
+            var headerRow = sheet.GetRow(headerRowIdx);
             int cellCount = headerRow.LastCellNum;
-            for (int j = 0; j < cellCount; j++)
+            for (var j = 0; j < cellCount; j++)
             {
                 var cell = headerRow.GetCell(j);
                 var cellText = cell?.ToString()?.Trim()?.ToUpper() ?? "";
@@ -72,22 +93,30 @@ namespace CurrencyRates
 
                 if (cellText == "CURRENCY")
                 {
-                    currencyColumn = j;
+                    currencyColIdx = j;
                 }
                 else if (cellText == "EXCHANGERATE")
                 {
-                    rateColumn = j;
+                    rateColIdx = j;
                 }
 
             }
 
-            for (var i = (sheet.FirstRowNum + 1); i <= sheet.LastRowNum; i++)
+            if(currencyColIdx<0 || rateColIdx < 0)
+            {
+                return null;
+            }
+
+
+            //*************************************************************
+            //Read each currency - rate pair
+            for (var i =  headerRowIdx+1; i <= sheet.LastRowNum; i++)
             {
                 var row = sheet.GetRow(i);
                 if (row == null) continue;
 
-                var currency = row.GetCell(currencyColumn)?.ToString() ?? "";
-                var rate = row.GetCell(rateColumn)?.NumericCellValue ?? -1.0;
+                var currency = row.GetCell(currencyColIdx)?.ToString() ?? "";
+                var rate = row.GetCell(rateColIdx)?.NumericCellValue ?? -1.0;
                 if (!string.IsNullOrEmpty(currency) && rate != -1)
                 {
                     rates.Add(new ExchangeRate(currency, rate));
