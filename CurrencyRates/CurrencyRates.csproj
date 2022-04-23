@@ -13,4 +13,8 @@
     <PackageReference Include="NPOI" Version="2.5.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
+  </ItemGroup>
+
 </Project>

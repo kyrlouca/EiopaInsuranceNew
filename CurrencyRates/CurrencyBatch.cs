@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using NPOI;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
+using ConfigurationNs;
+using Microsoft.Data.SqlClient;
+using Dapper;
 
 namespace CurrencyRates
 {
@@ -17,8 +20,8 @@ namespace CurrencyRates
             Rate = rate;
         }
 
-        string CurrencyCode { get; set; }
-        double Rate { get; set; }
+        public string CurrencyCode { get; set; }
+        public double Rate { get; set; }
     }
 
     internal class CurrencyBatch
@@ -35,7 +38,7 @@ namespace CurrencyRates
             Wave = wave;
         }
 
-        public static List<ExchangeRate>? ReadExcelFile(string fileName)
+        public static List<ExchangeRate> ReadExcelFile(string fileName)
         {
             var currencyColIdx = -1;
             var rateColIdx = -1;
@@ -55,7 +58,7 @@ namespace CurrencyRates
             catch (FileNotFoundException fnf)
             {
                 Console.WriteLine(fnf.Message);
-                return null;
+                return rates;
             }
             
             
@@ -75,7 +78,7 @@ namespace CurrencyRates
             }
             if (headerRowIdx < 0)
             {
-                return null;
+                return rates;
             }
 
             //*************************************************************
@@ -104,7 +107,7 @@ namespace CurrencyRates
 
             if(currencyColIdx<0 || rateColIdx < 0)
             {
-                return null;
+                return rates;
             }
 
 
@@ -125,11 +128,45 @@ namespace CurrencyRates
 
             return rates;
         }
-        public static int CurrencyBatchCreator(int year, int quarter, int wave)
+
+        public static void SaveData(int year, int quarter,int wave, List<ExchangeRate> rates)
         {
-            var cb = new CurrencyBatch(year, quarter, wave);
-            cb.ExchangeRates = ReadExcelFile("aa");
-            var x = 3;
+            var configObject = Configuration.GetInstance("IU260").Data;
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+
+            var sqlDel = @"delete from CurrencyBatch where Year = @year and Quarter = @quarter and Wave = @wave";
+            connectionLocal.Execute(sqlDel, new {year,quarter,wave });
+
+            var sqlInsertBatch = @"
+                INSERT INTO dbo.CurrencyBatch (DateCreated, Year, Quarter, Wave)  VALUES (@DateCreated, @Year, @Quarter, @Wave);
+                SELECT CAST(SCOPE_IDENTITY() as int);
+            ";
+
+            var currencyBatchId = connectionLocal.QuerySingleOrDefault<int>(sqlInsertBatch, new { dateCreated=DateTime.Now, year, quarter, wave });
+            if (currencyBatchId == 0) return;
+            foreach (var rate in rates)
+            {                
+                var sqlInsertRate = @"INSERT INTO dbo.CurrencyExchangeRate (CurrencyBatchId, Currency, ExchangeRate) VALUES (@currencyBatchId, @currency, @exchangeRate)";
+                try
+                {
+                    connectionLocal.Execute(sqlInsertRate, new { currencyBatchId, currency = rate.CurrencyCode, exchangeRate = rate.Rate });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+
+                
+            }
+        }
+
+        public static int CurrencyBatchCreator(string filename, int year, int quarter, int wave)
+        {
+            var cb = new CurrencyBatch(year, quarter, wave)
+            {
+                ExchangeRates = ReadExcelFile(filename)
+            };
+            SaveData(year, quarter, wave, cb.ExchangeRates);
             return cb.ExchangeRates.Count;
 
         }
