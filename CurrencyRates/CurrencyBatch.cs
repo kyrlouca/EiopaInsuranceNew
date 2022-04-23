@@ -26,33 +26,26 @@ namespace CurrencyRates
 
     internal class CurrencyBatch
     {
-        public int Year { get; set; }
-        public int Quarter { get; set; }
-        public int Wave { get; set; }
-        public List<ExchangeRate> ExchangeRates { get; set; }
-
-        private CurrencyBatch(int year, int quarter, int wave)
-        {
-            Year = year;
-            Quarter = quarter;
-            Wave = wave;
-        }
 
         public static List<ExchangeRate> ReadExcelFile(string fileName)
         {
             var currencyColIdx = -1;
             var rateColIdx = -1;
             var headerRowIdx = -1;
-            fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
-
             var rates = new List<ExchangeRate>();
-            ISheet sheet;
-            using var stream = new FileStream(fileName, FileMode.Open);
-            stream.Position = 0;
-            XSSFWorkbook excelFile;
+            //fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return rates;
+            }
 
+            
+            ISheet sheet;
+            XSSFWorkbook excelFile;
             try
             {
+                using var stream = new FileStream(fileName, FileMode.Open);
+                stream.Position = 0;
                 excelFile = new XSSFWorkbook(stream);
             }
             catch (FileNotFoundException fnf)
@@ -60,17 +53,22 @@ namespace CurrencyRates
                 Console.WriteLine(fnf.Message);
                 return rates;
             }
-            
-            
+            catch (IOException e)
+            {
+                Console.WriteLine($"The file could not be opened: '{e}'");
+                return rates;
+            }
+
+
             sheet = excelFile.GetSheetAt(0);
 
             //*************************************************************
             // header row is the first non-empty line
             for (var i = 0; i <= sheet.LastRowNum; i++)
             {
-                var row=sheet.GetRow(i);
-                
-                var isEmptyLine =  row is null || !row.Cells.Any(cell => cell is not null || !string.IsNullOrEmpty(cell?.ToString()));
+                var row = sheet.GetRow(i);
+
+                var isEmptyLine = row is null || !row.Cells.Any(cell => cell is not null || !string.IsNullOrEmpty(cell?.ToString()));
                 if (isEmptyLine)
                     continue;
                 headerRowIdx = i;
@@ -105,7 +103,7 @@ namespace CurrencyRates
 
             }
 
-            if(currencyColIdx<0 || rateColIdx < 0)
+            if (currencyColIdx < 0 || rateColIdx < 0)
             {
                 return rates;
             }
@@ -113,7 +111,7 @@ namespace CurrencyRates
 
             //*************************************************************
             //Read each currency - rate pair
-            for (var i =  headerRowIdx+1; i <= sheet.LastRowNum; i++)
+            for (var i = headerRowIdx + 1; i <= sheet.LastRowNum; i++)
             {
                 var row = sheet.GetRow(i);
                 if (row == null) continue;
@@ -129,45 +127,48 @@ namespace CurrencyRates
             return rates;
         }
 
-        public static void SaveData(int year, int quarter,int wave, List<ExchangeRate> rates)
+        public static void SaveData(int year, int quarter, int wave, List<ExchangeRate> rates)
         {
             var configObject = Configuration.GetInstance("IU260").Data;
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            var isValid = true;
 
             var sqlDel = @"delete from CurrencyBatch where Year = @year and Quarter = @quarter and Wave = @wave";
-            connectionLocal.Execute(sqlDel, new {year,quarter,wave });
+            connectionLocal.Execute(sqlDel, new { year, quarter, wave });
 
             var sqlInsertBatch = @"
-                INSERT INTO dbo.CurrencyBatch (DateCreated, Year, Quarter, Wave)  VALUES (@DateCreated, @Year, @Quarter, @Wave);
+                INSERT INTO dbo.CurrencyBatch (DateCreated, Year, Quarter, Wave ,status)  VALUES (@DateCreated, @Year, @Quarter, @Wave, @Status);
                 SELECT CAST(SCOPE_IDENTITY() as int);
             ";
 
-            var currencyBatchId = connectionLocal.QuerySingleOrDefault<int>(sqlInsertBatch, new { dateCreated=DateTime.Now, year, quarter, wave });
+            var currencyBatchId = connectionLocal.QuerySingleOrDefault<int>(sqlInsertBatch, new { dateCreated = DateTime.Now, year, quarter, wave, status="E" });
             if (currencyBatchId == 0) return;
+            var count = 0;
             foreach (var rate in rates)
-            {                
+            {
                 var sqlInsertRate = @"INSERT INTO dbo.CurrencyExchangeRate (CurrencyBatchId, Currency, ExchangeRate) VALUES (@currencyBatchId, @currency, @exchangeRate)";
                 try
                 {
                     connectionLocal.Execute(sqlInsertRate, new { currencyBatchId, currency = rate.CurrencyCode, exchangeRate = rate.Rate });
+                    count++; 
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
+                    isValid= false;
                 }
-
-                
             }
+            
+            var finalStatus = count > 0 && isValid ? "S" : "E";
+            var sqlUpdate = @"update CurrencyBatch set status = @status where currencyBatchId=@currencyBatchId";
+            connectionLocal.Execute(sqlUpdate, new { currencyBatchId,status=finalStatus});
         }
 
         public static int CurrencyBatchCreator(string filename, int year, int quarter, int wave)
         {
-            var cb = new CurrencyBatch(year, quarter, wave)
-            {
-                ExchangeRates = ReadExcelFile(filename)
-            };
-            SaveData(year, quarter, wave, cb.ExchangeRates);
-            return cb.ExchangeRates.Count;
+            var rates = ReadExcelFile(filename);
+            SaveData(year, quarter, wave, rates);
+            return rates.Count;
 
         }
     }
