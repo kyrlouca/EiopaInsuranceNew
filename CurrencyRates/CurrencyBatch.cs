@@ -53,7 +53,7 @@ namespace CurrencyRates
                 using var stream = new FileStream(fileName, FileMode.Open);
                 stream.Position = 0;
                 
-                excelFile = new XSSFWorkbook(stream);
+                excelFile = new XSSFWorkbook(stream);                
             }
             catch (FileNotFoundException fnf)
             {
@@ -67,7 +67,7 @@ namespace CurrencyRates
             }
             catch (Exception e)
             {
-                Console.WriteLine($"The file: +{fileName}+ is Generally Invalid: '{e}'");
+                Console.WriteLine($"The file: +{fileName}+ is NOT a valid EXCEL file: '{e}'");
                 return rates;
             }
 
