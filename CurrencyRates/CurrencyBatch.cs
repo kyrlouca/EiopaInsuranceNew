@@ -127,7 +127,7 @@ namespace CurrencyRates
             return rates;
         }
 
-        public static void SaveData(int year, int quarter, int wave, List<ExchangeRate> rates)
+        public static int CrateCurrencyBatchData(int year, int quarter, int wave, List<ExchangeRate> rates)
         {
             var configObject = Configuration.GetInstance("IU260").Data;
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
@@ -142,7 +142,7 @@ namespace CurrencyRates
             ";
 
             var currencyBatchId = connectionLocal.QuerySingleOrDefault<int>(sqlInsertBatch, new { dateCreated = DateTime.Now, year, quarter, wave, status="E" });
-            if (currencyBatchId == 0) return;
+            if (currencyBatchId == 0) return 0;
             var count = 0;
             foreach (var rate in rates)
             {
@@ -162,14 +162,33 @@ namespace CurrencyRates
             var finalStatus = count > 0 && isValid ? "S" : "E";
             var sqlUpdate = @"update CurrencyBatch set status = @status where currencyBatchId=@currencyBatchId";
             connectionLocal.Execute(sqlUpdate, new { currencyBatchId,status=finalStatus});
+            return currencyBatchId;
         }
 
         public static int CurrencyBatchCreator(string filename, int year, int quarter, int wave)
         {
             var rates = ReadExcelFile(filename);
-            SaveData(year, quarter, wave, rates);
-            return rates.Count;
+            var currencyBatchId=CrateCurrencyBatchData(year, quarter, wave, rates);
+            UpdateDocumentsWithCurrencyBatch(year,quarter,wave,currencyBatchId);
+            return currencyBatchId;
 
+        }
+
+        public static void UpdateDocumentsWithCurrencyBatch( int year,int quarter, int wave,int currencyBatchId)
+        {
+
+            var configObject = Configuration.GetInstance("IU260").Data;
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+
+            var sqlUpdDocument = @"
+                    update doc set doc.CurrencyBatchId=@CurrencyBatchId  
+                    from DocInstance  doc join Fund fnd
+                    on doc.PensionFundId =fnd.FundId
+                    where doc.ApplicableYear=@year and doc.ApplicableQuarter=@quarter and fnd.Wave=@wave;
+                   ";
+                        
+            connectionLocal.Execute(sqlUpdDocument, new { year, quarter, wave,currencyBatchId });
+            
         }
     }
 }
