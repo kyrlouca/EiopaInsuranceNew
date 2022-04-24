@@ -27,9 +27,11 @@ namespace CurrencyRates
     internal class CurrencyBatch
     {
         public  static void OpenExcelFile(string fileName)
-        {
-
+        {               
         }
+
+
+
 
         public static List<ExchangeRate> ReadExcelFile(string fileName)
         {
@@ -50,6 +52,7 @@ namespace CurrencyRates
             {
                 using var stream = new FileStream(fileName, FileMode.Open);
                 stream.Position = 0;
+                
                 excelFile = new XSSFWorkbook(stream);
             }
             catch (FileNotFoundException fnf)
@@ -129,6 +132,11 @@ namespace CurrencyRates
                 {
                     rates.Add(new ExchangeRate(currency, rate));
                 }
+            }
+
+            if(excelFile is not null)
+            {
+                excelFile.Close();
             }
             return rates;
         }
