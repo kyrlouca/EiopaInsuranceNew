@@ -160,7 +160,7 @@ namespace CurrencyRates
             if (currencyBatchId == 0) return 0;
 
             //*************************************************************
-            //Create the exchange rates
+            //Create the exchange rates in the currency batch
             var count = 0;
             foreach (var rate in rates)
             {
@@ -183,7 +183,7 @@ namespace CurrencyRates
             return currencyBatchId;
         }
 
-        public static int CurrencyBatchCreator(string filename, int year, int quarter, int wave)
+        public static int CreateCurrenciesFromFile(string filename, int year, int quarter, int wave)
         {
             var rates = ReadExcelFile(filename);
             var currencyBatchId=CreateCurrencyBatchData(year, quarter, wave, rates);
