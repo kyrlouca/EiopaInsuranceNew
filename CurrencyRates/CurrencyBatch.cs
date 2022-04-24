@@ -26,22 +26,26 @@ namespace CurrencyRates
 
     internal class CurrencyBatch
     {
+        public  static void OpenExcelFile(string fileName)
+        {
+
+        }
 
         public static List<ExchangeRate> ReadExcelFile(string fileName)
         {
+            //fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
             var currencyColIdx = -1;
             var rateColIdx = -1;
             var headerRowIdx = -1;
-            var rates = new List<ExchangeRate>();
-            //fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
+            ISheet sheet;
+            XSSFWorkbook excelFile;
+
+            var rates = new List<ExchangeRate>();            
             if (string.IsNullOrEmpty(fileName))
             {
                 return rates;
             }
-
-            
-            ISheet sheet;
-            XSSFWorkbook excelFile;
+                        
             try
             {
                 using var stream = new FileStream(fileName, FileMode.Open);
@@ -50,20 +54,25 @@ namespace CurrencyRates
             }
             catch (FileNotFoundException fnf)
             {
-                Console.WriteLine(fnf.Message);
+                Console.WriteLine($"The file:+{fileName}+ could not be found.{fnf.Message}");
                 return rates;
             }
             catch (IOException e)
             {
-                Console.WriteLine($"The file could not be opened: '{e}'");
+                Console.WriteLine($"The file: +{fileName}+ could not be opened: '{e}'");
+                return rates;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"The file: +{fileName}+ is Generally Invalid: '{e}'");
                 return rates;
             }
 
 
-            sheet = excelFile.GetSheetAt(0);
-
             //*************************************************************
-            // header row is the first non-empty line
+            // get the header row as the first non-empty line
+            
+            sheet = excelFile.GetSheetAt(0);
             for (var i = 0; i <= sheet.LastRowNum; i++)
             {
                 var row = sheet.GetRow(i);
@@ -80,7 +89,7 @@ namespace CurrencyRates
             }
 
             //*************************************************************
-            //check if the header row has Currency and ExchangeRate titles
+            //get the Currency and ExchangeRate columns from the Header Row
             var headerRow = sheet.GetRow(headerRowIdx);
             int cellCount = headerRow.LastCellNum;
             for (var j = 0; j < cellCount; j++)
@@ -100,14 +109,12 @@ namespace CurrencyRates
                 {
                     rateColIdx = j;
                 }
-
             }
 
             if (currencyColIdx < 0 || rateColIdx < 0)
             {
                 return rates;
             }
-
 
             //*************************************************************
             //Read each currency - rate pair
@@ -123,16 +130,17 @@ namespace CurrencyRates
                     rates.Add(new ExchangeRate(currency, rate));
                 }
             }
-
             return rates;
         }
 
-        public static int CrateCurrencyBatchData(int year, int quarter, int wave, List<ExchangeRate> rates)
+        public static int CreateCurrencyBatchData(int year, int quarter, int wave, List<ExchangeRate> rates)
         {
             var configObject = Configuration.GetInstance("IU260").Data;
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
             var isValid = true;
 
+            //*************************************************************
+            //replace the previous currency batch with the new one
             var sqlDel = @"delete from CurrencyBatch where Year = @year and Quarter = @quarter and Wave = @wave";
             connectionLocal.Execute(sqlDel, new { year, quarter, wave });
 
@@ -140,9 +148,11 @@ namespace CurrencyRates
                 INSERT INTO dbo.CurrencyBatch (DateCreated, Year, Quarter, Wave ,status)  VALUES (@DateCreated, @Year, @Quarter, @Wave, @Status);
                 SELECT CAST(SCOPE_IDENTITY() as int);
             ";
-
             var currencyBatchId = connectionLocal.QuerySingleOrDefault<int>(sqlInsertBatch, new { dateCreated = DateTime.Now, year, quarter, wave, status="E" });
             if (currencyBatchId == 0) return 0;
+
+            //*************************************************************
+            //Create the exchange rates
             var count = 0;
             foreach (var rate in rates)
             {
@@ -168,7 +178,7 @@ namespace CurrencyRates
         public static int CurrencyBatchCreator(string filename, int year, int quarter, int wave)
         {
             var rates = ReadExcelFile(filename);
-            var currencyBatchId=CrateCurrencyBatchData(year, quarter, wave, rates);
+            var currencyBatchId=CreateCurrencyBatchData(year, quarter, wave, rates);
             UpdateDocumentsWithCurrencyBatch(year,quarter,wave,currencyBatchId);
             return currencyBatchId;
 
