@@ -48,17 +48,17 @@ namespace CurrencyRates
             }
             catch (FileNotFoundException fnf)
             {
-                Console.WriteLine($"The file:+{fileName}+ could not be found :{fnf.Message}");
+                Console.WriteLine($"The file xx:+{fileName}+ could not be found :{fnf.Message}");
                 return null;
             }
             catch (IOException e)
             {
-                Console.WriteLine($"The file: +{fileName}+ could not be opened: {e.Message}");
+                Console.WriteLine($"The file xx: +{fileName}+ could not be opened: {e.Message}");
                 return null;
             }
             catch (Exception e)
             {
-                Console.WriteLine($"The file: +{fileName}+ is NOT a valid EXCEL file: {e.Message}");
+                Console.WriteLine($"The file xx: +{fileName}+ is NOT a valid EXCEL file: {e.Message}");
                 return null;
             }
 
@@ -79,10 +79,9 @@ namespace CurrencyRates
             
             var excelFile = GetExcelWorkbook(fileName);
             if (excelFile == null)
-            {
+            {             
                 return rates;
             }
-
 
             //*************************************************************
             // get the header row as the first non-empty line
@@ -188,6 +187,7 @@ namespace CurrencyRates
                     isValid = false;
                 }
             }
+            Console.WriteLine($"rates created:{count}");
 
             var finalStatus = count > 0 && isValid ? "S" : "E";
             var sqlUpdate = @"update CurrencyBatch set status = @status where currencyBatchId=@currencyBatchId";
@@ -197,7 +197,7 @@ namespace CurrencyRates
 
         public static int CreateCurrenciesFromFile(string filename, int year, int quarter, int wave)
         {
-            var excelWorkbook = GetExcelWorkbook(filename);
+            Console.WriteLine("start");
             var rates = ReadExcelFile(filename);
             var currencyBatchId = CreateCurrencyBatchData(year, quarter, wave, rates);
             UpdateDocumentsWithCurrencyBatch(year, quarter, wave, currencyBatchId);
