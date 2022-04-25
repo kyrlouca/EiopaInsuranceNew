@@ -149,7 +149,7 @@ namespace CurrencyRates
             {
                 excelFile.Close();
             }
-            return rates;
+             return rates;
         }
 
         public static int CreateCurrencyBatchData(int year, int quarter, int wave, List<ExchangeRate> rates)
@@ -175,6 +175,10 @@ namespace CurrencyRates
             var count = 0;
             foreach (var rate in rates)
             {
+                if(string.IsNullOrEmpty(rate.CurrencyCode) || rate.Rate <0)
+                {
+                    continue;
+                }
                 var sqlInsertRate = @"INSERT INTO dbo.CurrencyExchangeRate (CurrencyBatchId, Currency, ExchangeRate) VALUES (@currencyBatchId, @currency, @exchangeRate)";
                 try
                 {
