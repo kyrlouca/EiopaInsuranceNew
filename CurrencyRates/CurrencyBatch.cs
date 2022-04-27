@@ -65,7 +65,7 @@ namespace CurrencyRates
         }
 
 
-        public static List<ExchangeRate> ReadExcelFile(string fileName)
+        public static List<ExchangeRate> ReadCurrenciesFromExcelFile(string fileName)
         {
             //fileName = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx";
             var currencyColIdx = -1;
@@ -202,7 +202,7 @@ namespace CurrencyRates
         public static int CreateCurrenciesFromFile(string filename, int year, int quarter, int wave)
         {
             Console.WriteLine("start");
-            var rates = ReadExcelFile(filename);
+            var rates = ReadCurrenciesFromExcelFile(filename);
             var currencyBatchId = CreateCurrencyBatchData(year, quarter, wave, rates);
             UpdateDocumentsWithCurrencyBatch(year, quarter, wave, currencyBatchId);
             return currencyBatchId;
