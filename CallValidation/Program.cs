@@ -82,10 +82,12 @@ namespace ValidationCall
                 docId = 9734;//  4745 ,794, 994 ,4798
                 docId = 9741;//  5261
                 docId = 9770;//797,4669 ,4782,1405,3015
-                
-                //3814
-                var validatorDg = new DocumentValidator("IU260", 9786,4629);
-                var x = validatorDg.ValidateDocument();
+                docId = 9786;//4629
+                             //9794,5376 empty match
+                             //9798,5265  by maria ethniki insurance
+
+                //var validatorDg = new DocumentValidator
+                DocumentValidator.ValidateDocument("IU260", 9800, 4342); 
 
                 return 1;
             }

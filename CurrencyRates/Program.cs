@@ -12,7 +12,7 @@
 
 if (args.Length == 4)
 {
-    //.\CurrencyRates "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx", 2021, 0, 1
+    //.\CurrencyRates "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\curr2.xlsx" 2021 0 1
     var excelFileName = args[0].Trim();
     var year = int.TryParse(args[1], out var arg1) ? arg1 : 0;
     var quarter = int.TryParse(args[2], out var arg2) ? arg2 : 0;

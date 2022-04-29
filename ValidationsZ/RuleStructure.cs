@@ -288,7 +288,8 @@ namespace Validations
                 return IsValidRule;
             }
 
-            //Check the filter first
+            //Check the fil
+            //ter first
             //if the filter is invalid, the rule is valid
             //However, do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))

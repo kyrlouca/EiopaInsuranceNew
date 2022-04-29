@@ -42,7 +42,14 @@ namespace Validations
 
 
 
-        public DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0)
+        public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0)
+        {
+            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId);
+            validatorDg.ValidateRules(testingRuleId);
+        }
+
+
+        private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0)
         {
 
             SolvencyVersion = solverncyVersion;
@@ -139,9 +146,14 @@ namespace Validations
         }
 
 
-        public bool ValidateDocument(int selecteRule = 0)
+        private bool ValidateRules(int testingRuleId = 0)
         {
+
+
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+
+
 
             var errorCounter = 0;
             var warningCounter = 0;
@@ -153,7 +165,7 @@ namespace Validations
             }
             Console.WriteLine($"v1.000 : Validate Document doc:{DocumentId}");
 
-            
+
             Console.WriteLine($"Check Fact enum values");
             var isFactValuesValid = (1 == 2) && ValidateFactEnumValues(); //validation withour rules
             //var isFactValuesValid = true;
@@ -169,9 +181,9 @@ namespace Validations
                 //retrun
             }
 
-            if (selecteRule > 0)
+            if (testingRuleId > 0)
             {
-                DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == selecteRule).ToList();
+                DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == testingRuleId).ToList();
             }
 
             //****************************************************************
@@ -294,7 +306,7 @@ namespace Validations
             {
                 //Console.WriteLine(".");
                 Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
-                    UpdateRuleAndFilterTerms(rule);
+                UpdateRuleAndFilterTerms(rule);
             }
 
             return;
@@ -317,7 +329,7 @@ namespace Validations
             //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
             functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
-           
+
 
 
             //*******Filter terms
@@ -335,7 +347,7 @@ namespace Validations
                 //evaluate function Z Terms
                 var functionFilterZetTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
                 functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
-                
+
 
             }
 
@@ -409,10 +421,10 @@ namespace Validations
                     var test = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText);
                     var termText = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2].Value;
 
-                    var splitRegNew = @"([XZT]\d{2,3})\s*,\s*?""(.*)""";                    
+                    var splitRegNew = @"([XZT]\d{2,3})\s*,\s*?""(.*)""";
                     //var splitReg = @"(.+),""(.+)""";
                     var termParts = GeneralUtils.GetRegexSingleMatchManyGroups(splitRegNew, termText);
-                    
+
 
                     if (termParts.Count != 3)
                     {
@@ -423,7 +435,7 @@ namespace Validations
                     pattern = pattern.Replace(@"/", @"\/"); //^CAU/(ISIN/.*)=>"^CAU\/(ISIN\/.*) 
 
                     var termLetterM = termParts[1];
-                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);                    
+                    var valueTerm = allTerms.FirstOrDefault(term => term.Letter == termLetterM);
                     var val = valueTerm.TextValue.Trim();
                     term.IsMissing = valueTerm.IsMissing;
                     term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
@@ -438,13 +450,13 @@ namespace Validations
                     {
                         //sumTerm.SheetId = rule.SheetId;
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForSumTermForCloseTableNew(rule, sumTerm);                        
+                        term.DecimalValue = FunctionForSumTermForCloseTableNew(rule, sumTerm);
                     }
                     else
                     {
 
                         term.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
-                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);                        
+                        term.DecimalValue = FunctionForOpenSumNew(sumTerm, filterFomula);
                     };
 
                     break;
@@ -941,7 +953,7 @@ namespace Validations
                     ";
                 var keyDimension = $"%{tblKyr.TableCodeKeyDim.Trim()}%";
 
-                var KeyColumn = connectionEiopa.QuerySingleOrDefault<string>(sqKeyDim, new { sheet.TableCode, keyDimension })??"";
+                var KeyColumn = connectionEiopa.QuerySingleOrDefault<string>(sqKeyDim, new { sheet.TableCode, keyDimension }) ?? "";
                 if (string.IsNullOrEmpty(KeyColumn))
                 {
                     continue;
@@ -961,7 +973,7 @@ namespace Validations
                         ErrorDocumentId = documentId,
                         SheetId = sheet.TemplateSheetId,
                         SheetCode = sheet.SheetCode,
-                        Scope=sheet.SheetCode,
+                        Scope = sheet.SheetCode,
                         RowCol = KeyColumn,
                         RuleMessage = $"Duplicate Key. Column:{KeyColumn} value:{duplicateText} ",
                         IsWarning = false,
@@ -1098,7 +1110,7 @@ namespace Validations
 
                 if (fact.DataTypeUse == "E" && !string.IsNullOrEmpty(fact.TextValue) && !fact.IsRowKey)
                 {
-                    var mMember = FindMemberInHierarchy(fact.MetricID,   fact.TextValue,fact.XBRLCode);
+                    var mMember = FindMemberInHierarchy(fact.MetricID, fact.TextValue, fact.XBRLCode);
                     if (mMember is null)
                     {
                         var validValues = GetAllMetricValidValues(fact.MetricID);
@@ -1134,7 +1146,7 @@ namespace Validations
 
             return (errorCounter == 0);
         }
-        private MMember FindMemberInHierarchy(int metricId,  string factTextEnumValue,string xblr)
+        private MMember FindMemberInHierarchy(int metricId, string factTextEnumValue, string xblr)
         {
             //1. the metric was found from the fact xbrl contains the HIERARCHY
             //2. Find the member in the hierarchy which has  the textEnum value
@@ -1154,7 +1166,7 @@ namespace Validations
                   where HierarchyID= @hierarchyId
                   and mem.MemberXBRLCode= @factTextEnumValue
                 ";
-            var member = connectionEiopa.QuerySingleOrDefault<MMember>(sqlFindMem, new { hierarchyId = metric.ReferencedHierarchyID,  factTextEnumValue });
+            var member = connectionEiopa.QuerySingleOrDefault<MMember>(sqlFindMem, new { hierarchyId = metric.ReferencedHierarchyID, factTextEnumValue });
             return member;
 
         }
@@ -1374,12 +1386,12 @@ namespace Validations
                     WHERE sheet.InstanceId = @DocumentId
                         and fact.Row BETWEEN @startRowCol and @endRowCol	                    
 	                    and fact.Col = @fixedRowCol
-                ";                
+                ";
 
                 sqlSum += sqlAdd;
 
                 var fixedRowCol = sumObj.RangeAxis == VldRangeAxis.Cols ? sumTerm.Row : sumTerm.Col;
-                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { sheetId = sumTerm.SheetId, tableCode=sumTerm.TableCode,  startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
+                var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { sheetId = sumTerm.SheetId, tableCode = sumTerm.TableCode, startRowCol = sumObj.StartRowCol, endRowCol = sumObj.EndRowCol, fixedRowCol, DocumentId }) ?? 0;
                 return sum;
 
             }
@@ -1415,7 +1427,7 @@ namespace Validations
 	                    AND fact.Col = @col
                 ";
                 sqlSum += sqlAdd;
-                
+
                 var sum = connectionPension.QuerySingleOrDefault<decimal?>(sqlSum, new { DocumentId, sheetId = sumTerm.SheetId, tableCode = sumTerm.TableCode, sumTerm.Row, sumTerm.Col }) ?? 0;
                 return sum;
             }
@@ -1476,7 +1488,7 @@ namespace Validations
                     continue;
                 }
                 UpdateRuleAndFilterTerms(fakeFilterRule);
-                
+
 
                 if ((bool)RuleStructure.AssertIfThenElseExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
                 {
