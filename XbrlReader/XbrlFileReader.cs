@@ -92,6 +92,7 @@ namespace XbrlReader
                     InstanceId = existingDoc.InstanceId,
                     MessageType = MessageType.ERROR.ToString()
                 };
+
                 TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
                 reader.IsValidProcess = false;
                 return;
@@ -113,15 +114,31 @@ namespace XbrlReader
             //*************************************************
             //***Create loose facts not assigned to sheets
             //*************************************************
-            var isValid = reader.CreateLooseFacts(documentId, fileName);
+            var (isValid,errorMessage) = reader.CreateLooseFacts(documentId, fileName);
             if (!isValid)
             {
-                var message = $"Document not created";
+                var message = errorMessage;
                 Log.Error(message);
                 Console.WriteLine(message);
                 //Update status
                 reader.UpdateDocumentStatus("E");
                 reader.IsValidProcess = false;
+
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = reader.FundId,
+                    ModuleCode = reader.ModuleCode,
+                    ApplicableYear = reader.ApplicableYear,
+                    ApplicableQuarter = reader.ApplicableQuarter,
+                    Message = message,
+                    UserId = reader.UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = documentId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+
                 return;
             }
 
@@ -264,7 +281,7 @@ namespace XbrlReader
             return configObject;
         }
 
-        private bool CreateLooseFacts(int documentId, string sourceFile)
+        private (bool,string) CreateLooseFacts(int documentId, string sourceFile)
         {
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
             //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
@@ -293,7 +310,7 @@ namespace XbrlReader
                 };
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
-                return false;
+                return (false,message);
             }
 
 
@@ -326,7 +343,7 @@ namespace XbrlReader
                 };
 
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return false;
+                return (false,message);
             }
 
             RootNode = xmlDoc.Root;
@@ -355,7 +372,7 @@ namespace XbrlReader
                 };
 
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
-                return false;
+                return (false, message);
             }
 
             Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
@@ -375,7 +392,7 @@ namespace XbrlReader
             AddFacts();
 
             DeleteContexts();
-            return true;
+            return (true,"");
 
         }
 
@@ -824,5 +841,17 @@ VALUES (
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
+        private void CreateErrorDocument(int organisationId, int documentId,int userId=0)
+        {
+            //var connectionPensionString = Configuration.GetConnectionPensionString();
+            using var localDbConnection = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            var sqlDelete = @"delete from ERROR_Document where ErrorDocumentId = @documentId";
+            localDbConnection.Execute(sqlDelete, new { documentId });
+            var sqlInsert = @"INSERT INTO ERROR_Document( OrganisationId,ErrorDocumentId, UserId)VALUES(@organisationId, @documentId,  @userId)";
+            localDbConnection.Execute(sqlInsert, new { organisationId,documentId,userId });
+
+        }
+
     }
 }

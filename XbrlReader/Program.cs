@@ -36,10 +36,10 @@ namespace XbrlReader
 
             //
 
-            (var fundIdT, var filePath) = (802, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\2138003JRMGVH8CGUR42-2022-02-20-QES.xbrl");
+            (var fundIdT, var filePath) = (781, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl5\Royal.xbrl");
 
 
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2022, 2,filePath);            
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2021, 0,filePath);            
                         
 
             Console.WriteLine("Finish");
