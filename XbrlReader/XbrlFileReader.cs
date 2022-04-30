@@ -124,7 +124,6 @@ namespace XbrlReader
                 reader.UpdateDocumentStatus("E");
                 reader.IsValidProcess = false;
 
-
                 var trans = new TransactionLog()
                 {
                     PensionFundId = reader.FundId,
@@ -138,6 +137,7 @@ namespace XbrlReader
                     InstanceId = documentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
+                TransactionLogger.LogTransaction(solvencyVersion, trans);
 
                 return;
             }
@@ -154,6 +154,23 @@ namespace XbrlReader
                     //Update status
                     reader.UpdateDocumentStatus("E");
                     reader.IsValidProcess = false;
+
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = reader.FundId,
+                        ModuleCode = reader.ModuleCode,
+                        ApplicableYear = reader.ApplicableYear,
+                        ApplicableQuarter = reader.ApplicableQuarter,
+                        Message = message,
+                        UserId = reader.UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = documentId,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(solvencyVersion, trans);
+
                     return;
 
                 }
@@ -294,22 +311,7 @@ namespace XbrlReader
                 Console.WriteLine($"**** {message}");
                 Log.Error(message);
 
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = documentId,
-                    MessageType = MessageType.ERROR.ToString(),
-                    FileName = sourceFile
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-
+     
                 return (false,message);
             }
 
@@ -327,22 +329,6 @@ namespace XbrlReader
                 Log.Error(e.Message);
                 Console.WriteLine(e);
 
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = documentId,
-                    MessageType = MessageType.ERROR.ToString(),
-                    FileName = sourceFile
-                };
-
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
                 return (false,message);
             }
 
@@ -355,23 +341,7 @@ namespace XbrlReader
                 var message = @$" Module Code provided by Fund: ""{Module.ModuleCode}"" is DIFFERENT THAN  Module Code in Xbrl File : ""{moduleCodeXbrl}""";
                 Log.Error(message);
                 Console.WriteLine(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = moduleCodeXbrl,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = documentId,
-                    MessageType = MessageType.ERROR.ToString(),
-                    FileName = sourceFile
-                };
-
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                
                 return (false, message);
             }
 
