@@ -12,7 +12,9 @@ using Serilog;
 
 namespace Validations
 {
-
+    //to reduce the complexity of the RuleStructure we create this class for the evaluation
+    // convert the ruleterms into objects (which also have decimals for tolerance)
+    // Unfortunately, we still need the terms
     public class TermExpression
     {
         public string LetterId { get; set; }

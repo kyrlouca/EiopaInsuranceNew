@@ -494,7 +494,9 @@ namespace Validations
                 plainTerm.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
                 return 0;
             }
-            var dbValue = plainTerm.TableCode == rule.ScopeTableCode
+
+            //use the foreign key for open tables which have different table from the scope table
+            var dbValue = plainTerm.TableCode == rule.ScopeTableCode  
                 ? GetCellValueFromOneSheetDb(ConfigObject, plainTerm.TableCode, rule.SheetId, plainTerm.Row, plainTerm.Col)
                 : GetCellValueFromDbNew(ConfigObject, DocumentId, plainTerm.TableCode, plainTerm.Row, plainTerm.Col);
             plainTerm.AssignDbValues(dbValue);
@@ -591,7 +593,6 @@ namespace Validations
             //On the other hand, if a ruleTerm refers to a fact in another sheet, we have to use the sheet Code and NOT the sheetID
 
 
-
             var sqlFact = @"
                 SELECT fact.TemplateSheetId, fact.FactId, fact.Row, fact.Col, fact.TextValue, fact.NumericValue, fact.Decimals, fact.DateTimeValue, fact.DataType,fact.DataTypeUse
                 FROM TemplateSheetFact fact
@@ -603,9 +604,7 @@ namespace Validations
 	                AND fact.Col = @col
                 ";
             var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
-            //var fact = connectionPension.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
-
-
+            
 
             if (!facts.Any())
             {
@@ -638,7 +637,9 @@ namespace Validations
             }
             else
             {
-                //check for zet (same fact for row,col but  with different zet mainly for currencies and countries
+                //there are more than one facts. This is the case for facts in the same sheet have the same row/col, for example different currencies or countries
+                //the cells have different zet, for example, for currencies and countries
+                //if we have multiple facts with same row/col and empty Zet, then we have a problem
                 if (facts.All(fact => !string.IsNullOrWhiteSpace(fact.Zet) && fact.DataTypeUse == "M"))
                 {
                     var firstFact = facts.First();
