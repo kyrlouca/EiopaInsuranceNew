@@ -64,17 +64,17 @@ namespace XbrlReader
 
             var existingDocs = reader.GetExistingDocuments();
 
-            var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.Status.Trim() == "S");
+            var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
             if (isLockedDocument)
             {
                 var existingDoc = existingDocs.First();
                 var existingDocId = existingDoc.InstanceId;
                 var status = existingDoc.Status.Trim();
 
-                var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document is already validated with status :{existingDoc.Status}";
+                var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document has already been Submitted";
                 if (status == "P")
                 {
-                    message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is already being processed with status :{existingDoc.Status}";
+                    message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is currently being processed with status :{existingDoc.Status}";
                 }
                 Log.Error(message);
                 Console.WriteLine(message);
@@ -100,7 +100,7 @@ namespace XbrlReader
 
 
             //delete older versions (except from locked or submitted)
-            existingDocs.Where(doc => doc.Status.Trim() != "P" && doc.Status.Trim() != "S")
+            existingDocs.Where(doc => doc.Status.Trim() != "P" && !doc.IsSubmitted)
                 .ToList()
                 .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
 
@@ -757,7 +757,7 @@ VALUES (
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlExists = @"
-                    select doc.InstanceId, doc.Status, EiopaVersion from DocInstance doc  where  
+                    select doc.InstanceId, doc.Status, doc.IsSubmitted, EiopaVersion from DocInstance doc  where  
                     PensionFundId= @FundId and ModuleId=@moduleId
                     and ApplicableYear = @ApplicableYear and ApplicableQuarter = @ApplicableQuarter"
                     ;

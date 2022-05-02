@@ -16,6 +16,7 @@ namespace EntityClasses
         public DateTime TimestampCreate { get; set; } = new DateTime(1900, 01, 01);
         public string EntityCurrency { get; set; } = "";
         public string Status { get; set; } = "";
+        public bool IsSubmitted { get; set; } = false;
         public string FileName { get; set; } = "";
         public string EiopaVersion { get; set; } = "";
 

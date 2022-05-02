@@ -86,7 +86,7 @@ namespace Validations
             }
 
             var status = document.Status.Trim();
-            var isLockedDocument = status == "P" || status == "S";
+            var isLockedDocument = status == "P" || document.IsSubmitted;
             if (isLockedDocument)
             {
                 IsValidDocument = false;
