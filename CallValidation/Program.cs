@@ -87,8 +87,8 @@ namespace ValidationCall
                              //9798,5265  by maria ethniki insurance
 
                 //var validatorDg = new DocumentValidator
-                DocumentValidator.ValidateDocument("IU260", 9800, 4342); 
-
+                //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
+                DocumentValidator.ValidateDocument("IU260", 11807, 0);
                 return 1;
             }
 

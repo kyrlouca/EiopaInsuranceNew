@@ -91,8 +91,8 @@ namespace Validations
             {
                 IsValidDocument = false;
                 var messg = status == "P"
-                    ? $"DocumentId: {DocumentId}. Document currently being Processed by another User"
-                    : $"DocumentId: {DocumentId}. Document has already been submitted";
+                    ? $"DocumentId: {DocumentId}. Document cannot be validated because it is currently being Processed by another User"
+                    : $"DocumentId: {DocumentId}. Document cannot be validated because it has already been submitted";
                 Log.Error(messg);
                 var trans = new TransactionLog()
                 {
