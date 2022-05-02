@@ -114,7 +114,7 @@ namespace Validations
                 var isValidTerm = AssertTerm(termExpression.TermExpressionStr);
 
 
-                var isBooleanType = !Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
+                var isBooleanType = Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
                 termExpression.IsValid = isBooleanType ? (bool)isValidTerm : false;
 
                 PlainObjValues.Add(termExpression.LetterId, isValidTerm);

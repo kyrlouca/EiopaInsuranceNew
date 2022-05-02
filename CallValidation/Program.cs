@@ -77,30 +77,30 @@ namespace ValidationCall
                 docId = 9722;//GIC
                 docId = 9721;//Commercial          ,5407
                 docId = 9715;//Eurolife                
-                docId = 9727;//Hydra 868,1066
+                docId = 9727;//Hydra 868,1066dd
                 docId = 9732;// 2814 ,3256
-                docId = 9734;//  4745 ,794, 994 ,4798
+                docId = 9734;//  4745 ,794, 994 ,4798d
                 docId = 9741;//  5261
-                docId = 9770;//797,4669 ,4782,1405,3015
+                docId = 9770;//797,4669 ,4782,1405,30158
                 docId = 9786;//4629
                              //9794,5376 empty match
                              //9798,5265  by maria ethniki insurance
 
                 //var validatorDg = new DocumentValidator
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
-                DocumentValidator.ValidateDocument("IU260", 11807, 0);
+                DocumentValidator.ValidateDocument("IU260", 11808, 0);
                 return 1;
             }
 
-#else
+#endif
             if (args.Length == 2)
             {                                
                 //.\ValidationCaller.exe "IU260" 8691
                 var solvencyVersion = args[0].Trim();                  
                 var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;                
-                var validator = new DocumentValidator(solvencyVersion, docIdx); //creates Document rules 
+                //var validator = new DocumentValidator(solvencyVersion, docIdx); //creates Document rules 
                 //validator.CreateModuleAndDocumentRules();
-                var xDg = validator.ValidateDocument();  // parses and checks each rule 
+                DocumentValidator.ValidateDocument(solvencyVersion,docIdx,0);  // parses and checks each rule 
                 return 1;
             }
             else
@@ -111,7 +111,6 @@ namespace ValidationCall
             }
 
             return 1;
-#endif
         }
     }
 }
