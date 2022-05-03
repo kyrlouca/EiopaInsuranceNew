@@ -94,6 +94,7 @@ namespace Validations
                     ? $"DocumentId: {DocumentId}. Document cannot be validated because it is currently being Processed by another User"
                     : $"DocumentId: {DocumentId}. Document cannot be validated because it has already been submitted";
                 Log.Error(messg);
+                Console.WriteLine(messg);
                 var trans = new TransactionLog()
                 {
                     PensionFundId = document.PensionFundId,

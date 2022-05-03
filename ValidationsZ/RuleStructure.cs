@@ -290,33 +290,26 @@ namespace Validations
 
             //Check the filter first            
             //if the filter is invalid, the rule is valid
-            //However, do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
-            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
-            {
 
-                //conisder the filter as valid (but not the rule) if there are missing filter terms 
-                var hasNullTerms = HasNullFilterTerms(rule.FilterTerms);//do NOT take this outside the if statement                                
+            //********* changed that lately . Before, I would check the filter even if some terms were missing
+            //conisder the filter as valid  if there are missing filter terms             
 
-                if (!hasNullTerms)
-                {
-                    //consider the rule as VALID if the filter is invalid
+            //do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
+            //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
+            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN") && !HasNullFilterTerms(rule.FilterTerms ))
+            {                                                
                     var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
                     if (isFilterValid is null || !(bool)isFilterValid)
                     {
                         //filter is INVALID, do not check the rule and return VALID RULE
                         IsValidRule = true;
                         return IsValidRule;
-                    }
-                }
-                
+                    }                            
             }
 
             var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
-            return isValidRule;
-
-            //IsValidRulex = AssertExpressionNew(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
-            //return IsValidRule;
+            return isValidRule;            
         }
 
         public static bool HasNullFilterTerms(List<RuleTerm> terms)
