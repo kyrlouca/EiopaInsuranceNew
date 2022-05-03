@@ -187,21 +187,25 @@ namespace Validations
             }
 
             //****************************************************************
-            //Check all the document rules
+            //validate the document rules
+            //****************************************************************
             Console.WriteLine($"Rule Validation");
             foreach (var rule in DocumentRules)
             {
                 Console.WriteLine($"ruleId:{rule.ValidationRuleId}");
-                //Console.Write($"{rule.ValidationRuleId}");
+                //****************************************************************
+                //take out any document rules with non-existent scope cells 
                 if (rule.RuleTerms.Any(term => term.DataTypeOfTerm == DataTypeMajorUU.UnknownDtm && !term.IsFunctionTerm))
                 {
                     //when creating Document rules from Module rules we used the scope 
-                    //the scope was expanded by adding on the range and some   rules for non-existent rows/columns were created
-                    //the terms for these rules have an unknown datatype
+                    //the scope was expanded by adding columns with the increment of 10. For example (c0010-c0030)=> c0010,c0020,c0030
+                    //some columns may not actually exist in the excel templte (for example c0020)  and we should NOT create document rules for these columns (unknown data type is the indicator)                    
                     continue;
                 }
                 rulesCounter = +1;
 
+                //****************************************************************
+                //*** take out any rules which have terms with tables not listed in the xbrl
                 var ruleTables = rule.RuleTerms
                         .Where(term => !term.IsFunctionTerm)
                         .Select(term => term.TableCode)
@@ -214,6 +218,9 @@ namespace Validations
                     continue;
                 }
 
+
+                //****************************************************************
+                //*** Validate the rule
                 var isRuleValid = rule.ValidateTheRule();
 
                 if (!isRuleValid)

@@ -288,19 +288,27 @@ namespace Validations
                 return IsValidRule;
             }
 
-            //Check the fil
-            //ter first
+            //Check the filter first            
             //if the filter is invalid, the rule is valid
             //However, do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             {
-                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
-                if (isFilterValid is null || !(bool)isFilterValid)
+
+                //conisder the filter as valid (but not the rule) if there are missing filter terms 
+                var hasNullTerms = HasNullFilterTerms(rule.FilterTerms);//do NOT take this outside the if statement                                
+
+                if (!hasNullTerms)
                 {
-                    //filter is invalid, return VALID RULE
-                    IsValidRule = true;
-                    return IsValidRule;
+                    //consider the rule as VALID if the filter is invalid
+                    var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
+                    if (isFilterValid is null || !(bool)isFilterValid)
+                    {
+                        //filter is INVALID, do not check the rule and return VALID RULE
+                        IsValidRule = true;
+                        return IsValidRule;
+                    }
                 }
+                
             }
 
             var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
@@ -311,6 +319,11 @@ namespace Validations
             //return IsValidRule;
         }
 
+        public static bool HasNullFilterTerms(List<RuleTerm> terms)
+        {
+            var hasMissingTerms = terms.Any(term => !term.IsFunctionTerm && term.IsMissing);
+            return hasMissingTerms;                        
+        }
 
         static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
