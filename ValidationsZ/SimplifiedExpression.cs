@@ -323,7 +323,7 @@ namespace Validations
 
         private static object IsNumbersEqualWithTolerances(Dictionary<string, ObjTerm> tolerantValues, string leftOperand, string rightOperand)
         {
-            //interval comparison if equality operator and more than two terms                    
+            //we need to remove parenthesis for tolerances to work because if there is a minus outside a parenthesis the small value is the big number
             //left site
             if (leftOperand.Contains("("))
             {
