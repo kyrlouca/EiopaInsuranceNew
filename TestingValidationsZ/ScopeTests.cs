@@ -43,6 +43,12 @@ namespace Validations.Tests
             a4.ScopeRowCols[1].Should().Be("C0150");            
             a4.ScopeRowCols[2].Should().Be("C0170");
             a4.ScopeRowCols[3].Should().Be("C0180");
+
+            var a5 = ScopeDetails.Parse(@"S.27.01.01.03 (z0140)");
+            a5.TableCode.Should().Be("S.27.01.01.03");
+            a5.ScopeAxis.Should().Be(ScopeRangeAxis.Error);
+            a5.ScopeRowCols.Count.Should().Be(0);            
+
         }
 
 
