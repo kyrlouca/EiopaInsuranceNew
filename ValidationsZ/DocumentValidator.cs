@@ -149,12 +149,7 @@ namespace Validations
 
         private bool ValidateRules(int testingRuleId = 0)
         {
-
-
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-
-
-
 
             var errorCounter = 0;
             var warningCounter = 0;
@@ -219,7 +214,6 @@ namespace Validations
                     continue;
                 }
 
-
                 //****************************************************************
                 //*** Validate the rule
                 var isRuleValid = rule.ValidateTheRule();
@@ -233,7 +227,6 @@ namespace Validations
 
                     var errorTerms = rule.RuleTerms.Select(term => term.TextValue).ToArray();
                     var errorValue = string.Join("---", errorTerms);
-
 
                     var errorRule = new ERROR_Rule
                     {
@@ -731,18 +724,17 @@ namespace Validations
         private void CreateDocumentRulesFromOneModuleRule(RuleStructure rule)
         {
             //For each Module rule use the SCOPE to create one or more Document Rules
-            //Open tables cannot have the rows in the SCOPE, so we need to add all the ROWS of a sheet
-            //Scope for closed tables may have explicit columns, range of columns or no columns
-            //Scope of Closed tables  with no columns=> need to check the first term
-
-            //var connectionPensionString = Configuration.GetConnectionPensionString();
-            using var connectionEiopa = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            //Open tables do not have rows in the SCOPE, so we need to add all the ROWS of a sheet
+            //Scope for closed tables may have explicit columns, range of columns or no columns Or rows 
+            //Scope of Closed tables  with no columns
+            
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
             var scopeDetails = ScopeDetails.Parse(rule.ScopeString);
 
             //find the actual sheet from the sheetcode of the scope. Required for open tables to go through all of its rows            
             var sqlSelectSheets = @"select sheet.TemplateSheetId, sheet.SheetCode ,sheet.IsOpenTable from TemplateSheetInstance sheet where sheet.InstanceId= @documentId and sheet.TableCode=@TableCode;";
-            var sheetsUsingTheRule = connectionEiopa.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId, scopeDetails.TableCode }).ToList();
+            var sheetsUsingTheRule = connectionLocal.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId, scopeDetails.TableCode }).ToList();
             var rowCols = new List<string>();
 
             Console.WriteLine($"\nrule:{rule.ValidationRuleId}");
@@ -752,18 +744,16 @@ namespace Validations
                 {
                     if (rule.RuleTerms.Any(term => term.IsSum))
                     {
+                        //if exists a sum function in an open table, we use the scope to expand 
                         rowCols = scopeDetails.ScopeRowCols;
                         if (rowCols.Count == 0)
                         {
-                            //Add one fake rowCol just to copy the module rule as a document rule
+                            //Add one fake rowCol just to create a single document rule (the same as the module rule)
                             rowCols.Add("NONE");
                         }
-
                     }
                     else
                     {
-
-
                         //For open tables, create one Document rule per row, do not use the scope 
                         var sqlDistinctRowsById = @"       
                         SELECT DISTINCT fact.Row
@@ -772,10 +762,9 @@ namespace Validations
                         WHERE  sheet.TemplateSheetId = @sheetId and sheet.InstanceId=@documentId;
                         ";
 
-                        var rows = connectionEiopa.Query<string>(sqlDistinctRowsById, new { DocumentId, sheetId = sheet.TemplateSheetId }).ToList();
+                        var rows = connectionLocal.Query<string>(sqlDistinctRowsById, new { DocumentId, sheetId = sheet.TemplateSheetId }).ToList();
                         rowCols = rows;
                     }
-                    //Console.Write("s");
                 }
                 else
                 {
@@ -784,11 +773,9 @@ namespace Validations
                     //S.22.01.01.01 (r0010-0090)
                     //S.22.04.01.01 (c0010)
                     //PF.02.01.24.01 closed table with no row or columns, 
-
-                    //** for closed tables get the row cols from scope 
-                    //** actually there is no need because the terms have both row and column and we can just copy the Module rule                   
+                    //** for closed tables get the row cols from scope                     
                     rowCols = scopeDetails.ScopeRowCols;
-                    if (rowCols.Count == 0)
+                    if (rowCols.Count == 0)//could have used scopeAxis=None
                     {
                         //Add one fake rowCol just to copy the module rule as a document rule
                         rowCols.Add("NONE");
@@ -820,12 +807,13 @@ namespace Validations
             var scopeAxis = sheet.IsOpenTable && !isSum ? ScopeRangeAxis.Rows : scopeDetails.ScopeAxis;
             newRule.SetApplicableAxis(scopeAxis); //set the rule's axis
 
-            //the updated rows or cols depending on the scope. However, for open linked tables find the foreign key
+            //plain terms are inside brackets {} like {S.02.01.02.01,R0020}  even if they are used in functions like max({{S.02.01.02.01,R0020}},0)
+            //for each plain term, updated row or col depending on the scope. To find the ROW of a fact in open tables, you may need to go through the foreign key if scope table is different
             var plainTerms = newRule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList();
             plainTerms.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
 
-            var plainFilterTersm = newRule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
-            plainFilterTersm.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
+            var plainFilterTerms = newRule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
+            plainFilterTerms.ForEach(term => UpdateTermRowCol(term, scopeDetails.TableCode, scopeAxis, rowCol));
 
             DocumentRules.Add(newRule);
             Console.Write("+");
@@ -865,8 +853,7 @@ namespace Validations
                     else
                     {
                         var linkingDetails = GetLinkingDim(term.TableCode);
-                        var factInMaster = FindFactInRowOfMasterTable(linkingDetails.FK_TableDim, scopeTableCode, rowCol);
-                        //term.Row = keyFact1 is null ? "" : FindRowUsingForeignKeyInDetailTbl(tableRel.FK_TableDim, term.TableCode, keyFact1.TextValue);
+                        var factInMaster = FindFactInRowOfMasterTable(linkingDetails.FK_TableDim, scopeTableCode, rowCol);                        
                         term.Row = factInMaster is null ? "" : FindRowUsingForeignKeyInDetailTbl(linkingDetails.FK_TableDim, term.TableCode, factInMaster.TextValue);
                     }
                 }

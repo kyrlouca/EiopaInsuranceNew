@@ -48,24 +48,26 @@ namespace Validations
             // However, an expression may consists of other expressions and terms
             // So, this static function will find other simplified expressions within the simplified expression and also the terms of the expression
             // the simplified expressinons are  replaced with letter
-            // the results of both simplified expressions and terms are stored as plain objects
-            // ** recursion is used
+            // the results of both simplified expressions and terms are stored as plain objects (they have just a value and the decimals for tolerance)
+            // ** recursion is used.
+            // ** A term is just X2>=X1+X2 and it does NOT have any && or || . It can be asserted using tolerances
             //  initial simplified : (x2>=X1+X2 && X3>3) || X1>4
-            //  => SE01 || X1>4
+            //  => SE01 || X1>4  where SE01 is a recursed simplified
             //        SE01= (x2>=X1+X2 && X3>3) and has two terms 
 
             //**********************************************************************************
 
             if (comesFromUser)
             {
+                //initilize the counters the first time before recursion
                 SECounter = 0;
                 TECounter = 0;
                 PlainObjValues = new();
                 TolerantObjValues = new();
                 RuleTerms = new();
             }
+            //a simplified expression will have its letterId like SE01
             var se = new SimplifiedExpression(ruleId, ruleTerms, expression, comesFromUser, isTesting);
-
 
             //create *recursively* the simplifiedExpressions within the simplifed expression (they are in parenthesis)
             var newFormula = se.Expression;
@@ -80,8 +82,8 @@ namespace Validations
                 .Aggregate(se.SymbolExpressionFinal, (currValue, termExpression) => currValue.Replace(termExpression.TermExpressionStr, $" {termExpression.LetterId} "))
                 .Trim();
 
-            if (!isTesting)
-                se.AssertSimplified();
+            if (!isTesting)// testing is used to unit test how expressions are recursively built without the need of rule terms
+                se.AssertSimplified();//it will arrive here after all recursed simplified where asserted!
             return se;
         }
 
@@ -90,11 +92,12 @@ namespace Validations
         {
             RuleId = ruleId;
             RuleTerms = ruleTerms;
-            Expression = expression ?? "";
-            //Expression = RemoveOutsideParenthesis(expression);
+            Expression = expression ?? "";            
             LetterId = $"SE{SimplifiedExpression.SECounter++:D2}";
             if (comesFromUser)
             {
+                //assertion will use object terms, not rule terms. Therefore, the first time create object terms from rule terms.
+
                 TolerantObjValues = CreateObjectTerms(ruleTerms);
                 PlainObjValues = TolerantObjValues.ToDictionary(objt => objt.Key, objt => objt.Value.obj);
             }
@@ -107,12 +110,11 @@ namespace Validations
             //it will assert all the terms and all the recursed  simplifed 
             //to debug check the AssertSingleTemrExpression
 
-            //Assert the terms first (X1>X2)
+            //Assert the terms first (X1>X2). Cannot assert first recursed expressions which contain terms
             foreach (var termExpression in TermExpressions)
             {
                 //DEBUG here
                 var isValidTerm = AssertTerm(termExpression.TermExpressionStr);
-
 
                 var isBooleanType = Regex.Match(termExpression.TermExpressionStr, @"(>|<|==)").Success;
                 termExpression.IsValid = isBooleanType ? (bool)isValidTerm : false;
@@ -123,11 +125,11 @@ namespace Validations
             //Assert the partial expressions (which may contain other partial expressions  as this is recursive)
             foreach (var partialSimplifiedExpression in PartialSimplifiedExpressions)
             {
-                var isValidPartial = AssertTerm(SymbolExpressionFinal);
+                var isValidPartialSimplified = AssertTerm(SymbolExpressionFinal);
                 try
                 {
                     //if the result of the term expression is a number isnstead of a bool, it means that the whole rule was wrong and had a mix of bools and numbers
-                    partialSimplifiedExpression.IsValid = (bool)isValidPartial;
+                    partialSimplifiedExpression.IsValid = (bool)isValidPartialSimplified;
                 }
                 catch (Exception ex)
                 {
@@ -139,11 +141,11 @@ namespace Validations
             }
             var result = Eval.Execute(SymbolExpressionFinal, PlainObjValues);
             IsValid = result.GetType() == typeof(bool) ? IsValid = (bool)result : true;
-            PlainObjValues.Add(LetterId, result);// the recursed will come first and it will insert itself so the parent will find it
+            PlainObjValues.Add(LetterId, result);// the recursed will be asserted first and it by now they will be inserted as plain objects
         }
 
 
-        public List<SimplifiedExpression> CreatePartialSimplifiedExpressions()
+        public List<SimplifiedExpression> CreatePartialSimplifiedExpressions()//the partial are recursed expressions
         {
             var partialSimplifiedExpressions = new List<SimplifiedExpression>();
             if (string.IsNullOrWhiteSpace(Expression))
@@ -188,12 +190,12 @@ namespace Validations
 
         public object AssertTerm(string expression)
         {
-            //var isValid = true;
+            
+            //it can return a boolean or a value
             object result;
-            //*** first assert expression using eval.
+            //*** first assert expression with eval without tolerances
             try
-            {
-                //var isBooleanType = Regex.Match(expression, @"(>|<|==)").Success;
+            {               
                 result = Eval.Execute(expression, PlainObjValues);
             }
             catch (Exception e)
@@ -221,14 +223,16 @@ namespace Validations
             var hasCalculationTerm = Regex.IsMatch(expression, @"SE|PS|VV");
             var (isAlgebraig, leftOperand, operatorUsed, rightOperand) = SplitAlgebraExpresssionNew(expression);
 
-            var ddLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([SV].\d\d)", expression).Distinct();// get X0,X1,Z0,... from expression and then get only the terms corresponding to these
+            //for functions or recursed simplified expressions, allow a tolerance of 2 decimal digits (0.005)
+            // get S or V  from expression which are NOT plain terms but functions or simplified expr
+            var ddLetters = GeneralUtils.GetRegexListOfMatchesWithCase(@"([SV].\d\d)", expression).Distinct();
             var teObjDerived = PlainObjValues.Where(obj => ddLetters.Contains(obj.Key)).ToDictionary(item => item.Key, item => item.Value);
             foreach (var teObjDer in teObjDerived)
             {
                 teObjTerms.Add(teObjDer.Key, new ObjTerm() { obj = teObjDer.Value, decimals = 2 });
             }
 
-            //if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") && (teObjTerms.Count() > 2 || hasFunctionTerm || hasCalculationTerm || expression.Contains("*")))//only if more than two terms unless there is another term when formula contains *
+            //allow tolerance even if term has only two operands (x1=x2). before if it had only two operands we needed an operator such as * or / by a number such as x1= 0.2 * X2            
             if (isAllDouble && isAlgebraig && operatorUsed.Contains("=") )
             {
                 result = (bool)IsNumbersEqualWithTolerances(teObjTerms, leftOperand, rightOperand);

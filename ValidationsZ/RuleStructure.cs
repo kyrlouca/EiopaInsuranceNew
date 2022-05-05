@@ -276,7 +276,7 @@ namespace Validations
         public bool ValidateTheRule()
         {
             var rule = this;
-            //** The rule will be VALID if filter is false   
+            //** The rule is always VALID if filter is false. The filter is valid if there are missing filter terms (changed that lateley**)   
             //** if the filter is empty Or Valid then check the rule
             //** Rules with a sum function use the filter differently. The filter Takes out rows for the sum function
 
@@ -289,13 +289,10 @@ namespace Validations
             }
 
             //Check the filter first            
-            //if the filter is invalid, the rule is valid
-
-            //********* changed that lately . Before, I would check the filter even if some terms were missing
-            //conisder the filter as valid  if there are missing filter terms             
-
+            //if the filter is invalid, the rule is valid            
             //do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
+            //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN") && !HasNullFilterTerms(rule.FilterTerms ))
             {                                                
                     var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
@@ -320,6 +317,7 @@ namespace Validations
 
         static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
+            //It can returen a boolean OR an object which represents a numeric value or string  or date
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
 
