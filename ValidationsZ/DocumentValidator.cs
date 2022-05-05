@@ -1497,8 +1497,11 @@ namespace Validations
 
         private string FunctionForFtdvValue(List<RuleTerm> allTerms, RuleTerm ftdvTerm)
         {
-
-            //get the column of the key cell. the cell in this row which has a value s2c_dim:UI.                     
+            //=>find the value of a dimension(typed dim actually, for example ISIN/CAS/123455) of a cell in an open table.  
+            //in xbrl, row-dimensions in open tables are represented in the contexts, they are not facts
+            //in my design, I create facts for the values of those dims (which in the excel are shown as cells anyway)             
+            //therefore, we need to find the the column of the fact from DYN_TAB_COLUMN for the specified dim ("UI" for example).
+            //then get the value of the cell in this row for that column
             //ftdv({PF.06.02.26.02,c0230},"s2c_dim:UI" => PF.06.02.26.02, c0230,s2c_dim:UI  
 
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
