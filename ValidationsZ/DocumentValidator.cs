@@ -1544,7 +1544,8 @@ namespace Validations
 
         private string FunctionForExDimVal(List<RuleTerm> allTerms, RuleTerm exTerm)
         {
-
+            //=> find the value of the specified dimension for a specific cell.
+            //in my design, the dimensions of each cell are saved in the table TemplateSheetFactDim
             //ExDimVal({S.25.01.01.02,r0220,c0100},AO)=x0
             //check if the cell has the dim AO with value x0.
             //if the cell does not have the Dim, then get the default member of the Dim
