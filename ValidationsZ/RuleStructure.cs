@@ -293,26 +293,59 @@ namespace Validations
             //do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
-            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN") && !HasNullFilterTerms(rule.FilterTerms ))
-            {                                                
-                    var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
-                    if (isFilterValid is null || !(bool)isFilterValid)
-                    {
-                        //filter is INVALID, do not check the rule and return VALID RULE
-                        IsValidRule = true;
-                        return IsValidRule;
-                    }                            
+            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN") && !HasNullFilterTerms(rule.FilterTerms))
+            {
+                var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
+                if (isFilterValid is null || !(bool)isFilterValid)
+                {
+                    //filter is INVALID, do not check the rule and return VALID RULE
+                    IsValidRule = true;
+                    return IsValidRule;
+                }
+            }
+
+            if (HasNullTermsNew(rule.RuleTerms))
+            {
+                return true;
             }
 
             var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
-            return isValidRule;            
+            return isValidRule;
         }
+
+        public static bool HasNullTermsNew(List<RuleTerm> terms)
+        {
+            // if all the missing terms are arguments of fallback or empty functions
+
+            var missingTerms = terms
+                .Where(term => !term.IsFunctionTerm && term.IsMissing)
+                .Select(term => term.Letter);
+
+            if (!missingTerms.Any())
+            {
+                return false;
+            }
+            var hasNull= missingTerms.Any(letter => isTrueNullTerm(letter));
+            return hasNull;
+
+
+            bool isTrueNullTerm(string letter)
+            {
+                //is valid null => the term is NOT in a function  Or the function is NOT IsFallback
+                var functionTerm = terms.FirstOrDefault(term => term.IsFunctionTerm && term.TermText.Contains(letter));
+                var isTrueNull = functionTerm is  null || (functionTerm.FunctionType != FunctionTypes.ISFALLBACK && functionTerm.FunctionType != FunctionTypes.EMPTY);
+                return isTrueNull;
+            }
+
+        }
+
+
 
         public static bool HasNullFilterTerms(List<RuleTerm> terms)
         {
             var hasMissingTerms = terms.Any(term => !term.IsFunctionTerm && term.IsMissing);
-            return hasMissingTerms;                        
+            return hasMissingTerms;
         }
 
         static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
@@ -336,16 +369,16 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
-                var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression,true).IsValid;
+                var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression, true).IsValid;
                 if (!validSimplifiedIf)
                 {
                     return true;
                 }
 
-                var validSimplifiedThen = SimplifiedExpression.Process(ruleId, ruleTerms, thenExpression,true).IsValid;
+                var validSimplifiedThen = SimplifiedExpression.Process(ruleId, ruleTerms, thenExpression, true).IsValid;
                 return validSimplifiedThen;
             }
-            var validSimplifiedWhole = SimplifiedExpression.Process(ruleId, ruleTerms, fixedSymbolExpression,true).IsValid;
+            var validSimplifiedWhole = SimplifiedExpression.Process(ruleId, ruleTerms, fixedSymbolExpression, true).IsValid;
             return validSimplifiedWhole;
         }
 
