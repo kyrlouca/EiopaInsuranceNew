@@ -16,6 +16,10 @@ namespace AdhocTesting
         enum Fts{ exp,count,empty,isfallback,min,max,sum,matches,ftdv,ExDimVal };
         static void Main(string[] args)
         {
+            if (args is null)
+            {
+                throw new ArgumentNullException(nameof(args));
+            }
 
             //var xx = SimplifiedExpression.RemoveOutsideParenthesis(@"abc+(efg)");
             //var xx = SimplifiedExpression.Create(1,null,@"X1>X2+3||X1=X3 && X4");
@@ -29,31 +33,14 @@ namespace AdhocTesting
             
 
 
-            var x4 = @"$c = $d - (-$e - $f + x2)";
+            //var x4 = @"$c = $d - (-$e - $f + x2)";
 
             
 
             
 
         }
-
-        static (string leftOp,string Op, string rightOp) parseExp(string expression)
-        {
-            if (string.IsNullOrEmpty(expression))
-                    return ("", "", "");
-            var reg = @"(.*)\s*([<>=]=)\s*(.*)";
-            var parts = GeneralUtils.GetRegexSingleMatchManyGroups(reg, expression);
-            
-            if (parts.Count == 4)
-            {
-                var left = parts[1];
-                var op = parts[2];
-                var right = parts[3];
-                return (left, op, right);
-            }
-            return ("", "", "");        
-
-        }
+        
 
 
     }

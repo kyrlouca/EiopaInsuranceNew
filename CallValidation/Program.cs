@@ -85,12 +85,12 @@ namespace ValidationCall
                 docId = 9786;//4629
                              //9794,5376 empty match
                              //9798,5265  by maria ethniki insurance
+                docId = 11811;//to check rule 5236 for null values
 
                 //var validatorDg = new DocumentValidator
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
-                //DocumentValidator.ValidateDocument("IU260", 10820, 0);
-                //DocumentValidator.ValidateDocument("IU260", 11811, 5236);
-                DocumentValidator.ValidateDocument("IU260", 11811, 0);
+                //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
+                DocumentValidator.ValidateDocument("IU260", docId, 0);
 
                 return 1;
             }

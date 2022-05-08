@@ -660,9 +660,8 @@ namespace Validations
 
         private int CreateModuleRules()
         {
-            //** Read the validation Rules from the Database and construct Module Rules for the corresponding Module            
-            //go through each  ModuleRule and create DocumentRules with values from the document (sheets, facts)
-            //THEN For each Module Rule, one or more Document Rules will be created depending on scope and filter
+            //** Read the validation Rules from the Database and construct Module Rules for the corresponding Module                        
+            //For each Module Rule, one or more Document Rules will be created depending on scope 
 
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
             //validationScope will provide tableId
@@ -713,6 +712,7 @@ namespace Validations
         private void CreateDocumentRulesFromModuleRules()
         {
             //expand module rules using scope  for the DOCUMENT (create documentRules)
+            //go through each  ModuleRule and create DocumentRules with values from the document (sheets, facts)
 
             foreach (var moduleRule in ModuleRules)
             {

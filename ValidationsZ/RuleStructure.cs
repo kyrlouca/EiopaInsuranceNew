@@ -316,7 +316,7 @@ namespace Validations
 
         public static bool HasNullTermsNew(List<RuleTerm> terms)
         {
-            // if all the missing terms are arguments of fallback or empty functions
+            // returns true if there are any missing terms provided that they are not arguments of fallback or empty functions
 
             var missingTerms = terms
                 .Where(term => !term.IsFunctionTerm && term.IsMissing)
@@ -332,7 +332,9 @@ namespace Validations
 
             bool isTrueNullTerm(string letter)
             {
-                //is valid null => the term is NOT in a function  Or the function is NOT IsFallback
+                //the letter of the term.
+                //find the function term which uses the term
+                //is true null => the term is NOT used by a function  Or the function is NOT IsFallback
                 var functionTerm = terms.FirstOrDefault(term => term.IsFunctionTerm && term.TermText.Contains(letter));
                 var isTrueNull = functionTerm is  null || (functionTerm.FunctionType != FunctionTypes.ISFALLBACK && functionTerm.FunctionType != FunctionTypes.EMPTY);
                 return isTrueNull;
@@ -350,7 +352,8 @@ namespace Validations
 
         static public object AssertIfThenElseExpression(int ruleId, string symbolExpression, List<RuleTerm> ruleTerms)
         {
-            //It can returen a boolean OR an object which represents a numeric value or string  or date
+            //works for both the tableBase and the filter formula
+            //It can return either a boolean value OR an object which represents a numeric value or string  or date
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
 
@@ -369,6 +372,7 @@ namespace Validations
             var (isIfExpressionType, ifExpression, thenExpression) = SplitIfThenElse(fixedSymbolExpression);
             if (isIfExpressionType)
             {
+                //when the if part is false then return valid rule
                 var validSimplifiedIf = SimplifiedExpression.Process(ruleId, ruleTerms, ifExpression, true).IsValid;
                 if (!validSimplifiedIf)
                 {
