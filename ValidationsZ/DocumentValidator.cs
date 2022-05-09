@@ -821,8 +821,11 @@ namespace Validations
 
         public void UpdateTermRowCol(RuleTerm term, string scopeTableCode, ScopeRangeAxis scopeAxis, string rowCol)
         {
+            //update the row or the column of the term based on the scope axis.
+            //if both row and col are present do not update anything.
+            //for open tables where the tablecode is not the same as the scope table, find the row using the foreign key
             //PF.04.03.24.01 (r0040;0050;0060;0070;0080) 
-            //if both row and col are present do not update anything
+
             if (!string.IsNullOrEmpty(term.Row) && !string.IsNullOrEmpty(term.Col))
             {
                 return;
@@ -837,15 +840,14 @@ namespace Validations
                 term.Col = rowCol;
             }
             else if (scopeAxis == ScopeRangeAxis.Rows)
-            {
-                //if it is an open table 
-                // 1. find the key of the row
-                // 2. find the row of based on the key value
-                // same for filter 
-
+            {               
                 var isOpenTbl = IsOpenTable(ConfigObject, term.TableCode);
                 if (isOpenTbl)
                 {
+                    //if it is an open table 
+                    // 1. find the key of the row
+                    // 2. find the row of based on the key value
+                    // same for filter 
                     if (term.TableCode == scopeTableCode)
                     {
                         term.Row = rowCol;
