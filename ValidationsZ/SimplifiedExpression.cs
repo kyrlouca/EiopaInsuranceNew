@@ -330,8 +330,8 @@ namespace Validations
                 leftOperand = FlattenExpressionWithoutParenthesis(leftOperand);
             }
             var leftTerms = GetLetterTerms(leftOperand);
-            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, false);
-            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, true);
+            var dicLeftSmall = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, "S");
+            var dicLeftLarge = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, "A");
 
             var leftNumSmall = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftSmall));
             var leftNumBig = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftLarge));
@@ -343,37 +343,60 @@ namespace Validations
                 rightOperand = FlattenExpressionWithoutParenthesis(rightOperand);
             }
             var rightTerms = GetLetterTerms(rightOperand);
-            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, false);
-            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, true);
+            var dicRightSmall = ConvertDictionaryUsingInterval(rightTerms, tolerantValues,"S" );
+            var dicRightLarge = ConvertDictionaryUsingInterval(rightTerms, tolerantValues,"A");
 
             var rightNumSmall = Convert.ToDouble(Eval.Execute(rightOperand, dicRightSmall));
             var rightNumBig = Convert.ToDouble(Eval.Execute(rightOperand, dicRightLarge));
             (rightNumSmall, rightNumBig) = SwapSmaller(rightNumSmall, rightNumBig);
 
 
-            var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall);
+            var dicLeftNormal = ConvertDictionaryUsingInterval(leftTerms, tolerantValues, "");
+            var dicRightNormal = ConvertDictionaryUsingInterval(rightTerms, tolerantValues, "");
+
+            var leftNumNormal = Convert.ToDouble(Eval.Execute(leftOperand, dicLeftNormal));
+            var rightNumNormal = Convert.ToDouble(Eval.Execute(rightOperand, dicRightNormal));
+            
+            var isSmallDifference = Math.Abs(leftNumNormal - rightNumNormal) < 2.0;
+            if (isSmallDifference)
+            {
+                Console.WriteLine("small");
+            }
+
+            var isValid = (leftNumSmall <= rightNumBig && leftNumBig >= rightNumSmall) || isSmallDifference;
             return isValid;
         }
 
 
-        public static Dictionary<string, double> ConvertDictionaryUsingInterval(List<string> letters, Dictionary<string, ObjTerm> normalDic, bool isAddInterval)
+        public static Dictionary<string, double> ConvertDictionaryUsingInterval(List<string> letters, Dictionary<string, ObjTerm> normalDic, string addOrSubtract)
         {
+            // tolerance type can result to either Big or Small number            
+            // signedNum: if it's a negative number, we need to make the number smaller to get the maximum interval
+
             var newDictionary = new Dictionary<string, double>();
             foreach (var letter in letters)
-            {
-                var signedNum = letter.Contains("-") ? -1.0 : 1.0;
+            {                
+                var signedNum = letter.Contains("-") ? -1.0 : 1.0; //for negative we make substraction
                 var newLetter = letter.Replace("-", "").Trim();
                 var objItem = normalDic[newLetter];
                 var power = objItem.decimals;
-
 
                 try
                 {
                     var num = Convert.ToDouble(objItem.obj);
                     var interval = Math.Pow(10, -power) / 2.0;
+                    
+                    var newNum = num;
+                    if(addOrSubtract == "A")
+                    {
+                        newNum =  num + interval * signedNum;
+                    }
+                    else if(addOrSubtract == "S")
+                    {
+                        newNum =  num - interval * signedNum;
+                    }                    
 
-                    //if it's a negative number, we need to make the number smaller to get the maximum interval
-                    var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
+                    //var newNum = isAddInterval ? num + interval * signedNum : num - interval * signedNum;
                     newDictionary.Add(newLetter, newNum);
                 }
                 catch
@@ -382,7 +405,6 @@ namespace Validations
                     Log.Error($"Conversion Error for Exp;{objItem.obj}");
                     Console.WriteLine($"Conversion Error for Exp;{objItem.obj}");
                 }
-
 
             }
 
