@@ -13,7 +13,7 @@ namespace ExcelCreator
 
             Console.WriteLine("Excel Creator Debug mode");
 
-            var (solvency,user,serial, file) = ("IU260",99,9786, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\MinervaX.xlsx");
+            var (solvency,user,serial, file) = ("IU260",99,11812, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\pancyp.xlsx");
 
             var efc = new ExcelFileCreator(solvency,user, serial, file);
             efc.CreateExcelFile();

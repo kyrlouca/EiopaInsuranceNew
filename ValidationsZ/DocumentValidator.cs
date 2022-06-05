@@ -49,6 +49,59 @@ namespace Validations
         }
 
 
+        //*******************************
+
+
+        private void UpdateForeignKeys()
+        {
+           var masterFact=  FindFactForeignKeyValue(3826641);
+            var xx = 3;
+        }
+        private TemplateSheetFact FindFactForeignKeyValue(int factId)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            var sqlFact = @"
+                SELECT fact.FactId,fact.InstanceId, fact.row, fact.Col 
+                FROM TemplateSheetFact fact
+                JOIN TemplateSheetInstance sheet ON sheet.TemplateSheetId = fact.TemplateSheetId
+                WHERE FactId = @factId;
+            ";
+            var fact = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlFact, new { factId });
+            if (fact is null) return null;
+
+            var sqlTable = @"select sheet.TableCode 
+                    from TemplateSheetFact fact
+                    join TemplateSheetInstance sheet on sheet.TemplateSheetId = fact.TemplateSheetId
+                    where FactId = @factId ";
+            var table = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlTable, new { factId });
+
+            if (table is null) return null;
+
+            var sqlKyr = "select kk.TableCode,kk.TableCodeKeyDim,kk.TableCodeFK, kk.FK_TableDim from mTableKyrKeys kk where kk.TableCode = @tableCode";
+            var kyrRecord = connectionEiopa.QueryFirstOrDefault<MTableKyrKeys>(sqlKyr, new { tableCode = table.TableCode});
+
+            var sqlFactDim = @"select fd.Dim,fd.Signature from TemplateSheetFactDim fd where fd.FactId= @factId and fd.Dim= @dim";
+            var factDim = connectionLocal.QuerySingleOrDefault<TemplateSheetFactDim>(sqlFactDim, new { factId, dim= kyrRecord.FK_TableDim });
+
+
+            var sqlMasterFact = @"
+                SELECT TOP 1 fc.row, fc.col, fc.TextValue
+                FROM TemplateSheetFact fc
+                JOIN TemplateSheetInstance sheet ON sheet.TemplateSheetId = fc.TemplateSheetId
+                JOIN TemplateSheetFactDim dm ON dm.FactId = fc.FactId
+                WHERE sheet.InstanceId = @InstanceId AND sheet.TableCode = @TableCode AND dm.Signature = @Signature AND IsRowKey = 0
+            ";
+
+            var masterFact = connectionLocal.QueryFirstOrDefault<TemplateSheetFact>(sqlMasterFact, new {fact.InstanceId,tableCode=kyrRecord.TableCodeFK, factDim.Signature  });
+            return masterFact;
+
+        }
+        //*******************************
+
+
+
+
         private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0)
         {
 
@@ -127,6 +180,13 @@ namespace Validations
 
             var message = $"---Validation started for Document:{DocumentId}";
             Log.Information(message);
+
+            //****************************************
+            UpdateForeignKeys();
+            return;
+            //****************************************
+
+
 
             //to prevent anyone else validating when processed
             UpdateDocumentStatus("P");
@@ -497,7 +557,7 @@ namespace Validations
             }
 
             //use the foreign key for open tables which have different table from the scope table
-            var dbValue = plainTerm.TableCode == rule.ScopeTableCode  
+            var dbValue = plainTerm.TableCode == rule.ScopeTableCode
                 ? GetCellValueFromOneSheetDb(ConfigObject, plainTerm.TableCode, rule.SheetId, plainTerm.Row, plainTerm.Col)
                 : GetCellValueFromDbNew(ConfigObject, DocumentId, plainTerm.TableCode, plainTerm.Row, plainTerm.Col);
             plainTerm.AssignDbValues(dbValue);
@@ -605,7 +665,7 @@ namespace Validations
 	                AND fact.Col = @col
                 ";
             var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
-            
+
 
             if (!facts.Any())
             {
@@ -727,7 +787,7 @@ namespace Validations
             //Open tables do not have rows in the SCOPE, so we need to add all the ROWS of a sheet
             //Scope for closed tables may have explicit columns, range of columns or no columns Or rows 
             //Scope of Closed tables  with no columns
-            
+
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
             var scopeDetails = ScopeDetails.Parse(rule.ScopeString);
@@ -840,7 +900,7 @@ namespace Validations
                 term.Col = rowCol;
             }
             else if (scopeAxis == ScopeRangeAxis.Rows)
-            {               
+            {
                 var isOpenTbl = IsOpenTable(ConfigObject, term.TableCode);
                 if (isOpenTbl)
                 {
@@ -855,7 +915,7 @@ namespace Validations
                     else
                     {
                         var linkingDetails = GetLinkingDim(term.TableCode);
-                        var factInMaster = FindFactInRowOfMasterTable(linkingDetails.FK_TableDim, scopeTableCode, rowCol);                        
+                        var factInMaster = FindFactInRowOfMasterTable(linkingDetails.FK_TableDim, scopeTableCode, rowCol);
                         term.Row = factInMaster is null ? "" : FindRowUsingForeignKeyInDetailTbl(linkingDetails.FK_TableDim, term.TableCode, factInMaster.TextValue);
                     }
                 }

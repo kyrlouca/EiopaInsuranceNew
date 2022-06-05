@@ -28,7 +28,7 @@ namespace EntityClasses
         public string DPS { get; set; }
         public int CellID { get; set; }
         public string FieldOrigin { get; set; }
-        public int TableID { get; set; }
+        public int TableID { get; set; }        
         public bool IsRowKey { get; set; }
         public bool IsShaded { get; set; }
         public string XBRLCode { get; set; }
