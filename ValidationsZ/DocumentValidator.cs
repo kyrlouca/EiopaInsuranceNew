@@ -54,37 +54,44 @@ namespace Validations
 
         private void UpdateForeignKeys()
         {
-           var masterFact=  FindFactForeignKeyValue(3826641);
+             updateTableFacts(44461);
             var xx = 3;
         }
-        private TemplateSheetFact FindFactForeignKeyValue(int factId)
+
+        private void updateTableFacts(int sheetId)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            var sqlFact = @"
-                SELECT fact.FactId,fact.InstanceId, fact.row, fact.Col 
-                FROM TemplateSheetFact fact
-                JOIN TemplateSheetInstance sheet ON sheet.TemplateSheetId = fact.TemplateSheetId
-                WHERE FactId = @factId;
-            ";
-            var fact = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlFact, new { factId });
-            if (fact is null) return null;
-
-            var sqlTable = @"select sheet.TableCode 
-                    from TemplateSheetFact fact
-                    join TemplateSheetInstance sheet on sheet.TemplateSheetId = fact.TemplateSheetId
-                    where FactId = @factId ";
-            var table = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlTable, new { factId });
-
-            if (table is null) return null;
+            
+            var sqlTable = @"select sheet.TableCode from TemplateSheetInstance sheet where sheet.TemplateSheetId= @sheetId";                    
+            var table = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlTable, new { sheetId });
 
             var sqlKyr = "select kk.TableCode,kk.TableCodeKeyDim,kk.TableCodeFK, kk.FK_TableDim from mTableKyrKeys kk where kk.TableCode = @tableCode";
-            var kyrRecord = connectionEiopa.QueryFirstOrDefault<MTableKyrKeys>(sqlKyr, new { tableCode = table.TableCode});
+            var kyrRecord = connectionEiopa.QueryFirstOrDefault<MTableKyrKeys>(sqlKyr, new { table.TableCode });
+            if (kyrRecord?.TableCodeFK is null) return;
 
+            var sqlFacts = @"select fact.FactId, fact.InstanceId, fact.TextValue,  fact.Row, fact.RowForeign from TemplateSheetFact fact 
+                where fact.TemplateSheetId= @sheetId 
+                and (fact.FieldOrigin<>'KYR' or fact.FieldOrigin is null)
+            ";
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { sheetId });
+
+            foreach(var fact in facts)
+            {
+                UpdateFactWithForeignKey(fact,kyrRecord);
+            }
+        }
+
+        private int UpdateFactWithForeignKey(TemplateSheetFact fact, MTableKyrKeys kyrRecord)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+                                                          
+            //select the dim based on the kyrkeys (the kyrKeys will provide the  master fact)
             var sqlFactDim = @"select fd.Dim,fd.Signature from TemplateSheetFactDim fd where fd.FactId= @factId and fd.Dim= @dim";
-            var factDim = connectionLocal.QuerySingleOrDefault<TemplateSheetFactDim>(sqlFactDim, new { factId, dim= kyrRecord.FK_TableDim });
-
-
+            var dim = connectionLocal.QuerySingleOrDefault<TemplateSheetFactDim>(sqlFactDim, new { fact.FactId, dim= kyrRecord.FK_TableDim });
+            if (dim is null) return 0;
+                
+            //find the row of the "first" master fact using the fk dim
             var sqlMasterFact = @"
                 SELECT TOP 1 fc.row, fc.col, fc.TextValue
                 FROM TemplateSheetFact fc
@@ -92,9 +99,13 @@ namespace Validations
                 JOIN TemplateSheetFactDim dm ON dm.FactId = fc.FactId
                 WHERE sheet.InstanceId = @InstanceId AND sheet.TableCode = @TableCode AND dm.Signature = @Signature AND IsRowKey = 0
             ";
+            var masterFact = connectionLocal.QueryFirstOrDefault<TemplateSheetFact>(sqlMasterFact, new {fact.InstanceId,tableCode=kyrRecord.TableCodeFK, dim.Signature  });
+            if(masterFact is null) return 0;
 
-            var masterFact = connectionLocal.QueryFirstOrDefault<TemplateSheetFact>(sqlMasterFact, new {fact.InstanceId,tableCode=kyrRecord.TableCodeFK, factDim.Signature  });
-            return masterFact;
+            var sqlUpdFact = @"update TemplateSheetFact set RowForeign= @FK_Row where FactId= @factId";
+            var xx = connectionLocal.Execute(sqlUpdFact, new { FK_Row = masterFact.Row, fact.FactId });
+
+            return fact.FactId;
 
         }
         //*******************************
