@@ -39,7 +39,7 @@ namespace XbrlReader
             (var fundIdT, var filePath) = (783, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\American Steamship.xbrl");
 
 
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2021, 1,filePath);            
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2022, 1,filePath);            
                         
 
             Console.WriteLine("Finish");

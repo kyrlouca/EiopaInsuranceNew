@@ -54,7 +54,8 @@ namespace XbrlReader
 
         public static void ProcessFactsAndAssignToSheets(string solvencyVersion, int documentId, List<string> filings)
         {
-            //**always use this factory method to create the instance
+            //*** A factory method : its is static and will create an instance.
+            //** always use this factory method to create the instance and then apply the methods
             var factsProcessor = new FactsProcessor(solvencyVersion, documentId, filings);
 
             if (factsProcessor.Document is null)
@@ -83,6 +84,10 @@ namespace XbrlReader
 
             //***Process the facts in all module tables
             var countFacts = factsProcessor.ProcessModuleTables();
+
+            //****Update the foreign Keys of the cells in open tables
+             factsProcessor.UpdateCellsForeignRow();
+
 
             factsProcessor.UpdateDocumentStatus("L");
             Console.WriteLine($"\ndocId: {factsProcessor.DocumentId} -- sheets: facts:{countFacts}");
@@ -1266,6 +1271,80 @@ namespace XbrlReader
             connectionInsurance.Execute(sqlDeleteSig, new { instanceId });
 
         }
+
+
+        //*******************************
+
+
+        private void UpdateCellsForeignRow()
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            
+            var sqlSelectSheets = @"select sheet.TemplateSheetId,sheet.TableCode from TemplateSheetInstance sheet where sheet.IsOpenTable=1 and  sheet.InstanceId = @documentId";
+            var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId })?.ToList() ?? new();
+            foreach (var sheet in sheets)
+            {
+                
+                Console.WriteLine($"Update Foreign Keys");
+                UpdateSheetFactsWithMasterRow(sheet.TemplateSheetId);
+            }            
+
+        }
+
+        private void UpdateSheetFactsWithMasterRow(int sheetId)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var sqlTable = @"select sheet.TableCode from TemplateSheetInstance sheet where sheet.TemplateSheetId= @sheetId";
+            var table = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlTable, new { sheetId });
+
+            var sqlKyr = "select kk.TableCode,kk.TableCodeKeyDim,kk.FK_TableCode, kk.FK_TableDim from mTableKyrKeys kk where kk.TableCode = @tableCode";
+            var kyrRecord = connectionEiopa.QueryFirstOrDefault<MTableKyrKeys>(sqlKyr, new { table.TableCode });
+            if (kyrRecord?.FK_TableCode is null) return;
+
+            var sqlFacts = @"select fact.FactId, fact.InstanceId, fact.TextValue,  fact.Row, fact.RowForeign from TemplateSheetFact fact 
+                where fact.TemplateSheetId= @sheetId 
+                and (fact.FieldOrigin<>'KYR' or fact.FieldOrigin is null)
+            ";
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { sheetId });
+
+            foreach (var fact in facts)
+            {
+                UpdateFactWithMasterRow(fact, kyrRecord);
+            }
+        }
+
+        private int UpdateFactWithMasterRow(TemplateSheetFact fact, MTableKyrKeys kyrRecord)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            //select the dim based on the kyrkeys (the kyrKeys will provide the  master fact)
+            var sqlFactDim = @"select fd.Dim,fd.Signature from TemplateSheetFactDim fd where fd.FactId= @factId and fd.Dim= @dim";
+            var dim = connectionLocal.QuerySingleOrDefault<TemplateSheetFactDim>(sqlFactDim, new { fact.FactId, dim = kyrRecord.FK_TableDim });
+            if (dim is null) return 0;
+
+            //find the row of the "first" master fact using the fk dim
+            var sqlMasterFact = @"
+                SELECT TOP 1 fc.row, fc.col, fc.TextValue
+                FROM TemplateSheetFact fc
+                JOIN TemplateSheetInstance sheet ON sheet.TemplateSheetId = fc.TemplateSheetId
+                JOIN TemplateSheetFactDim dm ON dm.FactId = fc.FactId
+                WHERE sheet.InstanceId = @InstanceId AND sheet.TableCode = @TableCode AND dm.Signature = @Signature AND IsRowKey = 0
+            ";
+            var masterFact = connectionLocal.QueryFirstOrDefault<TemplateSheetFact>(sqlMasterFact, new { fact.InstanceId, tableCode = kyrRecord.FK_TableCode, dim.Signature });
+            if (masterFact is null) return 0;
+
+            var sqlUpdFact = @"update TemplateSheetFact set RowForeign= @FK_Row where FactId= @factId";
+            _ = connectionLocal.Execute(sqlUpdFact, new { FK_Row = masterFact.Row, fact.FactId });
+
+            return fact.FactId;
+
+        }
+        //*******************************
+
+
+
 
 
     }
