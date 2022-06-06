@@ -36,10 +36,14 @@ namespace XbrlReader
 
             //
 
-            (var fundIdT, var filePath) = (783, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\American Steamship.xbrl");
+            //var configObject = Configuration.GetInstance("IU260").Data;
+            //FactsProcessor.UpdateCellsForeignRow(configObject, 11815);
+            //return 1;
 
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\x6\ALTIUS INSURANCE LTD Q1 2022.xbrl
 
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "ars", 2022, 1,filePath);            
+            (var fundIdT, var filePath) = (784, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\x6\Prime Q1 2022.xbrl");            
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2022, 1,filePath);            
                         
 
             Console.WriteLine("Finish");

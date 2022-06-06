@@ -86,7 +86,7 @@ namespace XbrlReader
             var countFacts = factsProcessor.ProcessModuleTables();
 
             //****Update the foreign Keys of the cells in open tables
-             factsProcessor.UpdateCellsForeignRow();
+            UpdateCellsForeignRow(factsProcessor.ConfigObject, factsProcessor.DocumentId);
 
 
             factsProcessor.UpdateDocumentStatus("L");
@@ -1276,25 +1276,25 @@ namespace XbrlReader
         //*******************************
 
 
-        private void UpdateCellsForeignRow()
+        public static void UpdateCellsForeignRow(ConfigObject configObject, int documentId)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
             
             var sqlSelectSheets = @"select sheet.TemplateSheetId,sheet.TableCode from TemplateSheetInstance sheet where sheet.IsOpenTable=1 and  sheet.InstanceId = @documentId";
-            var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId })?.ToList() ?? new();
+            var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { documentId })?.ToList() ?? new();
             foreach (var sheet in sheets)
             {
                 
                 Console.WriteLine($"Update Foreign Keys");
-                UpdateSheetFactsWithMasterRow(sheet.TemplateSheetId);
+                UpdateSheetFactsWithMasterRow(configObject, sheet.TemplateSheetId);
             }            
 
         }
 
-        private void UpdateSheetFactsWithMasterRow(int sheetId)
+        static void UpdateSheetFactsWithMasterRow(ConfigObject configObject,int sheetId)
         {
-            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
 
             var sqlTable = @"select sheet.TableCode from TemplateSheetInstance sheet where sheet.TemplateSheetId= @sheetId";
             var table = connectionLocal.QueryFirstOrDefault<TemplateSheetInstance>(sqlTable, new { sheetId });
@@ -1311,13 +1311,22 @@ namespace XbrlReader
 
             foreach (var fact in facts)
             {
-                UpdateFactWithMasterRow(fact, kyrRecord);
+                UpdateFactWithMasterRow(configObject,fact, kyrRecord);
             }
         }
 
-        private int UpdateFactWithMasterRow(TemplateSheetFact fact, MTableKyrKeys kyrRecord)
+        static int UpdateFactWithMasterRow(ConfigObject configObject,TemplateSheetFact fact, MTableKyrKeys kyrRecord)
         {
-            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            //update the RowForeign of the main table with the row of a related table.
+            //For example, S.06.02.01.01 has links with S.06.02.01.02 on the "UI" dim. (SEVERAL rows of S.06.02.01.01 may correspond to a row of S.06.02.01.02 ** checked and true)       
+            //  Therefore, each cell of the S.06.02.01 has a rowForeign which points to a cell of S.06.02.01.02
+            //  ---------------------------------------------------------------------------------------------
+            //Actually the main table may be related with more than one related tables.
+            //For example, table S.30.02.01.01 is linked with S.30.02.01.03 with the RF dim and with S.30.02.01.04 with "CA" dim.
+            //We would need a more complex design for this arrangment which was not asked.
+
+
+            using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
 
             //select the dim based on the kyrkeys (the kyrKeys will provide the  master fact)
             var sqlFactDim = @"select fd.Dim,fd.Signature from TemplateSheetFactDim fd where fd.FactId= @factId and fd.Dim= @dim";
