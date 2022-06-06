@@ -8,14 +8,14 @@ namespace ExcelCreator
         public static int Main(string[] args)
         {
 
-#if (DEBUG)
+#if DEBUG
 
 
             Console.WriteLine("Excel Creator Debug mode");
 
-            var (solvency,user,serial, file) = ("IU260",99,11814, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\AmericanSteam.xlsx");
+            var (solvencyD,userD,serialD, fileD) = ("IU260",99, 11824, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\AmericanSteam.xlsx");
 
-            var efc = new ExcelFileCreator(solvency,user, serial, file);
+            var efc = new ExcelFileCreator(solvencyD,userD, serialD, fileD);
             efc.CreateExcelFile();
             return 1;
 #endif
@@ -29,7 +29,9 @@ namespace ExcelCreator
                 var documentId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
                 var fileName = args[3];
 
+                Console.WriteLine($"userId:{userId} docId:{documentId} fileName:{fileName}");
                 var xlsCreator = new ExcelFileCreator(solvencyVersion, userId, documentId, fileName);
+                Console.WriteLine($"Before create. userId:{userId} docId:{documentId} fileName:{fileName}");
                 xlsCreator.CreateExcelFile();
 
 

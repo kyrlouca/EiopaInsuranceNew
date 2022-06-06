@@ -76,11 +76,13 @@ namespace ExcelCreator
 
         public ExcelFileCreator(string solvencyVersion, int userId, int documentId, string excelOutputFile)
         {
+            Console.WriteLine($"***&&& Creator");
             SolvencyVersion = solvencyVersion;
             DocumentIdInput = documentId;
             UserId = userId;
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
             ExcelOutputFile = excelOutputFile;
+            
             WorkbookStyles = new WorkbookStyles(DestExcelTemplateBook);
             //Styles = CreateStyles();
         }
@@ -88,6 +90,7 @@ namespace ExcelCreator
 
         public bool CreateExcelFile()
         {
+            Console.WriteLine($"in Create Excel file");
             if (!IsValidEiopaVersion)
             {
                 var errorMessage = $"Invalid Solvency Version :{SolvencyVersion} for Document Id:{DocumentIdInput}";
@@ -159,6 +162,7 @@ namespace ExcelCreator
                 return false;
             }
 
+            Console.WriteLine("finished");
             return true;
         }
 
