@@ -39,7 +39,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionLoggerZ", "Trans
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdhocTesting", "AdhocTesting\AdhocTesting.csproj", "{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CurrencyRates", "CurrencyRates\CurrencyRates.csproj", "{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CurrencyRates", "CurrencyRates\CurrencyRates.csproj", "{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelCreatorV", "ExcelCreatorV\ExcelCreatorV.csproj", "{097457C5-7063-4EDD-B530-2C514006BDC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -99,6 +101,10 @@ Global
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{097457C5-7063-4EDD-B530-2C514006BDC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{097457C5-7063-4EDD-B530-2C514006BDC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{097457C5-7063-4EDD-B530-2C514006BDC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{097457C5-7063-4EDD-B530-2C514006BDC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
