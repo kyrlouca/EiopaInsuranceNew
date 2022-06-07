@@ -5,13 +5,14 @@
     <TargetFramework>net6.0-windows</TargetFramework>    
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <StartupObject>ExcelCreator.Program</StartupObject>
-    <RootNamespace>ExcelCreator</RootNamespace>
+ 
     <AssemblyVersion>1.0.0.2</AssemblyVersion>
-    <FileVersion>1.0.0.2</FileVersion>     
+    <FileVersion>1.0.0.2</FileVersion>
+    <PlatformTarget>x64</PlatformTarget>     
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">        
-    <Optimize>true</Optimize>    
+    <Optimize>True</Optimize>    
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,5 +33,6 @@
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
     <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
   </ItemGroup>
+
 
 </Project>
