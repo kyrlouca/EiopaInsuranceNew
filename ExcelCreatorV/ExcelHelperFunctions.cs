@@ -67,7 +67,7 @@ namespace ExcelCreatorV
             }
         }
 
-        static public IRow CopyRow(IRow orgRow, IRow destRow, int offset = 0, bool doCopyFormatting = false)
+        static public IRow? CopyRow(IRow orgRow, IRow destRow, int offset = 0, bool doCopyFormatting = false)
         {
 
             if (orgRow is null || destRow is null)
@@ -96,7 +96,7 @@ namespace ExcelCreatorV
 
 
 
-        static public IRow CopyRowSameBook(IRow orgRow, IRow destRow, int offset = 0, bool doCopyFormatting = false)
+        static public IRow? CopyRowSameBook(IRow orgRow, IRow destRow, int offset = 0, bool doCopyFormatting = false)
         {
 
             if (orgRow is null || destRow is null)
@@ -119,7 +119,7 @@ namespace ExcelCreatorV
 
 
 
-        static ICell CopyCellWithFormatingSameBook(XSSFWorkbook destBook, ICell originCell, ICell destCell)
+        static ICell? CopyCellWithFormatingSameBook(XSSFWorkbook destBook, ICell originCell, ICell destCell)
         {
             if (destBook is null)
             {
@@ -137,7 +137,7 @@ namespace ExcelCreatorV
         }
 
 
-        static ICell CopyCellWithFormating(XSSFWorkbook destBook, ICell originCell, ICell destCell)
+        static ICell? CopyCellWithFormating(XSSFWorkbook destBook, ICell originCell, ICell destCell)
         {
             if (destBook is null)
             {
@@ -156,7 +156,7 @@ namespace ExcelCreatorV
             return cell;
         }
 
-        static ICell CopyCell(ICell originCell, ICell destCell)
+        static ICell? CopyCell(ICell originCell, ICell destCell)
         {
             if (originCell is null || destCell is null)
             {

@@ -44,8 +44,8 @@ namespace ExcelCreatorV
 
        
 
-        public ConfigObject ConfigObject { get; private set; }
-        public System.Data.DataTableCollection ExcelSheets { get; internal set; }
+        public ConfigObject? ConfigObject { get; private set; }
+        
 
         public bool IsFileValid { get; internal set; } = true;
         public bool IsValidEiopaVersion { get; internal set; } = true;
@@ -107,7 +107,7 @@ namespace ExcelCreatorV
                 return false;
             }
 
-            if (!GetConfiguration())
+            if (GetConfiguration() is null)
             {
                 return false;
             }
@@ -178,7 +178,10 @@ namespace ExcelCreatorV
         {
             //select all the sheets from the db and create a tab for each sheet
             //For multiZet tables, several sheets may resutl from a  single tablecode "S.21.01.01.01" (one for each zet)
+
+            
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+         
             var sqlSheets = @"
                 SELECT
                   TemplateSheetInstance.TemplateSheetId
@@ -307,17 +310,15 @@ namespace ExcelCreatorV
 
         }
 
-        private bool GetConfiguration()
+        private ConfigObject? GetConfiguration()
         {
 
-            ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
+            var ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
             if (string.IsNullOrEmpty(ConfigObject.LoggerExcelWriterFile))
             {
                 var errorMessage = "LoggerExcelWriter is not defined in ConfigData.json";
                 Console.WriteLine(errorMessage);
                 throw new SystemException(errorMessage);
-
-
             }
 
             Log.Logger = new LoggerConfiguration()
@@ -331,6 +332,7 @@ namespace ExcelCreatorV
                 var errorMessage = $"Excel Writer --Invalid Eiopa Version: {SolvencyVersion}";
                 Console.WriteLine(errorMessage);
                 Log.Error(errorMessage);
+                return null;
             }
 
             //the connection strings depend on the Solvency Version
@@ -341,7 +343,7 @@ namespace ExcelCreatorV
                 throw new SystemException(errorMessage);
             }
 
-            return true;
+            return ConfigObject;
         }
 
         private void WriteProcessStarted()
