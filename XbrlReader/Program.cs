@@ -5,8 +5,7 @@ using System.Collections.Generic;
 
 namespace XbrlReader
 {
-
-    class Program
+    internal class Program
     {
         static int Main(string[] args)
         {

@@ -5,7 +5,7 @@ Console.WriteLine("Hello, ExcelV!");
 #if DEBUG
 
 Console.WriteLine("Excel in debug2");
-var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11824, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\AmericanSteam.xlsx");
+var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11824, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\primeq1.xlsx");
 var efc = new ExcelFileCreator(solvencyD, userD, serialD, fileD);
 efc.CreateExcelFile();
 
@@ -16,7 +16,11 @@ efc.CreateExcelFile();
                 //.\ExcelCreator "IU260" 99 8685 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\UniversalQ4.xlsx"
                  
                 var solvencyVersion = args[0].Trim();
-                var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
+                var userId = int.TryParse(a'\
+                rty7ju8kl0;-[']
+                
+                \]\
+               gs[1], out var arg1) ? arg1 : 0;
                 var documentId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
                 var fileName = args[3];
 
@@ -37,4 +41,5 @@ efc.CreateExcelFile();
             }
 #endif
 return 1;
+
 
