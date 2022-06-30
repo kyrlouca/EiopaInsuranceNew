@@ -5,9 +5,11 @@ Console.WriteLine("Hello, ExcelV!");
 #if DEBUG
 
 Console.WriteLine("Excel in debug2");
-var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11824, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\primeq1.xlsx");
-var efc = new ExcelFileCreator(solvencyD, userD, serialD, fileD);
-efc.CreateExcelFile();
+var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11824, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\primeq1b.xlsx");
+
+//var efc = new ExcelFileCreator(solvencyD, userD, serialD, fileD);
+//efc.CreateExcelFile();
+ExcelFileCreator.CreateTheExcelFile(solvencyD, userD, serialD, fileD);
 
 #else
     Console.WriteLine("ExcelV outside debug");

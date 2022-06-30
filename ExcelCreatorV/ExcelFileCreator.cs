@@ -74,7 +74,14 @@ namespace ExcelCreatorV
         public string SolvencyVersion { get; internal set; }
 
 
-        public ExcelFileCreator(string solvencyVersion, int userId, int documentId, string excelOutputFile)
+
+        public static void CreateTheExcelFile(string solvencyVersion, int userId, int documentId, string excelOutputFile)
+        {
+            var excelCreator = new ExcelFileCreator(solvencyVersion, userId, documentId, excelOutputFile);
+            excelCreator.CreateExcelFile();
+        }
+
+        private ExcelFileCreator(string solvencyVersion, int userId, int documentId, string excelOutputFile)
         {
             Console.WriteLine($"***&&& Creator");
             SolvencyVersion = solvencyVersion;
@@ -88,7 +95,7 @@ namespace ExcelCreatorV
         }
 
 
-        public bool CreateExcelFile()
+        private bool CreateExcelFile()
         {
             Console.WriteLine($"in Create Excel file");
             if (!IsValidEiopaVersion)
