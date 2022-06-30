@@ -19,13 +19,13 @@ namespace ExcelCreatorV
     {
         public TemplateSheetInstance SheetDb { get; private set; }
         public XSSFWorkbook ExcelTemplateBook { get; private set; }
-        public XSSFWorkbook DestExcelTemplateBook { get; private set; }
+        public XSSFWorkbook DestExcelBook { get; private set; }
         public ConfigObject ConfigObject { get; private set; }
 
         public ISheet DestSheet { get; set; }
         public ISheet OriginSheet { get; set; }
         public CellRangeAddress OrgDataRange { get; set; }
-        public CellRangeAddress OrgExtendedRange;
+        public CellRangeAddress? OrgExtendedRange;
 
 
 
@@ -34,7 +34,7 @@ namespace ExcelCreatorV
 
         public int OffsetCol { get; set; }
         public CellRangeAddress DestDataRange { get; set; }
-        public CellRangeAddress DestExtendedRange;
+        public CellRangeAddress? DestExtendedRange;
 
         public int StartColDestIdx { get; set; }
         public int EndColDestIdx { get; set; }
@@ -49,12 +49,12 @@ namespace ExcelCreatorV
 
 
 
-        public SingleExcelSheet(string solvencyVersion, XSSFWorkbook excelTemplateBook, WorkbookStyles workbookStyles, XSSFWorkbook destExcelTemplateBook, TemplateSheetInstance sheetDb)
+        public SingleExcelSheet(string solvencyVersion, XSSFWorkbook excelTemplateBook, WorkbookStyles workbookStyles, XSSFWorkbook destExcelBook, TemplateSheetInstance sheetDb)
         {
             ExcelTemplateBook = excelTemplateBook;
             //Styles = styles;
             WorkbookStyles = workbookStyles;
-            DestExcelTemplateBook = destExcelTemplateBook;
+            DestExcelBook = destExcelBook;
 
             SheetDb = sheetDb;
             ConfigObject = Configuration.GetInstance(solvencyVersion).Data;
@@ -99,7 +99,7 @@ namespace ExcelCreatorV
 
             var tabName = SheetDb.SheetTabName.Trim();
 
-            DestSheet = DestExcelTemplateBook.CreateSheet(tabName);
+            DestSheet = DestExcelBook.CreateSheet(tabName);
 
             CopyExtentedRange();
 
@@ -146,7 +146,7 @@ namespace ExcelCreatorV
             DestSheet.SetZoom(80);
 
             CreateHyperLink();
-            var yx = DestExcelTemplateBook.NumCellStyles;
+            var yx = DestExcelBook.NumCellStyles;
 
 
             return lines;
@@ -260,7 +260,7 @@ namespace ExcelCreatorV
                         var destCell = destRow.CreateCell(destColNum);
 
                         var originStyle = originCell.CellStyle;
-                        var destStyle = DestExcelTemplateBook.CreateCellStyle();
+                        var destStyle = DestExcelBook.CreateCellStyle();
                         destStyle.CloneStyleFrom(originStyle);
                         destCell.CellStyle = destStyle;
 
@@ -304,10 +304,10 @@ namespace ExcelCreatorV
                         {
                             destCellL.CellStyle = WorkbookStyles.FullBorderStyle;
                         }
-                        if (x == OrgDataRange.FirstColumn - 2)//row labels
+                        if (x == OrgDataRange.FirstColumn - 2 && originCell is not null)//row labels
                         {
                             var originStyle = originCell.CellStyle;
-                            var destStyle = DestExcelTemplateBook.CreateCellStyle();
+                            var destStyle = DestExcelBook.CreateCellStyle();
                             destStyle.CloneStyleFrom(originStyle);
                             destStyle.WrapText = false;
                             destCellL.CellStyle = destStyle;
@@ -321,7 +321,7 @@ namespace ExcelCreatorV
                         var destCellD = destRow.CreateCell(destColNumD);
 
 
-                        if (originCell.CellStyle.BorderDiagonal == BorderDiagonal.Both)
+                        if (originCell?.CellStyle.BorderDiagonal == BorderDiagonal.Both)
                         {
                             //destCellD.SetCellValue("diaal");
                             destCellD.CellStyle = WorkbookStyles.ShadedStyle;
@@ -368,7 +368,7 @@ namespace ExcelCreatorV
                         CopyDataRow(originRow, y, destRowNum);
                     }
 
-                    var yd = DestExcelTemplateBook.NumCellStyles;
+                    var yd = DestExcelBook.NumCellStyles;
 
                 }
             }
@@ -1034,8 +1034,10 @@ namespace ExcelCreatorV
         {
             using var connectionEiopaDb = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
             if (cell is null) return;
+            if (fact is null) return;
 
-            var DataTypeUse = (fact is null) ? "NULL" : fact.DataTypeUse.Trim();
+            //var DataTypeUse = (fact is null) ? "NULL" : fact.DataTypeUse.Trim();
+            var DataTypeUse = fact.DataTypeUse.Trim();
 
             //N-,E-,S-,D- ,P-,M-,B- ,I-
             var isDiagonal = cell.CellStyle == WorkbookStyles.ShadedStyle;
@@ -1078,8 +1080,7 @@ namespace ExcelCreatorV
                     cell.SetCellValue((int)Math.Floor(fact.NumericValue));
                     cell.CellStyle = WorkbookStyles.IntStyle;
                     break;
-                case "NULL"://fact is null
-                            //cell.CellStyle = WorkbookStyles.BasicBorderStyle;
+                case "NULL"://fact is null                            
                     break;
                 default:
                     cell.SetCellValue("ERROR:" + fact.TextValue);

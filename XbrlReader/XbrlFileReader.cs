@@ -811,17 +811,17 @@ VALUES (
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
-        private void CreateErrorDocument(int organisationId, int documentId,int userId=0)
-        {
-            //var connectionPensionString = Configuration.GetConnectionPensionString();
-            using var localDbConnection = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+        //private void CreateErrorDocument(int organisationId, int documentId,int userId=0)
+        //{
+        //    //var connectionPensionString = Configuration.GetConnectionPensionString();
+        //    using var localDbConnection = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
-            var sqlDelete = @"delete from ERROR_Document where ErrorDocumentId = @documentId";
-            localDbConnection.Execute(sqlDelete, new { documentId });
-            var sqlInsert = @"INSERT INTO ERROR_Document( OrganisationId,ErrorDocumentId, UserId)VALUES(@organisationId, @documentId,  @userId)";
-            localDbConnection.Execute(sqlInsert, new { organisationId,documentId,userId });
+        //    var sqlDelete = @"delete from ERROR_Document where ErrorDocumentId = @documentId";
+        //    localDbConnection.Execute(sqlDelete, new { documentId });
+        //    var sqlInsert = @"INSERT INTO ERROR_Document( OrganisationId,ErrorDocumentId, UserId)VALUES(@organisationId, @documentId,  @userId)";
+        //    localDbConnection.Execute(sqlInsert, new { organisationId,documentId,userId });
 
-        }
+        //}
 
     }
 }

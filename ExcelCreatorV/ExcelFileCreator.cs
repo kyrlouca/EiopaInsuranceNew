@@ -17,32 +17,8 @@ namespace ExcelCreatorV
     internal enum LineType { Empty, AnyText, SheetCode, Zet, Column, Row }//Code is template code "PF.01.01.02"
     public class ExcelFileCreator
     {
-        public string DebugTableCode { get; set; } = "";
-        //public string DebugTableCode { get; set; } = "S.06.02.01 Combined";
-        //public string DebugTableCode { get; set; } = "S.02.01.01.01";
-        //public string DebugTableCode { get; set; } = "S.02.02.01.02";
-
-        //public string DebugTableCode { get; set; } = "S.20.01.01.01";
-        //public string DebugTableCode { get; set; } = "S.19.01.01.18";
-        //
-        //public string DebugTableCode { get; set; } = "S.05.02.01.01";
-        //public string DebugTableCode { get; set; } = "S.29.03.01.01";
-
-        //public string DebugTableCode { get; set; } = "S.19.01.01.12";
-        //public string DebugTableCode { get; set; } = "S.05.01.02.01";
-        //public string DebugTableCode { get; set; } = "S.06.02.01.02";
-        //public string DebugTableCode { get; set; } = "S.02.01.01.01";
-        //public string DebugTableCode { get; set; } = "S.19.01.01.01";
-        //public string DebugTableCode { get; set; } = "S.12.02.01.02";
-        //DebugSheet = "//DebugSheet = "S.02.01.02.01";  //shaded area
-        //DebugSheet = "S.02.02.01.02";  //multi currency
-
-        //DebugSheet = "S.19.01.01.01";  //multi Zet
-        //DebugSheet = "S.01.01.02.01";
-        //DebugSheet = "S.05.02.01.06";
-        //DebugSheet = "S.05.02.01.02";  multi zet fact querw
-
-       
+        public string DebugTableCode { get; set; } = "S.23.01.01.01";
+               
 
         public ConfigObject ConfigObject { get; private set; }
         
@@ -53,7 +29,7 @@ namespace ExcelCreatorV
         public string ExcelOutputFile { get; internal set; }
 
         public XSSFWorkbook? ExcelTemplateBook { get; private set; }
-        public XSSFWorkbook DestExcelTemplateBook { get; private set; } = new XSSFWorkbook();
+        public XSSFWorkbook DestExcelBook { get; private set; } = new XSSFWorkbook();
         public WorkbookStyles WorkbookStyles { get; private set; }
 
 
@@ -92,7 +68,7 @@ namespace ExcelCreatorV
             ConfigObject = GetConfiguration();
             
 
-            WorkbookStyles = new WorkbookStyles(DestExcelTemplateBook);            
+            WorkbookStyles = new WorkbookStyles(DestExcelBook);            
         }
 
 
@@ -208,7 +184,7 @@ namespace ExcelCreatorV
                 Console.WriteLine($"**** Debugging-- Create ONLY the sheet: {debugTableCode} ");
             }
 
-
+            var singleExcelSheets = new List<SingleExcelSheet>();
             foreach (var sheet in sheets)
             {
 
@@ -222,9 +198,9 @@ namespace ExcelCreatorV
                     continue;//Empty sheets should NOT be reported. If there were empty sheets in the xbrl (and the db) Do NOT create excel sheets for them anyway
                 }
                 //********************************************************
-                var newSheet = new SingleExcelSheet(SolvencyVersion, ExcelTemplateBook, WorkbookStyles, DestExcelTemplateBook, sheet);
+                var newSheet = new SingleExcelSheet(SolvencyVersion, ExcelTemplateBook, WorkbookStyles, DestExcelBook, sheet);
                 var rowsInserted = newSheet.FillSingleExcelSheet();
-                //********************************************************
+                singleExcelSheets.Add(newSheet);                
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
 
@@ -233,23 +209,48 @@ namespace ExcelCreatorV
             //---------------------------------------------------------------
             //Create a sheet which combines S0.06.02.01.01 with S0.06.02.01.02
             var sheetS06Name = "S.06.02.01 Combined";
-            var sheetS06Combined = new SheetS0601Combined(ConfigObject, DestExcelTemplateBook, sheetS06Name, WorkbookStyles);
+            var sheetS06Combined = new SheetS0601Combined(ConfigObject, DestExcelBook, sheetS06Name, WorkbookStyles);
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {
                 sheetList.Add(("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
                 sheetList.Sort();
                 var sheetS602idx = sheetList.Select(item => item.sheetName).ToList().IndexOf(sheetS06Name);
-                DestExcelTemplateBook.SetSheetOrder(sheetS06Name, sheetS602idx);
+                DestExcelBook.SetSheetOrder(sheetS06Name, sheetS602idx);
             }
-                        
+
             //---------------------------------------------------------------
+
+            //********
+            MergeSheets(singleExcelSheets);
 
             var listSheet = CreateListSheet(sheetList);
 
-            DestExcelTemplateBook.SetSheetOrder(listSheet.SheetName, 0);
-            DestExcelTemplateBook.SetActiveSheet(0);
+            DestExcelBook.SetSheetOrder(listSheet.SheetName, 0);
+            DestExcelBook.SetActiveSheet(0);
             listSheet.SetZoom(80);
+
+        }
+
+
+        private void MergeSheets(List<SingleExcelSheet> sheets)
+        {
+            var destSheetName = "aa";
+            var mergeSheet = DestExcelBook.CreateSheet(destSheetName);
+            
+            var selectedSheets = sheets.Where(sheet => sheet.SheetDb.TableCode == "S.23.01.01.01");
+            foreach (var selectedSheet in selectedSheets)
+            {
+
+                AppendSingleSheet(selectedSheet.DestSheet ,mergeSheet);
+            }
+            
+
+        }
+        private void AppendSingleSheet(ISheet orgSheet, ISheet mergedSheet)
+        {            
+            ExcelHelperFunctions.CopyRows(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, 20);
+            //OrgExtendedRange = new CellRangeAddress(OffsetRow, OrgDataRange.LastRow, OffsetCol, OrgDataRange.LastColumn); //starts from Sheetcode up to last data cell            
 
         }
 
@@ -283,7 +284,7 @@ namespace ExcelCreatorV
         private ISheet CreateListSheet(List<(string sheetName, string sheetLable)> sheets)
         {
 
-            var listSheet = DestExcelTemplateBook.CreateSheet("List");
+            var listSheet = DestExcelBook.CreateSheet("List");
             var titleRow = listSheet.CreateRow(0);
             var title = titleRow.CreateCell(0);
             title.SetCellValue("List of Templates");
@@ -427,11 +428,11 @@ namespace ExcelCreatorV
                 var fs = File.Create(ExcelOutputFile);
                 //var outStream = new FileStream(outFile, FileMode.Create, FileAccess.Write);
 
-                var xmlProps = DestExcelTemplateBook.GetProperties();
+                var xmlProps = DestExcelBook.GetProperties();
                 var coreProps = xmlProps.CoreProperties;
                 coreProps.Creator = "Novum International ICSS XBRL";
 
-                DestExcelTemplateBook.Write(fs);
+                DestExcelBook.Write(fs);
 
             }
             catch (Exception e)

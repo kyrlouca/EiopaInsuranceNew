@@ -41,7 +41,7 @@ namespace ExcelCreatorV
         }
 
 
-        static public void CopyRows(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false)
+        static public void CopyRows(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false,int offsetRow=0)
         {
             for (var i = firstRow; i <= lastRow; i++)
             {
@@ -51,10 +51,11 @@ namespace ExcelCreatorV
                     continue;
                 }
 
-                var destRow = destSheet.GetRow(i);
+                var destIdx = i + offsetRow;
+                var destRow = destSheet.GetRow(destIdx);
                 if (destRow is null)
                 {
-                    destRow = destSheet.CreateRow(i);
+                    destRow = destSheet.CreateRow(destIdx);
                 }
 
                 if (!orgRow.Any())
