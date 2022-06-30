@@ -22,7 +22,7 @@ namespace XbrlReader
             //
 
             //(var fundIdT, var filePath) = (301, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl");
-            var err = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\QESError.xbrl";
+            //var err = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\QESError.xbrl";
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Atlantic.xbrl
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl 
 
@@ -53,7 +53,6 @@ namespace XbrlReader
 
             if (args.Length == 8)
             {
-
 
                 //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl
                 //.\XbrlReader.exe "IU260" 1 1 1 "qrs" 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"                

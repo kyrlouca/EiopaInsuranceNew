@@ -44,23 +44,23 @@ namespace ExcelCreatorV
 
        
 
-        public ConfigObject? ConfigObject { get; private set; }
+        public ConfigObject ConfigObject { get; private set; }
         
 
         public bool IsFileValid { get; internal set; } = true;
         public bool IsValidEiopaVersion { get; internal set; } = true;
-        public string ExcelTemplateFile { get; internal set; }
+        public string? ExcelTemplateFile { get; internal set; }
         public string ExcelOutputFile { get; internal set; }
 
-        public XSSFWorkbook ExcelTemplateBook { get; private set; }
+        public XSSFWorkbook? ExcelTemplateBook { get; private set; }
         public XSSFWorkbook DestExcelTemplateBook { get; private set; } = new XSSFWorkbook();
         public WorkbookStyles WorkbookStyles { get; private set; }
 
 
         public int DocumentIdInput { get; }
-        public DocInstance Document { get; internal set; }
+        public DocInstance? Document { get; internal set; }
         public int DocumentId => Document?.InstanceId ?? 0;
-        public string ModuleCode { get; internal set; }
+        public string? ModuleCode { get; internal set; }
         public int PensionFundId { get; internal set; }
         public bool IsPensionFundLarge { get; internal set; } = false;
         public int UserId { get; }
@@ -70,7 +70,7 @@ namespace ExcelCreatorV
         public int ModuleId { get; internal set; }
         public int Status { get; internal set; }
         public int TablesScanned { get; internal set; } = 0;
-        public string[] FilesScanned { get; internal set; }
+        public string[]? FilesScanned { get; internal set; }
         public string SolvencyVersion { get; internal set; }
 
 
@@ -89,9 +89,10 @@ namespace ExcelCreatorV
             UserId = userId;
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
             ExcelOutputFile = excelOutputFile;
+            ConfigObject = GetConfiguration();
             
-            WorkbookStyles = new WorkbookStyles(DestExcelTemplateBook);
-            //Styles = CreateStyles();
+
+            WorkbookStyles = new WorkbookStyles(DestExcelTemplateBook);            
         }
 
 
@@ -107,10 +108,10 @@ namespace ExcelCreatorV
                 return false;
             }
 
-            if (GetConfiguration() is null)
-            {
-                return false;
-            }
+            //if (GetConfiguration() is null)
+            //{
+            //    return false;
+            //}
 
             Document = HelperInsuranceFunctions.InsuranceData.GetDocumentById(DocumentIdInput);
             if (Document is null)
@@ -178,7 +179,8 @@ namespace ExcelCreatorV
         {
             //select all the sheets from the db and create a tab for each sheet
             //For multiZet tables, several sheets may resutl from a  single tablecode "S.21.01.01.01" (one for each zet)
-
+            if (ExcelTemplateBook is null) 
+                return;
             
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
          
@@ -310,7 +312,7 @@ namespace ExcelCreatorV
 
         }
 
-        private ConfigObject? GetConfiguration()
+        private ConfigObject GetConfiguration()
         {
 
             var ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
@@ -332,7 +334,7 @@ namespace ExcelCreatorV
                 var errorMessage = $"Excel Writer --Invalid Eiopa Version: {SolvencyVersion}";
                 Console.WriteLine(errorMessage);
                 Log.Error(errorMessage);
-                return null;
+                throw new SystemException(errorMessage);
             }
 
             //the connection strings depend on the Solvency Version
