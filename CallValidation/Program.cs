@@ -88,6 +88,7 @@ namespace ValidationCall
                 docId = 11811;//to check rule 5236 for null values
                 docId = 11812;//to check for small differences
                 docId = 11823;//to check for small differences
+                docId = 11825;
 
                 //var validatorDg = new DocumentValidator
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
