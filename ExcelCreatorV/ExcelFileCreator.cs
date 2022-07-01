@@ -17,8 +17,8 @@ namespace ExcelCreatorV
     internal enum LineType { Empty, AnyText, SheetCode, Zet, Column, Row }//Code is template code "PF.01.01.02"
     public class ExcelFileCreator
     {
-        public string DebugTableCode { get; set; } = "S.23.01.01.01";
-               
+        //public string DebugTableCode { get; set; } = "S.23.01.01.01";
+        public string DebugTableCode { get; set; } = "";
 
         public ConfigObject ConfigObject { get; private set; }
         
@@ -249,7 +249,7 @@ namespace ExcelCreatorV
         }
         private void AppendSingleSheet(ISheet orgSheet, ISheet mergedSheet)
         {            
-            ExcelHelperFunctions.CopyRows(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, 20);
+            ExcelHelperFunctions.CopyRowsSameBook(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, 20);
             //OrgExtendedRange = new CellRangeAddress(OffsetRow, OrgDataRange.LastRow, OffsetCol, OrgDataRange.LastColumn); //starts from Sheetcode up to last data cell            
 
         }
