@@ -6,13 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+	<UserSecretsId>ea3b31f7-2d74-41f3-95ad-c94b61cd610b</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.123" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="5.0.0" />
     <PackageReference Include="NPOI" Version="2.5.6" />
-    <PackageReference Include="Z.Expressions.Eval" Version="4.0.85" />
   </ItemGroup>
 
   <ItemGroup>

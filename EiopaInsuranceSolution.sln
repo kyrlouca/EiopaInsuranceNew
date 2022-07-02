@@ -32,7 +32,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdhocTesting", "AdhocTestin
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CurrencyRates", "CurrencyRates\CurrencyRates.csproj", "{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelCreatorV", "ExcelCreatorV\ExcelCreatorV.csproj", "{097457C5-7063-4EDD-B530-2C514006BDC9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelCreator", "ExcelCreatorV\ExcelCreator.csproj", "{097457C5-7063-4EDD-B530-2C514006BDC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -33,6 +33,7 @@ namespace CurrencyRates
 
         public static XSSFWorkbook? GetExcelWorkbook(string fileName)
         {
+            Console.WriteLine($"getWorkbook fileName:{fileName}");
 
             if (string.IsNullOrEmpty(fileName))
             {
@@ -76,7 +77,8 @@ namespace CurrencyRates
 
             //*************************************************************
             //get the excelWorkbook as XSSFWorkbook
-            
+
+            Console.WriteLine($"fileName1:{fileName}");
             var excelFile = GetExcelWorkbook(fileName);
             if (excelFile == null)
             {             
@@ -201,7 +203,7 @@ namespace CurrencyRates
 
         public static int CreateCurrenciesFromFile(string filename, int year, int quarter, int wave)
         {
-            Console.WriteLine("start");
+            Console.WriteLine($"start filename:{filename}");
             var rates = ReadCurrenciesFromExcelFile(filename);
             var currencyBatchId = CreateCurrencyBatchData(year, quarter, wave, rates);
             UpdateDocumentsWithCurrencyBatch(year, quarter, wave, currencyBatchId);

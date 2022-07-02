@@ -17,6 +17,7 @@ if (args.Length == 4)
     var year = int.TryParse(args[1], out var arg1) ? arg1 : 0;
     var quarter = int.TryParse(args[2], out var arg2) ? arg2 : 0;
     var wave = int.TryParse(args[3], out var arg3) ? arg3 : 0;
+    Console.WriteLine($"Currency Batch=> {excelFileName} year:{year} quarter:{quarter} wave:{wave}");
     var xyz= CurrencyRates.CurrencyBatch.CreateCurrenciesFromFile(excelFileName, year, quarter, wave);    
     return 1;
 }
