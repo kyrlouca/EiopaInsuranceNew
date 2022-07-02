@@ -18,26 +18,19 @@ ExcelFileCreator.CreateTheExcelFile(solvencyD, userD, serialD, fileD);
                 //.\ExcelCreator "IU260" 99 8685 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\ExcelCreated\UniversalQ4.xlsx"
                  
                 var solvencyVersion = args[0].Trim();
-                var userId = int.TryParse(a'\
-                rty7ju8kl0;-[']
-                
-                \]\
-               gs[1], out var arg1) ? arg1 : 0;
+                var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;                                                                            
                 var documentId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
-                var fileName = args[3];
+                var fileName = args[3];                
 
-                Console.WriteLine($"before userId:{userId} docId:{documentId} fileName:{fileName}");
-                var xlsCreator = new ExcelFileCreator(solvencyVersion, userId, documentId, fileName);
-                Console.WriteLine($"Before create. userId:{userId} docId:{documentId} fileName:{fileName}");
-                xlsCreator.CreateExcelFile();
-
-
+                Console.WriteLine($"Started ExcelCreator=> Solvency:{solvencyVersion}  userId:{userId} docId:{documentId} fileName:{fileName}");
+                ExcelFileCreator.CreateTheExcelFile(solvencyVersion, userId, documentId, fileName);
+                                
                 return 1;
             }
             else
             {
 
-                var message = @"ExcelCreator solvencyVersion userId documentId filename";
+                var message = @" Incorrect number of Arguments Use => solvencyVersion userId documentId filename";
                 Console.WriteLine(message);
                 return 0;
             }
