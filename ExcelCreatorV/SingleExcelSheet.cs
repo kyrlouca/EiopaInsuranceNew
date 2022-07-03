@@ -42,9 +42,9 @@ namespace ExcelCreatorV
 
         public WorkbookStyles WorkbookStyles { get; }
 
-        static int DefaultColumnSizeClosed { get; } = 5500;
-        static int DefaultColumnSizeOpen { get; } = 5300;
-        static int MaxLabelSize { get; } = 17000;
+        //static int DefaultColumnSizeClosed { get; } = 5500;
+        //static int DefaultColumnSizeOpen { get; } = 5300;
+        //static int MaxLabelSize { get; } = 17000;
         public bool isTesting = false;
 
 
@@ -135,13 +135,23 @@ namespace ExcelCreatorV
 
 
             //After populating the tables, adjust column width xxx           
-            SetColumnsWidth(DestSheet, SheetDb.IsOpenTable, StartColDestIdx, EndColDestIdx, DestDataRange.FirstRow, DestDataRange.LastRow);
+            ExcelHelperFunctions.SetColumnsWidth(DestSheet, SheetDb.IsOpenTable, StartColDestIdx, EndColDestIdx, DestDataRange.FirstRow, DestDataRange.LastRow);
 
 
 
             WriteSheetTopTitlesAndZet();//this must be last because it insert rows and messes up the offsetrow
 
-            MergeRegions();//need to take care of inserted rows and offset row
+            //*** the old merged
+            //MergeRegions();//need to take care of inserted rows and offset row
+            
+
+            // do NOT copy any merges after data range. There are many tables in the sheet.
+            //**********************************
+            var lastRowToMerge = OrgDataRange.FirstRow;
+            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRowIns, -OffsetCol);            
+            //****************************************
+
+
 
             DestSheet.SetZoom(80);
 
@@ -211,7 +221,7 @@ namespace ExcelCreatorV
 
 
 
-            void MergeRegions()
+            void MergeRegionsOld()
             {
                 // If there are are any merged regions in the source row, copy to new row
                 foreach (var orgMerged in OriginSheet.MergedRegions)
@@ -233,9 +243,6 @@ namespace ExcelCreatorV
                     {
                         //nothing really
                     }
-
-
-
 
                 }
             }
@@ -399,69 +406,6 @@ namespace ExcelCreatorV
 
             }
 
-
-        }
-
-
-        static int FindMaxWith(ISheet destSheet, int column, int startRowIdx, int endRowIdx)
-        {
-            var maxLen = 0;
-            for (var i = startRowIdx; i <= endRowIdx; i++)
-            {
-                var text = destSheet?.GetRow(i)?.GetCell(column)?.ToString();
-                if (text is null)
-                {
-                    continue;
-                }
-
-                text = text.Trim();
-                maxLen = text.Length > maxLen
-                    ? text.Length
-                    : maxLen;
-
-            }
-            return maxLen;
-        }
-
-        static void SetColumnsWidth(ISheet destSheet, bool isOpen, int startColIdx, int endColIdx, int startDataRowIdx, int endDataRowIdx)
-        {
-            //Do not use default column width. destSheet.DefaultColumnWidth = 5500; somehow this crashes the program
-            
-            if (!isOpen && destSheet.GetColumnWidth(0)< DefaultColumnSizeOpen)
-            {
-                destSheet.SetColumnWidth(0, DefaultColumnSizeClosed);
-            }
-
-
-            //for closed tables, make the labels column large
-            var colIdx = startColIdx - 2;
-            if (!isOpen && colIdx >= 0)
-            {
-                var len = FindMaxWith(destSheet, colIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
-                var DescriptionColumnLength = Math.Min(len, MaxLabelSize);
-                DescriptionColumnLength = Math.Max(DescriptionColumnLength, SingleExcelSheet.DefaultColumnSizeClosed);
-                destSheet.SetColumnWidth(colIdx, DescriptionColumnLength);//set the first column to larger width
-            }
-
-            //Special case,
-            if (destSheet.SheetName == "S.12.02.01.02" || destSheet.SheetName == "S.17.02.01.02")
-            {
-                destSheet.SetColumnWidth(colIdx, 15000);
-            }
-
-
-            for (var i = startColIdx; i <= endColIdx; i++)
-            {
-                destSheet.SetColumnWidth(i, SingleExcelSheet.DefaultColumnSizeOpen); //5300
-            }
-            //for sheets that have only one data column, make the column big
-            if (startColIdx == endColIdx)
-            {
-                var firstDataColLen = FindMaxWith(destSheet, startColIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
-                firstDataColLen = Math.Max(firstDataColLen, DefaultColumnSizeClosed);
-                destSheet.SetColumnWidth(startColIdx, firstDataColLen);
-                Console.WriteLine("aa");
-            }
 
         }
 
@@ -640,7 +584,7 @@ namespace ExcelCreatorV
                 }
                 if (i > 0)
                 {
-                    DestSheet.SetColumnWidth(colIdx, DefaultColumnSizeClosed);
+                    DestSheet.SetColumnWidth(colIdx, ExcelSheetConstants.DefaultColumnSizeClosed);
                 }
 
             }

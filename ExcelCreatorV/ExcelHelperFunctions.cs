@@ -221,17 +221,18 @@ namespace ExcelCreatorV
         }
 
 
-        static public void MergeRegions(ISheet originSheet, ISheet destSheet, int lastRowToMerge)
+        static public void MergeRegions(ISheet originSheet, ISheet destSheet, int orgLastRowToMerge,int destRowOffset, int destColOffset)
         {
             // If there are are any merged regions in the source row, copy to new row
             foreach (var orgMerged in originSheet.MergedRegions)
             {
+                
                 // do NOT copy any merges after data range. There are many tables in the sheet.
-                if (orgMerged.FirstRow >= lastRowToMerge)
+                if (orgMerged.FirstRow > orgLastRowToMerge)
                 {
-                    continue;
+                    break;
                 }
-                var destMerged = new CellRangeAddress(orgMerged.FirstRow, orgMerged.LastRow, orgMerged.FirstColumn, orgMerged.LastColumn);
+                var destMerged = new CellRangeAddress(orgMerged.FirstRow + destRowOffset, orgMerged.LastRow +destRowOffset, orgMerged.FirstColumn +destColOffset, orgMerged.LastColumn +destColOffset );
 
                 try
                 {
@@ -244,6 +245,73 @@ namespace ExcelCreatorV
 
             }
         }
+
+
+
+        static public void SetColumnsWidth(ISheet destSheet, bool isOpen, int startColIdx, int endColIdx, int startDataRowIdx, int endDataRowIdx)
+        {
+            //Do not use default column width. destSheet.DefaultColumnWidth = 5500; somehow this crashes the program
+
+            if (!isOpen && destSheet.GetColumnWidth(0) < ExcelSheetConstants.DefaultColumnSizeOpen)
+            {
+                destSheet.SetColumnWidth(0, ExcelSheetConstants.DefaultColumnSizeClosed);
+            }
+
+
+            //for closed tables, make the labels column large
+            var colIdx = startColIdx - 2;
+            if (!isOpen && colIdx >= 0)
+            {
+                var len = FindMaxWith(destSheet, colIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
+                var DescriptionColumnLength = Math.Min(len, ExcelSheetConstants.MaxLabelSize);
+                DescriptionColumnLength = Math.Max(DescriptionColumnLength,ExcelSheetConstants.DefaultColumnSizeClosed);
+                destSheet.SetColumnWidth(colIdx, DescriptionColumnLength);//set the first column to larger width
+            }
+
+            //Special case,
+            if (destSheet.SheetName == "S.12.02.01.02" || destSheet.SheetName == "S.17.02.01.02")
+            {
+                destSheet.SetColumnWidth(colIdx, 15000);
+            }
+
+
+            for (var i = startColIdx; i <= endColIdx; i++)
+            {
+                destSheet.SetColumnWidth(i, ExcelSheetConstants.DefaultColumnSizeOpen); //5300
+            }
+            //for sheets that have only one data column, make the column big
+            if (startColIdx == endColIdx)
+            {
+                var firstDataColLen = FindMaxWith(destSheet, startColIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
+                firstDataColLen = Math.Max(firstDataColLen, ExcelSheetConstants.DefaultColumnSizeClosed);
+                destSheet.SetColumnWidth(startColIdx, firstDataColLen);
+                Console.WriteLine("aa");
+            }
+
+        }
+
+
+        static int FindMaxWith(ISheet destSheet, int column, int startRowIdx, int endRowIdx)
+        {
+            var maxLen = 0;
+            for (var i = startRowIdx; i <= endRowIdx; i++)
+            {
+                var text = destSheet?.GetRow(i)?.GetCell(column)?.ToString();
+                if (text is null)
+                {
+                    continue;
+                }
+
+                text = text.Trim();
+                maxLen = text.Length > maxLen
+                    ? text.Length
+                    : maxLen;
+
+            }
+            return maxLen;
+        }
+
+
 
     }
 }

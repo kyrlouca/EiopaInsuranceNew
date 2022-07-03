@@ -21,7 +21,7 @@ namespace ExcelCreatorV
         public string DebugTableCode { get; set; } = "";
 
         public ConfigObject ConfigObject { get; private set; }
-        
+
 
         public bool IsFileValid { get; internal set; } = true;
         public bool IsValidEiopaVersion { get; internal set; } = true;
@@ -66,9 +66,9 @@ namespace ExcelCreatorV
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
             ExcelOutputFile = excelOutputFile;
             ConfigObject = GetConfiguration();
-            
 
-            WorkbookStyles = new WorkbookStyles(DestExcelBook);            
+
+            WorkbookStyles = new WorkbookStyles(DestExcelBook);
         }
 
 
@@ -97,7 +97,7 @@ namespace ExcelCreatorV
             }
             var isLockedDocument = Document.Status.Trim() == "P";
             if (isLockedDocument)
-            {                
+            {
                 var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
                 Log.Error(messg);
                 var trans = new TransactionLog()
@@ -155,11 +155,11 @@ namespace ExcelCreatorV
         {
             //select all the sheets from the db and create a tab for each sheet
             //For multiZet tables, several sheets may resutl from a  single tablecode "S.21.01.01.01" (one for each zet)
-            if (ExcelTemplateBook is null) 
+            if (ExcelTemplateBook is null)
                 return;
-            
+
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-         
+
             var sqlSheets = @"
                 SELECT
                   TemplateSheetInstance.TemplateSheetId
@@ -200,7 +200,7 @@ namespace ExcelCreatorV
                 //********************************************************
                 var newSheet = new SingleExcelSheet(SolvencyVersion, ExcelTemplateBook, WorkbookStyles, DestExcelBook, sheet);
                 var rowsInserted = newSheet.FillSingleExcelSheet();
-                singleExcelSheets.Add(newSheet);                
+                singleExcelSheets.Add(newSheet);
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
 
@@ -221,8 +221,20 @@ namespace ExcelCreatorV
 
             //---------------------------------------------------------------
 
-            //********
-            //MergeSheets(singleExcelSheets);
+            //********            
+            //Get the specialSheets from the db table
+             string[] headerSheets = { "S.20.01.01.01" };
+            
+            foreach(var headerSheet in headerSheets )
+           {
+                var childSheets = singleExcelSheets.Where(sheet => sheet.SheetDb.TableCode == headerSheet).ToList();
+                
+                var mergedSheet = MergeSheets(childSheets,headerSheet);
+                sheetList.Add((headerSheet, "List of assets ## Information on positions held ##  Information on assets"));                
+            }
+
+            //*****************************************
+
 
             var listSheet = CreateListSheet(sheetList);
 
@@ -233,25 +245,25 @@ namespace ExcelCreatorV
         }
 
 
-        private void MergeSheets(List<SingleExcelSheet> sheets)
-        {
-            var destSheetName = "aa";
+        private ISheet MergeSheets(List<SingleExcelSheet> sheetsToMerge,string destSheetName)
+        {            
             var mergeSheet = DestExcelBook.CreateSheet(destSheetName);
             
-            var selectedSheets = sheets.Where(sheet => sheet.SheetDb.TableCode == "S.23.01.01.01");
-            foreach (var selectedSheet in selectedSheets)
+            foreach (var childSheet in sheetsToMerge)
             {
-
-                AppendSingleSheet(selectedSheet.DestSheet ,mergeSheet);
+                AppendSingleSheet(childSheet, mergeSheet);
             }
-            
-
+            return mergeSheet;
         }
-        private void AppendSingleSheet(ISheet orgSheet, ISheet mergedSheet)
-        {            
-            ExcelHelperFunctions.CopyRowsSameBook(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, 20);
-            //OrgExtendedRange = new CellRangeAddress(OffsetRow, OrgDataRange.LastRow, OffsetCol, OrgDataRange.LastColumn); //starts from Sheetcode up to last data cell            
 
+        private void AppendSingleSheet(SingleExcelSheet singleExcelSheet, ISheet mergedSheet)
+        {
+            var orgSheet = singleExcelSheet.DestSheet;
+            var mergedOffset = 10;
+            var mergedStartPosition = mergedSheet.LastRowNum == 0 ? 0 : mergedSheet.LastRowNum + mergedOffset;
+            ExcelHelperFunctions.CopyRowsSameBook(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, mergedStartPosition);
+            ExcelHelperFunctions.MergeRegions(orgSheet, mergedSheet, orgSheet.LastRowNum, mergedStartPosition, 0);
+            ExcelHelperFunctions.SetColumnsWidth(mergedSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
         }
 
 
@@ -273,7 +285,7 @@ namespace ExcelCreatorV
                 var sqlTemplate = @"select  TemplateOrTableLabel from mTemplateOrTable tt where tt.TemplateOrTableCode = @templateCode ";
 
                 var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
-                var desc = $"{templateLabel} ## { tab.TableLabel}";
+                var desc = $"{templateLabel} ## {tab.TableLabel}";
 
                 list.Add((sheetName, desc));
             }
@@ -381,7 +393,7 @@ namespace ExcelCreatorV
 
             if (!File.Exists(ExcelTemplateFile))
             {
-                var messagef = $"File does NOT exist: { ExcelTemplateFile}";
+                var messagef = $"File does NOT exist: {ExcelTemplateFile}";
 
                 Log.Error(messagef);
                 IsFileValid = false;
