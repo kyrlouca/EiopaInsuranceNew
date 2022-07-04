@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace ExcelCreatorV
 {
-    public class ExcelHelperFunctions
+    public static class ExcelHelperFunctions
     {
         static public void CopyRange(CellRangeAddress range, ISheet sourceSheet, ISheet destinationSheet)
         {
