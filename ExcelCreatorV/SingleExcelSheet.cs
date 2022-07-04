@@ -115,7 +115,7 @@ namespace ExcelCreatorV
             {
                 //some facts in addition to row, col they have a pivot zet value (many facts in the same cell- kind of 3rd dimension)
                 var factPivotZets = GetFactPivotZets();
-                if (SheetDb.TableCode == "S.12.02.01.02" || SheetDb.TableCode== "S.17.02.01.02")
+                if (SheetDb.TableCode == "S.12.02.01.02" || SheetDb.TableCode == "S.17.02.01.02")
                 {
                     lines = UpdateClosed_ZetAsRows_12and17(factPivotZets);
                 }
@@ -143,12 +143,12 @@ namespace ExcelCreatorV
 
             //*** the old merged
             //MergeRegions();//need to take care of inserted rows and offset row
-            
+
 
             // do NOT copy any merges after data range. There are many tables in the sheet.
             //**********************************
             var lastRowToMerge = OrgDataRange.FirstRow;
-            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRowIns, -OffsetCol);            
+            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRowIns, -OffsetCol);
             //****************************************
 
 
@@ -480,7 +480,7 @@ namespace ExcelCreatorV
                 { "S.25.01.01.03",7},
                 { "S.25.01.01.04",7},
                 { "S.29.03.01.01",7},
-                { "S.29.03.01.03",7},                
+                { "S.29.03.01.03",7},
             };
 
             var linesToSpare = 5;
@@ -1044,7 +1044,7 @@ namespace ExcelCreatorV
             var val = connectionEiopa.QuerySingleOrDefault<string>(sqlMem, new { xbrlCode });
             return val;
         }
-        
+
 
 
 
