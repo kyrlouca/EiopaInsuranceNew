@@ -223,14 +223,17 @@ namespace ExcelCreatorV
 
             //********            
             //Get the specialSheets from the db table
-             string[] headerSheets = { "S.20.01.01.01" };
-            
-            foreach(var headerSheet in headerSheets )
-           {
+            string[] headerSheets = { "S.20.01.01.01" };
+
+            foreach (var headerSheet in headerSheets)
+            {
                 var childSheets = singleExcelSheets.Where(sheet => sheet.SheetDb.TableCode == headerSheet).ToList();
-                
-                var mergedSheet = MergeSheets(childSheets,headerSheet);
-                sheetList.Add((headerSheet, "List of assets ## Information on positions held ##  Information on assets"));                
+                if (1 == 2)
+                {
+                    var mergedSheet = MergeSheets(childSheets, headerSheet);
+                    sheetList.Add((headerSheet, "List of assets ## Information on positions held ##  Information on assets"));
+                }
+
             }
 
             //*****************************************
@@ -245,10 +248,10 @@ namespace ExcelCreatorV
         }
 
 
-        private ISheet MergeSheets(List<SingleExcelSheet> sheetsToMerge,string destSheetName)
-        {            
+        private ISheet MergeSheets(List<SingleExcelSheet> sheetsToMerge, string destSheetName)
+        {
             var mergeSheet = DestExcelBook.CreateSheet(destSheetName);
-            
+
             foreach (var childSheet in sheetsToMerge)
             {
                 AppendSingleSheet(childSheet, mergeSheet);
