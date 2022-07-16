@@ -88,12 +88,12 @@ namespace ValidationCall
                 docId = 11811;//to check rule 5236 for null values
                 docId = 11812;//to check for small differences
                 docId = 11823;//to check for small differences
-                docId = 11825;
+                docId = 11832;
 
                 //var validatorDg = new DocumentValidator
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
                 //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
-                DocumentValidator.ValidateDocument("IU260", docId, 0);
+                DocumentValidator.ValidateDocument("IU260", docId, 1025);
 
                 return 1;
             }

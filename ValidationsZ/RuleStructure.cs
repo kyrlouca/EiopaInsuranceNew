@@ -317,9 +317,10 @@ namespace Validations
         public static bool HasNullTermsNew(List<RuleTerm> terms)
         {
             // returns true if there are any missing terms provided that they are not arguments of fallback or empty functions
+            // check for null non-numeric terms
 
             var missingTerms = terms
-                .Where(term => !term.IsFunctionTerm && term.IsMissing)
+                .Where(term => !term.IsFunctionTerm && term.IsMissing && term.DataTypeOfTerm != DataTypeMajorUU.NumericDtm)
                 .Select(term => term.Letter);
 
             if (!missingTerms.Any())
