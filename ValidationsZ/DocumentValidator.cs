@@ -1292,7 +1292,7 @@ namespace Validations
             var keyDimension = $"%{keyDim.Trim()}%";
             var KeyColumn = connectionEiopa.QuerySingleOrDefault<string>(sqKeyColumn, new { tableCode, keyDimension });
 
-            var keyFact = GetFact(tableCode, row, KeyColumn);
+            var keyFact = GetFact(tableCode, row, KeyColumn);//keycolumn to change to foreign colum
             return keyFact;
         }
 
