@@ -31,6 +31,7 @@ namespace Validations
         public List<RuleTerm> RuleTerms = new();
         public List<RuleTerm> FilterTerms = new();
 
+        public bool IsTechnical { get; set; }
 
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
@@ -202,6 +203,9 @@ namespace Validations
             }
             ValidationRuleId = validationRuleDb.ValidationRuleID;
             TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
+
+            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
+
             FilterFormula = validationRuleDb.Filter ?? "";
             ValidationRuleDb = validationRuleDb;
             ScopeString = ValidationRuleDb.Scope ?? "";
@@ -446,6 +450,12 @@ namespace Validations
                 return newVal;
             }
         }
+
+
+
+
+
+
 
     }
 }

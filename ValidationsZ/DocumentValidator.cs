@@ -687,11 +687,14 @@ namespace Validations
                 join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
             WHERE 1=1
-                and (ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL'  and  ex.ExpressionType <> 'NotImplementedInKYR') )                
-                and ValidationCode  like '%BV%'
+                and  COALESCE( ex.ExpressionType,'OK') <> 'NotImplementedInKYR'                
+                and ValidationCode  like 'TV%' 
 	            and vrs.ModuleID = @ModuleId
             ORDER BY vr.ValidationRuleID
             ";
+
+            //and (ValidationCode  like 'BV%' Or ValidationCode  like 'TV%')
+            //and(ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL' and ex.ExpressionType <> 'NotImplementedInKYR'))
 
             var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlSelectModuleRules, new { ModuleId });
             var validationRules = moduleValidationRules;
