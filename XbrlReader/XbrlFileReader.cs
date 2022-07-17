@@ -144,7 +144,13 @@ namespace XbrlReader
 
             var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
             var xbrlFund = GetFundByLei(reader.ConfigObject, factWithLei?.TextValue);
-            if (1 == 2)// to avoid when testing
+
+            var testFundId = true;
+#if DEBUG
+            testFundId = false;
+#endif
+
+            if (testFundId)// no check for fund id when testing
             {
                 if (xbrlFund is null || xbrlFund.FundId != reader.FundId)
                 {
