@@ -496,8 +496,7 @@ namespace Validations
                     }
                     var theTerm = allTerms.FirstOrDefault(term => term.Letter == termPartsLike[1]);
                     term.BooleanValue = FunctionForTechnicalLike(theTerm.TextValue, termPartsLike[2]);
-                    
-                    
+                                        
                     break;
                 default:
 

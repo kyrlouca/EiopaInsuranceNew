@@ -67,8 +67,8 @@ namespace Validations
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
         public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null)
         {
-            //this constructor is called directly only when creating sumfacts which do not have ruleId and             
-            //it could be the only constructor but we need to add the ScopeString and the RuleId
+            //xx
+            //xx
 
             ValidationRuleDb = validationRuleDb;
             ValidationRuleId = ruleId;
@@ -81,37 +81,38 @@ namespace Validations
 
             if (IsTechnical)
             {
-                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateForumulaAndTermsForTechnicalRules(TableBaseFormula);
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula);
 
             }
             else
             {
-                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndTerms(TableBaseFormula);
             }
 
-            (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
+            //create the filter terms
+            (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndTerms(FilterFormula);
         }
 
-        public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
-        {
-            //it is used when creating module rules.
-            //it will FIRST trigger the constructor above that takes (TableBasedFormula and Filter) as arguments
-            //it can be removed, but we will need to add  ruleId and ScopeString in the other constructor
-            if (validationRuleDb is null)
-            {
-                return;
-            }
-            ValidationRuleId = validationRuleDb.ValidationRuleID;
-            TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
+        //public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
+        //{
+        //    //it is used when creating module rules.
+        //    //it will FIRST trigger the constructor above that takes (TableBasedFormula and Filter) as arguments
+        //    //it can be removed, but we will need to add  ruleId and ScopeString in the other constructor
+        //    if (validationRuleDb is null)
+        //    {
+        //        return;
+        //    }
+        //    ValidationRuleId = validationRuleDb.ValidationRuleID;
+        //    TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
 
-            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
+        //    IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
 
-            FilterFormula = validationRuleDb.Filter ?? "";
-            ValidationRuleDb = validationRuleDb;
-            ScopeString = ValidationRuleDb.Scope ?? "";
-            ScopeTableCode = GetTableCode();
+        //    FilterFormula = validationRuleDb.Filter ?? "";
+        //    ValidationRuleDb = validationRuleDb;
+        //    ScopeString = ValidationRuleDb.Scope ?? "";
+        //    ScopeTableCode = GetTableCode();
 
-        }
+        //}
 
         public RuleStructure Clone()
         {
@@ -128,7 +129,96 @@ namespace Validations
 
 
 
-        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTermsTechnical(string expression, string termLetter)
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression)
+        {
+            //Create symbol formula and finalSymbol formula. Same for filter
+            //Two kind of terms: normal and function terms. 
+            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
+            //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
+
+
+            //*********************************************************************************
+            //Create the plain Terms "X".
+            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
+            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
+            var theFormula = symbolFormula;
+            var theTerms = ruleTerms;
+
+            //*********************************************************************************
+            //Create the Function Terms "Z".
+            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            (var finalSymbolFormula, var newFunctionTerms) = CreateFunctionTermsTechnical(theFormula, "Z");
+            var theSymbolFinalFormula = finalSymbolFormula;
+            foreach (var newTerm in newFunctionTerms)
+            {
+                theTerms.Add(newTerm);
+            }
+
+            return (theFormula, theSymbolFinalFormula, theTerms);
+        }
+
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolFormulaAndTerms(string theFormulaExpression)
+        {
+            //Create symbol formula and finalSymbol formula. Same for filter
+            //Two kind of terms: normal and function terms. 
+            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
+            //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
+            //--if there are nested functions  we have nested function terms T01,T02, ,the first digit is from its father Z letter
+            //formula = @"{S.23.01.01.01,r0540,c0050}=max(0,min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})) ";
+            //-- NotmalTerms:{S.23.01.01.01,r0540,c0050}
+            //-- FunctionTerms min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})
+            //var resmm = new RuleStructure(formula);
+            //resmm.SymbolFormula.Should().Be("X00=max(0,min(0.5*X01-3*X02))");
+            //resmm.SymbolFinalFormula.Should().Be("X00=Z00");  Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            //resmm.RuleTerms.Count.Should().Be(5);
+
+            //*********************************************************************************
+            //Create the plain Terms "X".
+            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
+            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
+            var theFormula = symbolFormula;
+            var theTerms = ruleTerms;
+
+            //*********************************************************************************
+            //Create the Function Terms "Z".
+            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            (var finalSymbolFormula, var newFunctionTerms) = CreateFunctionTerms(theFormula, "Z");
+            var theSymbolFinalFormula = finalSymbolFormula;
+            foreach (var newTerm in newFunctionTerms)
+            {
+                theTerms.Add(newTerm);
+            }
+
+
+            //*********************************************************************************
+            //"Z" function terms may have  nested function terms            
+            //if a function Term "Z" has a nested term, the FinalFormula will remain the same but its termText will have a T00 term
+            var count = 0;
+            foreach (var newFunctionTerm in newFunctionTerms)
+            {
+                //if any of the terms created have a nested term, we need to add the nested and simplify the finalSymbolFormula                
+                var internalMatch = RegexValidationFunctions.FunctionTypesRegex.Match(newFunctionTerm.TermText);
+                var internalText = internalMatch.Groups[2].Value.Trim();
+
+
+                //*********************************************************************************
+                // a function term may have nested function terms
+                // change the function text and create new function term ("T"
+                //Term Z0= min(max(X1,3*X1)) => min(T0) and nested term is T0= max(x1,3*x1) is added
+                // recursion could have been used , but then I would have to change the evaluate term also            
+
+                (var nestedFormula, var nestedTerms) = CreateFunctionTerms(internalText, $"T{count}");
+                newFunctionTerm.TermText = newFunctionTerm.TermText.Replace(internalText, nestedFormula);
+                foreach (var nestedTerm in nestedTerms)
+                {
+                    theTerms.Add(nestedTerm);
+                }
+                count++;
+            }
+            return (theFormula, theSymbolFinalFormula, theTerms);
+        }
+
+        private static (string symbolExpression, List<RuleTerm>) CreateFunctionTerms(string expression, string termLetter)
         {
             //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
             //2 Create one new term  for each function     
@@ -138,7 +228,35 @@ namespace Validations
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
 
-            var technicalRegex = new Regex(@"(.*?).\s*like\s*('.*')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+            var distinctMatches = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
+                .Select(item => item.Captures[0].Value.Trim()).ToList()
+                .Distinct()
+                .ToList();
+
+
+            var ruleTerms = distinctMatches
+                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
+
+            if (ruleTerms.Count == 0)
+                return (expression, new List<RuleTerm>());
+
+            var symbolExpression = ruleTerms
+                .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
+            return (symbolExpression, ruleTerms);
+        }
+
+        private static (string symbolExpression, List<RuleTerm>) CreateFunctionTermsTechnical(string expression, string termLetter)
+        {
+            //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
+            //2 Create one new term  for each function     
+            //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
+            //*** Same distinct letter for exactly the same terms ***
+
+            if (string.IsNullOrWhiteSpace(expression))
+                return ("", new List<RuleTerm>());
+
+            var technicalRegex = new Regex(@"(X\d\d.*?)\s*like\s*('.*?')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             var distinctMatches = technicalRegex.Matches(expression)
                 .Select(item => item.Captures[0].Value.Trim()).ToList()
                 .Distinct()
@@ -175,127 +293,7 @@ namespace Validations
         }
 
 
-
-        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateForumulaAndTermsForTechnicalRules(string theFormulaExpression)
-        {
-            //Create symbol formula and finalSymbol formula. Same for filter
-            //Two kind of terms: normal and function terms. 
-            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
-            //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
-
-
-            //*********************************************************************************
-            //Create the plain Terms "X".
-            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
-            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
-            var theFormula = symbolFormula;
-            var theTerms = ruleTerms;
-
-            //*********************************************************************************
-            //Create the Function Terms "Z".
-            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
-            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTermsTechnical(theFormula, "Z");
-            var theSymbolFinalFormula = finalSymbolFormula;
-            foreach (var newTerm in newFunctionTerms)
-            {
-                theTerms.Add(newTerm);
-            }
-
-            return (theFormula, theSymbolFinalFormula, theTerms);
-        }
-
-
-
-        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolFormulaAndFunctionTerms(string theFormulaExpression)
-        {
-            //Create symbol formula and finalSymbol formula. Same for filter
-            //Two kind of terms: normal and function terms. 
-            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
-            //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
-            //--if there are nested functions  we have nested function terms T01,T02, ,the first digit is from its father Z letter
-            //formula = @"{S.23.01.01.01,r0540,c0050}=max(0,min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})) ";
-            //-- NotmalTerms:{S.23.01.01.01,r0540,c0050}
-            //-- FunctionTerms min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})
-            //var resmm = new RuleStructure(formula);
-            //resmm.SymbolFormula.Should().Be("X00=max(0,min(0.5*X01-3*X02))");
-            //resmm.SymbolFinalFormula.Should().Be("X00=Z00");  Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
-            //resmm.RuleTerms.Count.Should().Be(5);
-
-            //*********************************************************************************
-            //Create the plain Terms "X".
-            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
-            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
-            var theFormula = symbolFormula;
-            var theTerms = ruleTerms;
-
-            //*********************************************************************************
-            //Create the Function Terms "Z".
-            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
-            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTerms(theFormula, "Z");
-            var theSymbolFinalFormula = finalSymbolFormula;
-            foreach (var newTerm in newFunctionTerms)
-            {
-                theTerms.Add(newTerm);
-            }
-
-
-            //*********************************************************************************
-            //"Z" function terms may have  nested function terms            
-            //if a function Term "Z" has a nested term, the FinalFormula will remain the same but its termText will have a T00 term
-            var count = 0;
-            foreach (var newFunctionTerm in newFunctionTerms)
-            {
-                //if any of the terms created have a nested term, we need to add the nested and simplify the finalSymbolFormula                
-                var internalMatch = RegexValidationFunctions.FunctionTypesRegex.Match(newFunctionTerm.TermText);
-                var internalText = internalMatch.Groups[2].Value.Trim();
-
-
-                //*********************************************************************************
-                // a function term may have nested function terms
-                // change the function text and create new function term ("T"
-                //Term Z0= min(max(X1,3*X1)) => min(T0) and nested term is T0= max(x1,3*x1) is added
-                // recursion could have been used , but then I would have to change the evaluate term also            
-
-                (var nestedFormula, var nestedTerms) = PrepareFunctionTerms(internalText, $"T{count}");
-                newFunctionTerm.TermText = newFunctionTerm.TermText.Replace(internalText, nestedFormula);
-                foreach (var nestedTerm in nestedTerms)
-                {
-                    theTerms.Add(nestedTerm);
-                }
-                count++;
-            }
-            return (theFormula, theSymbolFinalFormula, theTerms);
-        }
-
-        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTerms(string expression, string termLetter)
-        {
-            //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
-            //2 Create one new term  for each function     
-            //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
-            //*** Same distinct letter for exactly the same terms ***
-
-            if (string.IsNullOrWhiteSpace(expression))
-                return ("", new List<RuleTerm>());
-
-
-            var distinctMatches = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
-                .Select(item => item.Captures[0].Value.Trim()).ToList()
-                .Distinct()
-                .ToList();
-
-
-            var ruleTerms = distinctMatches
-                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
-
-            if (ruleTerms.Count == 0)
-                return (expression, new List<RuleTerm>());
-
-            var symbolExpression = ruleTerms
-                .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
-            return (symbolExpression, ruleTerms);
-        }
-
-        public static (string symbolExpression, List<RuleTerm>) CreateRuleTerms(string expression)
+        private static (string symbolExpression, List<RuleTerm>) CreateRuleTerms(string expression)
         {
 
             //an expression is like below. It has terms and functions
@@ -419,7 +417,7 @@ namespace Validations
             return isValidRule;
         }
 
-        public static bool HasNullTermsNew(List<RuleTerm> terms)
+        private static bool HasNullTermsNew(List<RuleTerm> terms)
         {
             // returns true if there are any missing terms provided that they are not arguments of fallback or empty functions
             // check for null non-numeric terms
@@ -448,9 +446,7 @@ namespace Validations
 
         }
 
-
-
-        public static bool HasNullFilterTerms(List<RuleTerm> terms)
+        private static bool HasNullFilterTerms(List<RuleTerm> terms)
         {
             var hasMissingTerms = terms.Any(term => !term.IsFunctionTerm && term.IsMissing);
             return hasMissingTerms;
@@ -511,7 +507,7 @@ namespace Validations
             return (true, terms[1], terms[2]);
         }
 
-        public static string FixExpression(string symbolExpression)
+        private static string FixExpression(string symbolExpression)
         {
             var qt = @"""";
             var fixedExpression = symbolExpression;
