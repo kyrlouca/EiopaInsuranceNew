@@ -127,8 +127,6 @@ namespace Validations
             return newRule;
         }
 
-
-
         private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression)
         {
             //Create symbol formula and finalSymbol formula. Same for filter

@@ -312,29 +312,29 @@ namespace Validations
             {
                 //Console.WriteLine(".");
                 Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
-                UpdateRuleAndFilterTerms(rule);
+                AssignValuesToTerms(rule);
             }
 
             return;
         }
 
-        private void UpdateRuleAndFilterTerms(RuleStructure rule)
+        private void AssignValuesToTerms(RuleStructure rule)
         {
             //Console.Write($"");
 
             //*****RuleTerms
             var plainTerms = rule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList(); // {S.06.02.01.01,c0170,snnn} for terms like these we cannot get a  direct db value
-            plainTerms.ForEach(term => UpdatePlainTerm(rule, term));
+            plainTerms.ForEach(term => AssignValueToPlainTerm(rule, term));
 
             //***FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
             //"T" terms  are the inner nested terms and  should be evaluated first T = max(Z1)
             var functionTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-            functionTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
+            functionTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
 
             //evaluate function Z Terms
             //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-            functionZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
+            functionZetTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
 
 
 
@@ -344,15 +344,15 @@ namespace Validations
             {
                 //plain terms
                 var plainFilterTerms = rule.FilterTerms.Where(term => !term.IsFunctionTerm).ToList();
-                plainFilterTerms.ForEach(term => UpdatePlainTerm(rule, term));
+                plainFilterTerms.ForEach(term => AssignValueToPlainTerm(rule, term));
 
                 //evaluate function T Terms
                 var functionFilterTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
-                functionFilterTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
 
                 //evaluate function Z Terms
                 var functionFilterZetTerms = rule.FilterTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
-                functionFilterZetTerms.ForEach(term => UpdateSingleFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
+                functionFilterZetTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.FilterTerms, term, rule.FilterFormula));
 
 
             }
@@ -360,7 +360,7 @@ namespace Validations
         }
 
 
-        private void UpdateSingleFunctionTerm(RuleStructure rule, List<RuleTerm> allTerms, RuleTerm term, string filterFomula)
+        private void AssignValueToFunctionTerm(RuleStructure rule, List<RuleTerm> allTerms, RuleTerm term, string filterFomula)
         {
 
 
@@ -510,7 +510,7 @@ namespace Validations
         }
 
 
-        private int UpdatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
+        private int AssignValueToPlainTerm(RuleStructure rule, RuleTerm plainTerm)
         {
             //var dbValue = EvaluateTermFunction(term);
             if (plainTerm.IsSum)
@@ -1397,6 +1397,11 @@ namespace Validations
         {
             
             var likeRegexValue = ReplaceWildCards(regLike);
+            likeRegexValue = likeRegexValue == "LeiChecksum" ? "LEI/.*" : likeRegexValue;
+            likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
+            likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
+
+
             var res = Regex.IsMatch(text, likeRegexValue);
             return res;
 
@@ -1405,7 +1410,7 @@ namespace Validations
                 var properWildString = wildCardString;
 
                 properWildString = properWildString.Replace("_", ".");
-                properWildString = properWildString.Replace("%", "*");
+                properWildString = properWildString.Replace("%", ".*");
                 return properWildString;
             }
         }
@@ -1538,7 +1543,7 @@ namespace Validations
                     factSum += sumFact.NumericValue;
                     continue;
                 }
-                UpdateRuleAndFilterTerms(fakeFilterRule);
+                AssignValuesToTerms(fakeFilterRule);
 
 
                 if ((bool)RuleStructure.AssertIfThenElseExpression(0, fakeFilterRule.SymbolFinalFormula, fakeFilterRule.RuleTerms))
