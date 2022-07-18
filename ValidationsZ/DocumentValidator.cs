@@ -1397,7 +1397,7 @@ namespace Validations
         {
             
             var likeRegexValue = ReplaceWildCards(regLike);
-            likeRegexValue = likeRegexValue == "LeiChecksum" ? "LEI/.*" : likeRegexValue;
+            likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
             likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
             likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
 
