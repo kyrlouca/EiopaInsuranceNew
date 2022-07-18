@@ -54,19 +54,157 @@ namespace Validations
         public string ScopeString { get; private set; } = "";
 
 
-        public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
+        private RuleStructure()
         {
-            ConfigObject = configObject;
+            //to prevent user from creating default constructor;
         }
 
-        public RuleStructure(string tableBaseForumla, string filterFormula = "")
+        //public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
+        //{
+        //    ConfigObject = configObject;
+        //}
+
+        //public RuleStructure(string tableBaseForumla, string filterFormula = "")
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null)
         {
+            //this constructor is called directly only when creating sumfacts which do not have ruleId and             
+            //it could be the only constructor but we need to add the ScopeString and the RuleId
+
+            ValidationRuleDb = validationRuleDb;
+            ValidationRuleId = ruleId;
+            ScopeString = scope;
+            ScopeTableCode = GetTableCode();
+
             TableBaseFormula = tableBaseForumla?.Trim();
             FilterFormula = filterFormula?.Trim();
+            IsTechnical = validationRuleDb?.ValidationCode.StartsWith("TV") ?? false;
 
-            (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
+            if (IsTechnical)
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateForumulaAndTermsForTechnicalRules(TableBaseFormula);
+
+            }
+            else
+            {
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndFunctionTerms(TableBaseFormula);
+            }
+
             (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndFunctionTerms(FilterFormula);
         }
+
+        public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
+        {
+            //it is used when creating module rules.
+            //it will FIRST trigger the constructor above that takes (TableBasedFormula and Filter) as arguments
+            //it can be removed, but we will need to add  ruleId and ScopeString in the other constructor
+            if (validationRuleDb is null)
+            {
+                return;
+            }
+            ValidationRuleId = validationRuleDb.ValidationRuleID;
+            TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
+
+            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
+
+            FilterFormula = validationRuleDb.Filter ?? "";
+            ValidationRuleDb = validationRuleDb;
+            ScopeString = ValidationRuleDb.Scope ?? "";
+            ScopeTableCode = GetTableCode();
+
+        }
+
+        public RuleStructure Clone()
+        {
+            var newRule = (RuleStructure)this.MemberwiseClone();
+
+            newRule.RuleTerms = this.RuleTerms
+                .Select(term => new RuleTerm(term.Letter, term.TermText, term.IsFunctionTerm)).ToList();
+
+            newRule.FilterTerms = this.FilterTerms
+                .Select(term => new RuleTerm(term.Letter, term.TermText, term.IsFunctionTerm)).ToList();
+
+            return newRule;
+        }
+
+
+
+        public static (string symbolExpression, List<RuleTerm>) PrepareFunctionTermsTechnical(string expression, string termLetter)
+        {
+            //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
+            //2 Create one new term  for each function     
+            //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
+            //*** Same distinct letter for exactly the same terms ***
+
+            if (string.IsNullOrWhiteSpace(expression))
+                return ("", new List<RuleTerm>());
+
+            var technicalRegex = new Regex(@"(.*?).\s*like\s*('.*')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var distinctMatches = technicalRegex.Matches(expression)
+                .Select(item => item.Captures[0].Value.Trim()).ToList()
+                .Distinct()
+                .ToList();
+
+            var ruleTerms = distinctMatches
+                .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true))
+                .ToList();
+
+            var symbolExpression = ruleTerms
+                .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
+
+            ruleTerms.ForEach(term => TransformTechnicalTerm(term));
+            return (symbolExpression, ruleTerms);
+            static RuleTerm TransformTechnicalTerm(RuleTerm term)
+            {
+                //
+
+                term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+                term.FunctionType = FunctionTypes.LIKE;
+
+                var expression = "";
+                var regEx = @"(.*).\s*like\s*('.*')";
+                var parts = GeneralUtils.GetRegexSingleMatchManyGroups(regEx, term.TermText);
+
+                expression = (parts.Count != 3)
+                    ? ""
+                    : $"LIKE({parts[1]},{parts[2]})";
+
+                term.TermText = expression;
+                return term;
+
+            }
+        }
+
+
+
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateForumulaAndTermsForTechnicalRules(string theFormulaExpression)
+        {
+            //Create symbol formula and finalSymbol formula. Same for filter
+            //Two kind of terms: normal and function terms. 
+            //fhe SymbolFormula represents the original formula where the normal terms are replaced by X00,X01
+            //The SymbolFinalFormula is the symbolFormula but the function terms are now replaced with Z0,Z1,
+
+
+            //*********************************************************************************
+            //Create the plain Terms "X".
+            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
+            (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
+            var theFormula = symbolFormula;
+            var theTerms = ruleTerms;
+
+            //*********************************************************************************
+            //Create the Function Terms "Z".
+            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            (var finalSymbolFormula, var newFunctionTerms) = PrepareFunctionTermsTechnical(theFormula, "Z");
+            var theSymbolFinalFormula = finalSymbolFormula;
+            foreach (var newTerm in newFunctionTerms)
+            {
+                theTerms.Add(newTerm);
+            }
+
+            return (theFormula, theSymbolFinalFormula, theTerms);
+        }
+
+
 
         private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolFormulaAndFunctionTerms(string theFormulaExpression)
         {
@@ -189,49 +327,12 @@ namespace Validations
             ApplicableAxis = applicableAxis;
         }
 
-        private RuleStructure()
-        {
-            //to prevent user from creating default constructor;
-        }
-
-        public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
-        {
-
-            if (validationRuleDb is null)
-            {
-                return;
-            }
-            ValidationRuleId = validationRuleDb.ValidationRuleID;
-            TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
-
-            IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
-
-            FilterFormula = validationRuleDb.Filter ?? "";
-            ValidationRuleDb = validationRuleDb;
-            ScopeString = ValidationRuleDb.Scope ?? "";
-            ScopeTableCode = GetTableCode();
-
-        }
-
         private string GetTableCode()
         {
             var rxSheetCode = @"(^[A-Z]{1,3}(?:\.\d\d){4})"; //use cnt.TableCode
             var sheetCode = GeneralUtils.GetRegexSingleMatch(rxSheetCode, ScopeString).ToUpper().Trim();
             return sheetCode;
 
-        }
-
-        public RuleStructure Clone()
-        {
-            var newRule = (RuleStructure)this.MemberwiseClone();
-
-            newRule.RuleTerms = this.RuleTerms
-                .Select(term => new RuleTerm(term.Letter, term.TermText, term.IsFunctionTerm)).ToList();
-
-            newRule.FilterTerms = this.FilterTerms
-                .Select(term => new RuleTerm(term.Letter, term.TermText, term.IsFunctionTerm)).ToList();
-
-            return newRule;
         }
 
         public void UpdateTermsWithScopeRowCol(string rowCol)
@@ -331,7 +432,7 @@ namespace Validations
             {
                 return false;
             }
-            var hasNull= missingTerms.Any(letter => isTrueNullTerm(letter));
+            var hasNull = missingTerms.Any(letter => isTrueNullTerm(letter));
             return hasNull;
 
 
@@ -341,7 +442,7 @@ namespace Validations
                 //find the function term which uses the term
                 //is true null => the term is NOT used by a function  Or the function is NOT IsFallback
                 var functionTerm = terms.FirstOrDefault(term => term.IsFunctionTerm && term.TermText.Contains(letter));
-                var isTrueNull = functionTerm is  null || (functionTerm.FunctionType != FunctionTypes.ISFALLBACK && functionTerm.FunctionType != FunctionTypes.EMPTY);
+                var isTrueNull = functionTerm is null || (functionTerm.FunctionType != FunctionTypes.ISFALLBACK && functionTerm.FunctionType != FunctionTypes.EMPTY);
                 return isTrueNull;
             }
 
@@ -451,11 +552,9 @@ namespace Validations
             }
         }
 
-
-
-
-
-
-
+        
     }
+
+
+
 }

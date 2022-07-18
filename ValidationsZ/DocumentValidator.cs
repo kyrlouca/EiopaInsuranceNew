@@ -129,7 +129,7 @@ namespace Validations
 
             var message = $"---Validation started for Document:{DocumentId}";
             Log.Information(message);
-            
+
 
 
             //to prevent anyone else validating when processed
@@ -306,7 +306,8 @@ namespace Validations
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
 
-            Console.WriteLine("\n update rule terms");
+            //Update the values of the terms and the function terms
+            Console.WriteLine("\n update rule terms and function terms");
             foreach (var rule in DocumentRules)
             {
                 //Console.WriteLine(".");
@@ -480,13 +481,35 @@ namespace Validations
                     term.IsMissing = false;
                     term.DecimalValue = Convert.ToDecimal(FunctionForExp(allTerms, term));
                     break;
+                case FunctionTypes.LIKE:
+                    // LIKE(X00, '____')
+                    //LIKE\((.*),'(.*)'\) => X00, ____
+
+                    term.DataTypeOfTerm = DataTypeMajorUU.BooleanDtm;
+                    var termPartsLike = GeneralUtils.GetRegexSingleMatchManyGroups(@"LIKE\((.*),'(.*)'\)", term.TermText);
+                    term.IsMissing = false;
+
+                    if (termPartsLike.Count != 3)
+                    {
+                        term.BooleanValue = true;
+                        break;
+                    }
+                    var theTerm = allTerms.FirstOrDefault(term => term.Letter == termPartsLike[1]);
+                    term.BooleanValue = FunctionForTechnicalLike(theTerm.TextValue, termPartsLike[2]);
+                    
+                    
+                    break;
                 default:
 
                     Console.WriteLine("");
                     break;
             }
             return;
+
+            
+
         }
+
 
         private int UpdatePlainTerm(RuleStructure rule, RuleTerm plainTerm)
         {
@@ -674,6 +697,7 @@ namespace Validations
             var sqlSelectModuleRules = @"
             SELECT 
 		        vr.ValidationRuleID
+				,ex.ExpressionType
 	            ,vr.ExpressionID
 	            ,vr.ValidationCode
 	            ,vr.Severity
@@ -687,14 +711,17 @@ namespace Validations
                 join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
             WHERE 1=1
-                and  COALESCE( ex.ExpressionType,'OK') <> 'NotImplementedInKYR'                
-                and ValidationCode  like 'TV%' 
+				and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInKYR'
+                and ( 
+				    ( ValidationCode  like 'TV%' )
+				    OR ( ValidationCode  like 'BV%' and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInXBRL')
+				 				
+                )
 	            and vrs.ModuleID = @ModuleId
-            ORDER BY vr.ValidationRuleID
+            ORDER BY  vr.ValidationRuleID
             ";
 
-            //and (ValidationCode  like 'BV%' Or ValidationCode  like 'TV%')
-            //and(ex.ExpressionType is null or (ex.ExpressionType <> 'NotImplementedInXBRL' and ex.ExpressionType <> 'NotImplementedInKYR'))
+
 
             var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlSelectModuleRules, new { ModuleId });
             var validationRules = moduleValidationRules;
@@ -708,7 +735,8 @@ namespace Validations
             //** construct and save the validation rules for the Module
             foreach (var validationRule in validationRules)
             {
-                var ruleStructure = new RuleStructure(validationRule);
+                //var ruleStructure = new RuleStructure(validationRule);
+                var ruleStructure = new RuleStructure(validationRule.TableBasedFormula, validationRule.Filter, validationRule.Scope, validationRule.ValidationRuleID, validationRule);
                 Console.Write(".");
                 ModuleRules.Add(ruleStructure);
             }
@@ -1365,6 +1393,24 @@ namespace Validations
             return valueFact;
         }
 
+
+        private bool FunctionForTechnicalLike(string text, string regLike)
+        {
+            
+            var likeRegexValue = ReplaceWildCards(regLike);
+            var res = Regex.IsMatch(text, likeRegexValue);
+            return res;
+
+            static string ReplaceWildCards(string wildCardString)
+            {
+                var properWildString = wildCardString;
+
+                properWildString = properWildString.Replace("_", ".");
+                properWildString = properWildString.Replace("%", "*");
+                return properWildString;
+            }
+        }
+
         private decimal FunctionForSumTermForCloseTableNew(RuleStructure rule, RuleTerm sumTerm)
         {
 
@@ -1439,6 +1485,8 @@ namespace Validations
             return 0;
         }
 
+
+
         private decimal FunctionForOpenSumNew(RuleTerm sumTerm, string filterFormula)
         {
             //  rule 929, term = sum({S.06.02.01.01,c0170,snnn})	
@@ -1470,7 +1518,6 @@ namespace Validations
                 {
                     ScopeTableCode = sumFact.TableCodeDerived,
                     SheetId = sumFact.TemplateSheetId,
-                    //ValidationRuleId=-sumTerm.rulu
 
                 };
 
