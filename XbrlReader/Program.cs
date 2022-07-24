@@ -41,7 +41,7 @@ namespace XbrlReader
 
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\x6\ALTIUS INSURANCE LTD Q1 2022.xbrl
 
-            (var fundIdT, var filePath) = (495, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\American Hellenic Hull Q4 2021_v1.xbrl");            
+            (var fundIdT, var filePath) = (98, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Eurolife Q4_v1.xbrl");            
             XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2024, 4,filePath);            
                         
 
