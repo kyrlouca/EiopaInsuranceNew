@@ -395,14 +395,16 @@ namespace Validations
             //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
             
-            if (HasNullFilterTermsNew(rule.FilterTerms))
-            {
-                return IsValidRule;
-            }
+            
 
 
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             {
+
+                if (HasNullFilterTermsNew(rule.FilterTerms))
+                {
+                    return true;
+                }
 
                 var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
                 if (isFilterValid is null || !(bool)isFilterValid)
