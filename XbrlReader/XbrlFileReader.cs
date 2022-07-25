@@ -207,8 +207,7 @@ namespace XbrlReader
             if (lei == null)
                 return null;
             
-            lei = lei.Replace(@"LEI/", "");//lei = "LEI/2138003JRMGVH8CGUR42"
-            lei = "ss";
+            lei = lei.Replace(@"LEI/", "");//lei = "LEI/2138003JRMGVH8CGUR42"            
             var sqlFund = "select  fnd.FundId, fnd.FundName, fnd.IsActive, fnd.Lei from Fund fnd where fnd.Lei=@Lei";
             var fund = connectionLocal.QuerySingleOrDefault<Fund>(sqlFund, new { lei });
             return fund;
@@ -344,7 +343,7 @@ namespace XbrlReader
             var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
             if (moduleCodeXbrl != Module.ModuleCode)
             {
-                var message = @$" Module Code provided by Fund: ""{Module.ModuleCode}"" is DIFFERENT THAN  Module Code in Xbrl File : ""{moduleCodeXbrl}""";
+                var message = @$"The Module Code in the Xbrl file is ""{moduleCodeXbrl}"" instead of ""{Module.ModuleCode}""";
                 Log.Error(message);
                 Console.WriteLine(message);
                 
