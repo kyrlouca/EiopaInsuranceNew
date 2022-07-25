@@ -344,7 +344,7 @@ namespace XbrlReader
             var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
             if (moduleCodeXbrl != Module.ModuleCode)
             {
-                var message = @$"The Module Code in the Xbrl file is ""{moduleCodeXbrl}"" instead of ""{Module.ModuleCode}"" which was specified by the user";
+                var message = @$"The Module Code in the Xbrl file is ""{moduleCodeXbrl}"" instead of ""{Module.ModuleCode}""";
                 Log.Error(message);
                 Console.WriteLine(message);
                 
