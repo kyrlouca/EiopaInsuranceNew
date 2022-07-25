@@ -806,7 +806,7 @@ VALUES (
 
         private void WriteProcessStarted()
         {
-            var message = $"XBRL Reader Started -- Fund:{FundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion} file:{FileName}";
+            var message = $"XBRL Reader Started -- Insurance Company:{FundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion} file:{FileName}";
             Console.WriteLine(message);
             Log.Information(message);
         }
