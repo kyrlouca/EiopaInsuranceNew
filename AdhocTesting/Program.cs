@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Validations;
 using EiopaConstants;
-using ExcelCreator;
+
 
 namespace AdhocTesting
 {
@@ -27,7 +27,7 @@ namespace AdhocTesting
             //var x3 = SimplifiedExpression.ParseExpression(@"abcef", 0);
 
             var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
-            ExcelValidationErrors.CreateErrorsExcelFile(9772, filename,"W");
+            //ExcelValidationErrors.CreateErrorsExcelFile(9772, filename,"W");
 
 
             
