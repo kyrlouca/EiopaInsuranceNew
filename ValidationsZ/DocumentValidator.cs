@@ -711,11 +711,8 @@ namespace Validations
                 JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
             WHERE 1=1
 				and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInKYR'
-                and ( 
-				    ( ValidationCode  like 'TV%' )
-				    OR ( ValidationCode  like 'BV%' and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInXBRL')
-				 				
-                )
+                and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInXBRL'				 				                
+                and  ValidationCode  like 'BV%' 
 	            and vrs.ModuleID = @ModuleId
             ORDER BY  vr.ValidationRuleID
             ";

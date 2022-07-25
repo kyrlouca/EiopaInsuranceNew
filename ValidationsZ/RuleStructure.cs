@@ -394,8 +394,16 @@ namespace Validations
             //do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
-            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN") && !HasNullFilterTerms(rule.FilterTerms))
+            
+            if (HasNullFilterTermsNew(rule.FilterTerms))
             {
+                return IsValidRule;
+            }
+
+
+            if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
+            {
+
                 var isFilterValid = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFilterFinalFormula, rule.FilterTerms);
                 if (isFilterValid is null || !(bool)isFilterValid)
                 {
@@ -422,6 +430,35 @@ namespace Validations
 
             var missingTerms = terms
                 .Where(term => !term.IsFunctionTerm && term.IsMissing && term.DataTypeOfTerm != DataTypeMajorUU.NumericDtm)
+                .Select(term => term.Letter);
+
+            if (!missingTerms.Any())
+            {
+                return false;
+            }
+            var hasNull = missingTerms.Any(letter => isTrueNullTerm(letter));
+            return hasNull;
+
+
+            bool isTrueNullTerm(string letter)
+            {
+                //the letter of the term.
+                //find the function term which uses the term
+                //is true null => the term is NOT used by a function  Or the function is NOT IsFallback
+                var functionTerm = terms.FirstOrDefault(term => term.IsFunctionTerm && term.TermText.Contains(letter));
+                var isTrueNull = functionTerm is null || (functionTerm.FunctionType != FunctionTypes.ISFALLBACK && functionTerm.FunctionType != FunctionTypes.EMPTY);
+                return isTrueNull;
+            }
+
+        }
+
+        private static bool HasNullFilterTermsNew(List<RuleTerm> terms)
+        {
+            // returns true if there are any missing terms provided that they are not arguments of fallback or empty functions
+            // check for null non-numeric terms
+
+            var missingTerms = terms
+                .Where(term => !term.IsFunctionTerm && term.IsMissing)
                 .Select(term => term.Letter);
 
             if (!missingTerms.Any())
@@ -546,7 +583,7 @@ namespace Validations
             }
         }
 
-        
+
     }
 
 
