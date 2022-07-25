@@ -154,10 +154,11 @@ namespace XbrlReader
             {
                 if (xbrlFund is null || xbrlFund.FundId != reader.FundId)
                 {
-                    var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
+
+                    //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
+                    var message = $"The license number used:{reader?.FundId} is wrong.";                    
                     Log.Error(message);
-                    Console.WriteLine(message);
-                    //Update status
+                    Console.WriteLine(message);                    
                     reader.UpdateDocumentStatus("E");
                     reader.IsValidProcess = false;
 
