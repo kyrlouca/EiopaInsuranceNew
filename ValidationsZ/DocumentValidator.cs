@@ -414,6 +414,7 @@ namespace Validations
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
                 var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true,severity);
                 ruleStructure.SheetId = fact.TemplateSheetId;
+                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
 
                 documentRules.Add(ruleStructure);                
             }
