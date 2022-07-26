@@ -156,7 +156,7 @@ namespace XbrlReader
                 {
 
                     //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
-                    var message = $"The license number used:{reader?.FundId} is wrong.";                    
+                    var message = $"The license number used:{reader?.FundId} is incorrect.";                    
                     Log.Error(message);
                     Console.WriteLine(message);                    
                     reader.UpdateDocumentStatus("E");

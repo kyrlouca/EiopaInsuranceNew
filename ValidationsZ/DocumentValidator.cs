@@ -135,14 +135,25 @@ namespace Validations
 
             CreateErrorDocument();
 
+            var techRules = CreateTechnicalRulesNew().ToList();            
+            DocumentRules.AddRange(techRules);
 
-            var techRules = CreateTechnicalRulesNew();
-            return;
 
             //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
             //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
 
             CreateModuleAndDocumentRules();
+
+
+            //Update the values of the terms and the function terms
+            Console.WriteLine("\n update rule terms and function terms");
+            foreach (var rule in DocumentRules)
+            {
+                //Console.WriteLine(".");
+                Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
+                AssignValuesToTerms(rule);
+            }
+
         }
 
 
@@ -227,13 +238,17 @@ namespace Validations
 
                 if (!isRuleValid)
                 {
-                    var isError = rule.ValidationRuleDb.Severity == "Error";
-                    var isWarning = rule.ValidationRuleDb.Severity == "Warning";
+                    //var isError = rule.ValidationRuleDb.Severity == "Error";
+                    //var isWarning = rule.ValidationRuleDb.Severity == "Warning";
+
+                    var isError = rule.Severity == "Error";
+                    var isWarning = rule.Severity == "Warning";
+
                     errorCounter = isError ? errorCounter + 1 : errorCounter;
                     warningCounter = isWarning ? warningCounter + 1 : warningCounter;
 
                     var errorTerms = rule.RuleTerms.Select(term => term.TextValue).ToArray();
-                    var errorValue = string.Join("---", errorTerms);
+                    var errorValue = string.Join("# ", errorTerms);
 
                     var errorRule = new ERROR_Rule
                     {
@@ -245,7 +260,7 @@ namespace Validations
                         SheetId = 0,
                         SheetCode = rule.ScopeTableCode,
                         RowCol = rule.ScopeRowCol,
-                        RuleMessage = GeneralUtils.TruncateString(rule.ValidationRuleDb.ErrorMessage, 2490),
+                        RuleMessage = GeneralUtils.TruncateString(rule.ErrorMessage??"", 2490),
                         IsWarning = isWarning,
                         IsError = isError,
                         IsDataError = false,
@@ -308,23 +323,12 @@ namespace Validations
             //DocumentRules
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
-
-            //Update the values of the terms and the function terms
-            Console.WriteLine("\n update rule terms and function terms");
-            foreach (var rule in DocumentRules)
-            {
-                //Console.WriteLine(".");
-                Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
-                AssignValuesToTerms(rule);
-            }
-
-
-
+            
             return;
         }
 
 
-        private IEnumerable<KyrTechnicalValidationRules> CreateTechnicalRulesNew()
+        private IEnumerable<RuleStructure> CreateTechnicalRulesNew()
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
@@ -347,26 +351,33 @@ namespace Validations
                 FROM dbo.KyrTechnicalValidationRules kval
                 WHERE kval.ValidationId ='TV11'
             ";
+            var technicalRules = new List<RuleStructure>();
 
             var techRules = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
-            foreach(var techRule in techRules)
+            foreach (var techRule in techRules)
             {
-                CreateOneKyrTechnicalRule(techRule);
+                var rules = CreateSetOfKyrTechnicalRule(techRule);
+                technicalRules.AddRange(rules);
             }
-            return techRules;
+                       
+
+            return technicalRules;
         }
 
-        private void CreateOneKyrTechnicalRule(KyrTechnicalValidationRules techRule)
+        private List<RuleStructure> CreateSetOfKyrTechnicalRule(KyrTechnicalValidationRules techRule)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var documentRules = new List<RuleStructure>();
+
             var rawValidationFormula = techRule.ValidationFomula;
             var parts = rawValidationFormula.Split("like");
-            if(parts.Length !=2)
+            if (parts.Length != 2)
             {
-                return;
+                return documentRules;
             }
-            var xbrlCode=$"s2md_met:{parts[0].Trim()}";
+            var xbrlCode = $"s2md_met:{parts[0].Trim()}";
             var expression = parts[1].Trim();
             var formulaRegex = FixExpression(expression);
             var sqlFacts = @"
@@ -377,6 +388,7 @@ namespace Validations
                 ,fact.InternalRow
                 ,fact.XBRLCode
                 ,fact.TextValue
+                ,fact.TemplateSheetId
                 ,sheet.SheetCode
                 ,sheet.TableCode
                 FROM TemplateSheetFact fact
@@ -391,23 +403,24 @@ namespace Validations
 
             var documentId = DocumentId;
             var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { documentId, xbrlCode });
-            
 
-            foreach(var fact in facts)
+
+            foreach (var fact in facts)
             {
                 var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
 
                 var fixedExpression = FixExpression(expression);
                 var valFormula = $"{factCoordinates} like '{fixedExpression}'";
-                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId,validationRuleDb:null,isTechnical:true);
-                                                
-                var x = 3;
+                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true,severity);
+                ruleStructure.SheetId = fact.TemplateSheetId;
+
+                documentRules.Add(ruleStructure);                
             }
 
-            return;
+            return documentRules;
 
-
-            string FixExpression(string symbolExpression)
+            static string FixExpression(string symbolExpression)
             {
                 var fixedExpression = symbolExpression;
                 fixedExpression = fixedExpression.Replace("\"", "");
@@ -415,11 +428,11 @@ namespace Validations
                 fixedExpression = fixedExpression.Replace("{{", "{");
                 fixedExpression = fixedExpression.Replace("}}", "}");
                 fixedExpression = fixedExpression.Replace(" ", "");
-                
+
                 return fixedExpression;
             }
 
-             
+
         }
 
         private void AssignValuesToTerms(RuleStructure rule)
@@ -600,7 +613,7 @@ namespace Validations
                     }
                     var theTerm = allTerms.FirstOrDefault(term => term.Letter == termPartsLike[1]);
                     term.BooleanValue = FunctionForTechnicalLike(theTerm.TextValue, termPartsLike[2]);
-                                        
+
                     break;
                 default:
 
@@ -609,7 +622,7 @@ namespace Validations
             }
             return;
 
-            
+
 
         }
 
@@ -846,8 +859,8 @@ namespace Validations
             ORDER BY  vr.ValidationRuleID
             ";
 
-            var isTest = true;
-            var sqlModRules= isTest? sqlSelectModuleRulesTechnical : sqlSelectModuleRules;
+            var isTest = false;
+            var sqlModRules = isTest ? sqlSelectModuleRulesTechnical : sqlSelectModuleRules;
 
 
             var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlModRules, new { ModuleId });
@@ -1523,7 +1536,7 @@ namespace Validations
 
         private bool FunctionForTechnicalLike(string text, string regLike)
         {
-            
+
             var likeRegexValue = ReplaceWildCards(regLike);
             likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
             likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;

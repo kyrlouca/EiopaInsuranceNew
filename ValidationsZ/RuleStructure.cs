@@ -32,6 +32,8 @@ namespace Validations
         public List<RuleTerm> FilterTerms = new();
 
         public bool IsTechnical { get; set; }
+        public string Severity { get; set; }
+        public string ErrorMessage { get; set; }
 
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
@@ -58,10 +60,8 @@ namespace Validations
         {
             //to prevent user from creating default constructor;
         }
-        
-
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
-        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null,bool isTechnical=false)
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error")
         {
             //xx
             //xx
@@ -73,7 +73,8 @@ namespace Validations
 
             TableBaseFormula = tableBaseForumla?.Trim();
             FilterFormula = filterFormula?.Trim();
-            //IsTechnical = validationRuleDb?.ValidationCode.StartsWith("TV") ?? false;
+            Severity = validationRuleDb is null ? severity : validationRuleDb?.Severity;
+            ErrorMessage = validationRuleDb is null ? tableBaseForumla?.Trim() : validationRuleDb.ErrorMessage;
 
             if (isTechnical)
             {
@@ -87,8 +88,9 @@ namespace Validations
 
             //create the filter terms
             (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndTerms(FilterFormula);
+            Severity = severity;
         }
-        
+
 
         public RuleStructure Clone()
         {
