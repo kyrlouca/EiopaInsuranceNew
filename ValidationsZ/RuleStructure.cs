@@ -58,14 +58,10 @@ namespace Validations
         {
             //to prevent user from creating default constructor;
         }
-
-        //public RuleStructure(ConfigObject configObject, string tableBaseForumla, string filterFormula = "") : this(tableBaseForumla, filterFormula)
-        //{
-        //    ConfigObject = configObject;
-        //}
+        
 
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
-        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null)
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null,bool isTechnical=false)
         {
             //xx
             //xx
@@ -77,9 +73,9 @@ namespace Validations
 
             TableBaseFormula = tableBaseForumla?.Trim();
             FilterFormula = filterFormula?.Trim();
-            IsTechnical = validationRuleDb?.ValidationCode.StartsWith("TV") ?? false;
+            //IsTechnical = validationRuleDb?.ValidationCode.StartsWith("TV") ?? false;
 
-            if (IsTechnical)
+            if (isTechnical)
             {
                 (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula);
 
@@ -92,27 +88,7 @@ namespace Validations
             //create the filter terms
             (SymbolFilterFormula, SymbolFilterFinalFormula, FilterTerms) = CreateSymbolFormulaAndTerms(FilterFormula);
         }
-
-        //public RuleStructure(C_ValidationRuleExpression validationRuleDb) : this(validationRuleDb.TableBasedFormula, validationRuleDb.Filter)
-        //{
-        //    //it is used when creating module rules.
-        //    //it will FIRST trigger the constructor above that takes (TableBasedFormula and Filter) as arguments
-        //    //it can be removed, but we will need to add  ruleId and ScopeString in the other constructor
-        //    if (validationRuleDb is null)
-        //    {
-        //        return;
-        //    }
-        //    ValidationRuleId = validationRuleDb.ValidationRuleID;
-        //    TableBaseFormula = validationRuleDb.TableBasedFormula ?? "";
-
-        //    IsTechnical = validationRuleDb.ValidationCode.StartsWith("TV");
-
-        //    FilterFormula = validationRuleDb.Filter ?? "";
-        //    ValidationRuleDb = validationRuleDb;
-        //    ScopeString = ValidationRuleDb.Scope ?? "";
-        //    ScopeTableCode = GetTableCode();
-
-        //}
+        
 
         public RuleStructure Clone()
         {
@@ -248,8 +224,7 @@ namespace Validations
         {
             //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
             //2 Create one new term  for each function     
-            //X0=sum(X1) + sum(X2) => X0=Z0 + Z1 and create two new terms 
-            //*** Same distinct letter for exactly the same terms ***
+            
 
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
@@ -260,15 +235,15 @@ namespace Validations
                 .Distinct()
                 .ToList();
 
-            var ruleTerms = distinctMatches
+            var functionTerms = distinctMatches
                 .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true))
                 .ToList();
 
-            var symbolExpression = ruleTerms
+            var symbolExpression = functionTerms
                 .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
 
-            ruleTerms.ForEach(term => TransformTechnicalTerm(term));
-            return (symbolExpression, ruleTerms);
+            functionTerms.ForEach(term => TransformTechnicalTerm(term));
+            return (symbolExpression, functionTerms);
             static RuleTerm TransformTechnicalTerm(RuleTerm term)
             {
                 //

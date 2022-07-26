@@ -130,15 +130,18 @@ namespace Validations
             var message = $"---Validation started for Document:{DocumentId}";
             Log.Information(message);
 
-
-
             //to prevent anyone else validating when processed
             UpdateDocumentStatus("P");
 
             CreateErrorDocument();
 
+
+            var techRules = CreateTechnicalRulesNew();
+            return;
+
             //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
             //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
+
             CreateModuleAndDocumentRules();
         }
 
@@ -315,7 +318,108 @@ namespace Validations
                 AssignValuesToTerms(rule);
             }
 
+
+
             return;
+        }
+
+
+        private IEnumerable<KyrTechnicalValidationRules> CreateTechnicalRulesNew()
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var sqlTechRules = @"
+                SELECT
+                  kval.TechnicalValidationId
+                 ,kval.ValidationId
+                 ,kval.Rows
+                 ,kval.TableCode
+                 ,kval.Colums
+                 ,kval.ValidationFomula
+                 ,kval.Severity
+                 ,kval.CheckType
+                 ,kval.ErrorMessage
+                 ,kval.IsActive
+                 ,kval.Dimension
+                 ,kval.Scope
+                 ,kval.Fallback
+                FROM dbo.KyrTechnicalValidationRules kval
+                WHERE kval.ValidationId ='TV11'
+            ";
+
+            var techRules = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
+            foreach(var techRule in techRules)
+            {
+                CreateOneKyrTechnicalRule(techRule);
+            }
+            return techRules;
+        }
+
+        private void CreateOneKyrTechnicalRule(KyrTechnicalValidationRules techRule)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            var rawValidationFormula = techRule.ValidationFomula;
+            var parts = rawValidationFormula.Split("like");
+            if(parts.Length !=2)
+            {
+                return;
+            }
+            var xbrlCode=$"s2md_met:{parts[0].Trim()}";
+            var expression = parts[1].Trim();
+            var formulaRegex = FixExpression(expression);
+            var sqlFacts = @"
+                SELECT 
+                 fact.FactId
+                ,fact.Row
+                ,fact.Col
+                ,fact.InternalRow
+                ,fact.XBRLCode
+                ,fact.TextValue
+                ,sheet.SheetCode
+                ,sheet.TableCode
+                FROM TemplateSheetFact fact
+                LEFT OUTER JOIN TemplateSheetInstance sheet
+                  ON sheet.TemplateSheetId = fact.TemplateSheetId
+                LEFT OUTER JOIN DocInstance doc
+                  ON doc.InstanceId = sheet.InstanceId
+                WHERE 1 = 1
+                and doc.InstanceId=@DocumentId
+                and fact.XBRLCode = @xbrlCode
+            ";
+
+            var documentId = DocumentId;
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { documentId, xbrlCode });
+            
+
+            foreach(var fact in facts)
+            {
+                var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
+
+                var fixedExpression = FixExpression(expression);
+                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
+                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId,validationRuleDb:null,isTechnical:true);
+                                                
+                var x = 3;
+            }
+
+            return;
+
+
+            string FixExpression(string symbolExpression)
+            {
+                var fixedExpression = symbolExpression;
+                fixedExpression = fixedExpression.Replace("\"", "");
+                fixedExpression = fixedExpression.Replace("or", "|");
+                fixedExpression = fixedExpression.Replace("{{", "{");
+                fixedExpression = fixedExpression.Replace("}}", "}");
+                fixedExpression = fixedExpression.Replace(" ", "");
+                
+                return fixedExpression;
+            }
+
+             
         }
 
         private void AssignValuesToTerms(RuleStructure rule)
@@ -613,7 +717,7 @@ namespace Validations
 
         public static DbValue GetCellValueFromDbNew(ConfigObject configObj, int docId, string tableCode, string row, string col)
         {
-            using var connectionPension = new SqlConnection(configObj.LocalDatabaseConnectionString);
+            using var connectionLocal = new SqlConnection(configObj.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(configObj.EiopaDatabaseConnectionString);
             //We may have two sheets with the same sheetCode in one Document due to Z dim
             //Therefore, we must use the SheetId and not just the sheetCode for these facts. (because of sheets with the same sheetcode)
@@ -630,7 +734,7 @@ namespace Validations
 	                AND fact.row = @row
 	                AND fact.Col = @col
                 ";
-            var facts = connectionPension.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFact, new { docId, tableCode, row, col });
 
 
             if (!facts.Any())
@@ -693,6 +797,31 @@ namespace Validations
             //validationScope will provide tableId
 
 
+            var sqlSelectModuleRulesTechnical = @"
+            SELECT 
+		        vr.ValidationRuleID
+				,ex.ExpressionType
+	            ,vr.ExpressionID
+	            ,vr.ValidationCode
+	            ,vr.Severity
+	            ,vr.Scope
+	            ,ex.TableBasedFormula
+	            ,ex.Filter
+	            ,ex.LogicalExpression
+                ,ex.ErrorMessage
+            FROM 
+		        vValidationRuleSet vrs
+                join vValidationRule vr on vr.ValidationRuleID= vrs.ValidationRuleID
+                JOIN vExpression ex ON ex.ExpressionID = vr.ExpressionID
+            WHERE 1=1
+				and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInKYR'
+                and (Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInXBRL' Or ValidationCode like 'TV%' )				 				                
+                and  ValidationCode  like 'TV%' 
+	            and vrs.ModuleID = @ModuleId
+            ORDER BY  vr.ValidationRuleID
+    ";
+
+
             var sqlSelectModuleRules = @"
             SELECT 
 		        vr.ValidationRuleID
@@ -717,9 +846,11 @@ namespace Validations
             ORDER BY  vr.ValidationRuleID
             ";
 
+            var isTest = true;
+            var sqlModRules= isTest? sqlSelectModuleRulesTechnical : sqlSelectModuleRules;
 
 
-            var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlSelectModuleRules, new { ModuleId });
+            var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlModRules, new { ModuleId });
             var validationRules = moduleValidationRules;
 
             //For TESTING  to LIMIT RULES
