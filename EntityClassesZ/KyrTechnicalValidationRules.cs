@@ -14,6 +14,7 @@ namespace EntityClassesZ
         public string Rows { get; set; }
         public string Colums { get; set; }
         public string ValidationFomula { get; set; }
+        public string ValidationFomulaPrep { get; set; }
         public string ErrorMessage { get; set; }
         public string Severity { get; set; }
         public string CheckType { get; set; }

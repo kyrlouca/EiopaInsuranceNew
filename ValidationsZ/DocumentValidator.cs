@@ -135,13 +135,14 @@ namespace Validations
 
             CreateErrorDocument();
 
-            var techRules = CreateTechnicalRulesNew().ToList();            
-            DocumentRules.AddRange(techRules);
+            //Technical rules which are written in eiopa document EIOPA_SolvencyII_Validations_2.6.0_PWD
+            var (techDocumentRules, techModuleRules) = CreateTechnicalRulesNew();
+            DocumentRules.AddRange(techDocumentRules);
+            ModuleRules.AddRange(techModuleRules);
 
 
             //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
             //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
-
             CreateModuleAndDocumentRules();
 
 
@@ -260,7 +261,7 @@ namespace Validations
                         SheetId = 0,
                         SheetCode = rule.ScopeTableCode,
                         RowCol = rule.ScopeRowCol,
-                        RuleMessage = GeneralUtils.TruncateString(rule.ErrorMessage??"", 2490),
+                        RuleMessage = GeneralUtils.TruncateString(rule.ErrorMessage ?? "", 2490),
                         IsWarning = isWarning,
                         IsError = isError,
                         IsDataError = false,
@@ -323,12 +324,11 @@ namespace Validations
             //DocumentRules
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
-            
+
             return;
         }
 
-
-        private IEnumerable<RuleStructure> CreateTechnicalRulesNew()
+        private (IEnumerable<RuleStructure> factRules, IEnumerable<RuleStructure> normalRules) CreateTechnicalRulesNew()
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
@@ -340,7 +340,7 @@ namespace Validations
                  ,kval.Rows
                  ,kval.TableCode
                  ,kval.Colums
-                 ,kval.ValidationFomula
+                 ,kval.ValidationFomulaPrep
                  ,kval.Severity
                  ,kval.CheckType
                  ,kval.ErrorMessage
@@ -349,36 +349,55 @@ namespace Validations
                  ,kval.Scope
                  ,kval.Fallback
                 FROM dbo.KyrTechnicalValidationRules kval
-                WHERE kval.ValidationId ='TV11'
+                WHERE (kval.ValidationId ='TV11' Or kval.ValidationId ='TV34')
             ";
-            var technicalRules = new List<RuleStructure>();
+            var technicalDocumentRules = new List<RuleStructure>();
+            var technicalModuleRules = new List<RuleStructure>();
 
-            var techRules = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
-            foreach (var techRule in techRules)
+            var techRulesAll = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
+            
+            //process the fact document rules
+            var techFactRules = techRulesAll
+                .Where(rule => rule.CheckType.Trim() == "Fact");
+            foreach (var techRule in techFactRules)
             {
-                var rules = CreateSetOfKyrTechnicalRule(techRule);
-                technicalRules.AddRange(rules);
+                var rules = CreateKyrTechnicalDocumentRules(techRule);
+                technicalDocumentRules.AddRange(rules);
             }
-                       
 
-            return technicalRules;
+            //process the normal module rules
+            var techNormalRules = techRulesAll
+                .Where(rule => rule.CheckType.Trim() == "Normal");
+            foreach (var normalRule in techNormalRules)
+            {
+                var rules = CreateKyrTechnicalModuleRules(normalRule);
+                technicalModuleRules.AddRange(rules);
+            }
+
+            return (technicalDocumentRules, technicalModuleRules);
         }
 
-        private List<RuleStructure> CreateSetOfKyrTechnicalRule(KyrTechnicalValidationRules techRule)
+        private List<RuleStructure> CreateKyrTechnicalDocumentRules(KyrTechnicalValidationRules techRule)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
             var documentRules = new List<RuleStructure>();
 
-            var rawValidationFormula = techRule.ValidationFomula;
-            var parts = rawValidationFormula.Split("like");
-            if (parts.Length != 2)
+            var rawValidationFormula = techRule.ValidationFomulaPrep;
+
+            //(.*?)\s*(like|allows combinations of values|allows)\s*(.*)
+            var technicalRegex = new Regex(@"(.*?)\s*(like|allows)\s*(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var match = technicalRegex.Matches(rawValidationFormula);
+            if (match.Count() == 0)
             {
                 return documentRules;
             }
-            var xbrlCode = $"s2md_met:{parts[0].Trim()}";
-            var expression = parts[1].Trim();
+            var matchValues = match.First().Groups.Values.Select(x => x.Value).ToArray();
+            var xbrlCode = $"s2md_met:{matchValues[1].Trim()}";
+            var expression = matchValues[3].Trim();
+
+
             var formulaRegex = FixExpression(expression);
             var sqlFacts = @"
                 SELECT 
@@ -412,11 +431,11 @@ namespace Validations
                 var fixedExpression = FixExpression(expression);
                 var valFormula = $"{factCoordinates} like '{fixedExpression}'";
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true,severity);
+                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
                 ruleStructure.SheetId = fact.TemplateSheetId;
                 ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
 
-                documentRules.Add(ruleStructure);                
+                documentRules.Add(ruleStructure);
             }
 
             return documentRules;
@@ -424,6 +443,7 @@ namespace Validations
             static string FixExpression(string symbolExpression)
             {
                 var fixedExpression = symbolExpression;
+                fixedExpression = fixedExpression.Replace("allows", "like");
                 fixedExpression = fixedExpression.Replace("\"", "");
                 fixedExpression = fixedExpression.Replace("or", "|");
                 fixedExpression = fixedExpression.Replace("{{", "{");
@@ -435,6 +455,99 @@ namespace Validations
 
 
         }
+
+
+        private List<RuleStructure> CreateKyrTechnicalModuleRules(KyrTechnicalValidationRules techRule)
+        {
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var moduleRules = new List<RuleStructure>();
+
+            var sqlSelectSheets = @"
+                    select TemplateSheetId, TableCode from TemplateSheetInstance sheet 
+                    where 
+	                    sheet.InstanceId= 11832
+	                    and sheet.TableCode like 's.01.01%'
+                    ";
+
+            //var sheets = connectionLocal.Query<Temp>(sqlFacts, new { documentId, xbrlCode });
+
+
+
+            var rawValidationFormula = techRule.ValidationFomulaPrep;
+
+            //(.*?)\s*(like|allows combinations of values|allows)\s*(.*)
+            var technicalRegex = new Regex(@"(.*?)\s*(like|allows)\s*(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var match = technicalRegex.Matches(rawValidationFormula);
+            if (match.Count() == 0)
+            {
+                return moduleRules;
+            }
+            var matchValues = match.First().Groups.Values.Select(x => x.Value).ToArray();
+            var xbrlCode = $"s2md_met:{matchValues[1].Trim()}";
+            var expression = matchValues[3].Trim();
+
+
+            var formulaRegex = FixExpression(expression);
+            var sqlFacts = @"
+                SELECT 
+                 fact.FactId
+                ,fact.Row
+                ,fact.Col
+                ,fact.InternalRow
+                ,fact.XBRLCode
+                ,fact.TextValue
+                ,fact.TemplateSheetId
+                ,sheet.SheetCode
+                ,sheet.TableCode
+                FROM TemplateSheetFact fact
+                LEFT OUTER JOIN TemplateSheetInstance sheet
+                  ON sheet.TemplateSheetId = fact.TemplateSheetId
+                LEFT OUTER JOIN DocInstance doc
+                  ON doc.InstanceId = sheet.InstanceId
+                WHERE 1 = 1
+                and doc.InstanceId=@DocumentId
+                and fact.XBRLCode = @xbrlCode
+            ";
+
+            var documentId = DocumentId;
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { documentId, xbrlCode });
+
+
+            foreach (var fact in facts)
+            {
+                var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
+
+                var fixedExpression = FixExpression(expression);
+                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
+                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
+                ruleStructure.SheetId = fact.TemplateSheetId;
+                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
+
+                moduleRules.Add(ruleStructure);
+            }
+
+            return moduleRules;
+
+            static string FixExpression(string symbolExpression)
+            {
+                var fixedExpression = symbolExpression;
+                fixedExpression = fixedExpression.Replace("allows", "like");
+                fixedExpression = fixedExpression.Replace("\"", "");
+                fixedExpression = fixedExpression.Replace("or", "|");
+                fixedExpression = fixedExpression.Replace("{{", "{");
+                fixedExpression = fixedExpression.Replace("}}", "}");
+                fixedExpression = fixedExpression.Replace(" ", "");
+
+                return fixedExpression;
+            }
+
+
+        }
+
+
 
         private void AssignValuesToTerms(RuleStructure rule)
         {
@@ -622,9 +735,6 @@ namespace Validations
                     break;
             }
             return;
-
-
-
         }
 
 
@@ -1539,10 +1649,9 @@ namespace Validations
         {
 
             var likeRegexValue = ReplaceWildCards(regLike);
-            likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
-            likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
-            likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
-
+            //likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
+            //likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
+            //likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
 
             var res = Regex.IsMatch(text, likeRegexValue);
             return res;
