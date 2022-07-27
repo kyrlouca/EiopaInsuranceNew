@@ -355,7 +355,7 @@ namespace Validations
             var technicalModuleRules = new List<RuleStructure>();
 
             var techRulesAll = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
-            
+
             //process the fact document rules
             var techFactRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Fact");
@@ -463,86 +463,78 @@ namespace Validations
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
             var moduleRules = new List<RuleStructure>();
+            var sheetCode = $"{techRule.TableCode.Trim()}%";
+
 
             var sqlSelectSheets = @"
                     select TemplateSheetId, TableCode from TemplateSheetInstance sheet 
                     where 
-	                    sheet.InstanceId= 11832
-	                    and sheet.TableCode like 's.01.01%'
+	                    sheet.InstanceId= @DocumentId
+	                    and sheet.TableCode like @sheetCode
                     ";
 
-            //var sheets = connectionLocal.Query<Temp>(sqlFacts, new { documentId, xbrlCode });
+            var sheets = connectionLocal.Query<TemplateSheetInstance>(sqlSelectSheets, new { DocumentId, sheetCode });
 
 
-
-            var rawValidationFormula = techRule.ValidationFomulaPrep;
-
-            //(.*?)\s*(like|allows combinations of values|allows)\s*(.*)
-            var technicalRegex = new Regex(@"(.*?)\s*(like|allows)\s*(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            var match = technicalRegex.Matches(rawValidationFormula);
-            if (match.Count() == 0)
+            foreach (var sheet in sheets)
             {
-                return moduleRules;
-            }
-            var matchValues = match.First().Groups.Values.Select(x => x.Value).ToArray();
-            var xbrlCode = $"s2md_met:{matchValues[1].Trim()}";
-            var expression = matchValues[3].Trim();
+                var test = FixExpression2(techRule.ValidationFomulaPrep);
+                var valFormula = FixExpression(techRule.ValidationFomulaPrep.Trim());
 
-
-            var formulaRegex = FixExpression(expression);
-            var sqlFacts = @"
-                SELECT 
-                 fact.FactId
-                ,fact.Row
-                ,fact.Col
-                ,fact.InternalRow
-                ,fact.XBRLCode
-                ,fact.TextValue
-                ,fact.TemplateSheetId
-                ,sheet.SheetCode
-                ,sheet.TableCode
-                FROM TemplateSheetFact fact
-                LEFT OUTER JOIN TemplateSheetInstance sheet
-                  ON sheet.TemplateSheetId = fact.TemplateSheetId
-                LEFT OUTER JOIN DocInstance doc
-                  ON doc.InstanceId = sheet.InstanceId
-                WHERE 1 = 1
-                and doc.InstanceId=@DocumentId
-                and fact.XBRLCode = @xbrlCode
-            ";
-
-            var documentId = DocumentId;
-            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { documentId, xbrlCode });
-
-
-            foreach (var fact in facts)
-            {
-                var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
-
-                var fixedExpression = FixExpression(expression);
-                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
-                ruleStructure.SheetId = fact.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
+                var scope = $"{{{sheet.TableCode}";
+                scope = string.IsNullOrWhiteSpace(techRule.Rows) ? scope : $"{scope},{techRule.Rows.Trim().ToUpper()}";
+                scope = string.IsNullOrWhiteSpace(techRule.Colums) ? scope : $"{scope},{techRule.Colums.Trim().ToUpper()}";
+                scope = $"{scope}}}";
+
+                var ruleStructure = new RuleStructure(valFormula, "", scope, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
+                ruleStructure.SheetId = sheet.TemplateSheetId;
+                ruleStructure.ScopeRowCol = $"{techRule.Rows},{techRule.Colums}";
 
                 moduleRules.Add(ruleStructure);
             }
 
             return moduleRules;
 
-            static string FixExpression(string symbolExpression)
+            static string FixExpression(string expression)
             {
-                var fixedExpression = symbolExpression;
-                fixedExpression = fixedExpression.Replace("allows", "like");
-                fixedExpression = fixedExpression.Replace("\"", "");
-                fixedExpression = fixedExpression.Replace("or", "|");
-                fixedExpression = fixedExpression.Replace("{{", "{");
-                fixedExpression = fixedExpression.Replace("}}", "}");
-                fixedExpression = fixedExpression.Replace(" ", "");
+                var fixedExpression = expression;
+                var rg = new Regex(@"({.*?}\s*?<>empty)");
+                var matches = rg.Matches(fixedExpression);
+
+                foreach (Match mt in matches)
+                {
+
+                    var rgParen = new Regex(@"({.*?})");
+                    var term = rgParen.Match(mt.Value);
+                    var newTerm = $"not like({term.Value})";
+                    fixedExpression.Replace(term.Value, newTerm);
+                }
+
+                //Regex.Replace(fixedExpression, @"({.*?}\s*?<>empty)", "(*)");
 
                 return fixedExpression;
             }
+
+            static string FixExpression2(string expression)
+            {
+                var fixedExpression = expression;
+                var rg = new Regex(@"({.*?}\s*?<>empty)", RegexOptions.IgnoreCase);
+                var evaluator = new MatchEvaluator(Mixer);
+
+                string res = rg.Replace(fixedExpression, Mixer);
+                               
+                return res;
+
+                string Mixer(Match match)
+                {
+                    var rgTerm = new Regex(@"({.*?})");
+                    var matchTerm= rgTerm.Match(match.Value);
+                    var newTerm = $"not like({matchTerm.Value})";
+                    return newTerm;
+                }
+            }
+
 
 
         }
