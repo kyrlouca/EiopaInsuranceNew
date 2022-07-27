@@ -477,9 +477,8 @@ namespace Validations
 
 
             foreach (var sheet in sheets)
-            {
-                var test = FixExpression2(techRule.ValidationFomulaPrep);
-                var valFormula = FixExpression(techRule.ValidationFomulaPrep.Trim());
+            {                
+                var valFormula = FixExpression(techRule.ValidationFomulaPrep);
 
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
                 var scope = $"{{{sheet.TableCode}";
@@ -498,39 +497,19 @@ namespace Validations
 
             static string FixExpression(string expression)
             {
-                var fixedExpression = expression;
-                var rg = new Regex(@"({.*?}\s*?<>empty)");
-                var matches = rg.Matches(fixedExpression);
 
-                foreach (Match mt in matches)
-                {
-
-                    var rgParen = new Regex(@"({.*?})");
-                    var term = rgParen.Match(mt.Value);
-                    var newTerm = $"not like({term.Value})";
-                    fixedExpression.Replace(term.Value, newTerm);
-                }
-
-                //Regex.Replace(fixedExpression, @"({.*?}\s*?<>empty)", "(*)");
-
-                return fixedExpression;
-            }
-
-            static string FixExpression2(string expression)
-            {
-                var fixedExpression = expression;
+                var fixedExpression = expression.Trim();                
                 var rg = new Regex(@"({.*?}\s*?<>empty)", RegexOptions.IgnoreCase);
                 var evaluator = new MatchEvaluator(Mixer);
 
-                string res = rg.Replace(fixedExpression, Mixer);
-                               
+                string res = rg.Replace(fixedExpression, Mixer);                               
                 return res;
 
                 string Mixer(Match match)
                 {
                     var rgTerm = new Regex(@"({.*?})");
                     var matchTerm= rgTerm.Match(match.Value);
-                    var newTerm = $"not like({matchTerm.Value})";
+                    var newTerm = $"not MATCHES({matchTerm.Value})";
                     return newTerm;
                 }
             }
