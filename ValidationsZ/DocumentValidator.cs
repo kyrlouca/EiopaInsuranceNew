@@ -478,19 +478,20 @@ namespace Validations
 
             foreach (var sheet in sheets)
             {                
-                var valFormula = FixExpression(techRule.ValidationFomulaPrep);
+                
 
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var scope = $"{{{sheet.TableCode}";
-                scope = string.IsNullOrWhiteSpace(techRule.Rows) ? scope : $"{scope},{techRule.Rows.Trim().ToUpper()}";
-                scope = string.IsNullOrWhiteSpace(techRule.Colums) ? scope : $"{scope},{techRule.Colums.Trim().ToUpper()}";
-                scope = $"{scope}}}";
 
+                var rows = techRule.Rows == "All" ? "" : techRule.Rows.Trim().ToUpper();
+                var columns = techRule.Colums == "All" ? "" : techRule.Colums.Trim().ToUpper();
+                var scope = FixScope(sheet.TableCode,rows,columns);                
+
+                var valFormula = FixExpression(techRule.ValidationFomulaPrep);
                 var ruleStructure = new RuleStructure(valFormula, "", scope, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
                 ruleStructure.SheetId = sheet.TemplateSheetId;
                 ruleStructure.ScopeRowCol = $"{techRule.Rows},{techRule.Colums}";
 
-                moduleRules.Add(ruleStructure);
+                moduleRules.Add(ruleStructure);                
             }
 
             return moduleRules;
@@ -513,7 +514,14 @@ namespace Validations
                     return newTerm;
                 }
             }
-
+            static string FixScope(string scope, string rows, string cols)
+            {
+                var newScope = $"{{{scope}";
+                newScope = string.IsNullOrWhiteSpace(rows) ? newScope : $"{newScope},{rows.Trim().ToUpper()}";
+                newScope = string.IsNullOrWhiteSpace(cols) ? newScope : $"{newScope},{cols.Trim().ToUpper()}";
+                newScope = $"{newScope}}}";
+                return newScope;
+            }
 
 
         }
@@ -941,8 +949,8 @@ namespace Validations
             ORDER BY  vr.ValidationRuleID
             ";
 
-            var isTest = false;
-            var sqlModRules = isTest ? sqlSelectModuleRulesTechnical : sqlSelectModuleRules;
+            var isUseTechnicalRulesExperimental = false;
+            var sqlModRules = isUseTechnicalRulesExperimental ? sqlSelectModuleRulesTechnical : sqlSelectModuleRules;
 
 
             var moduleValidationRules = connectionEiopa.Query<C_ValidationRuleExpression>(sqlModRules, new { ModuleId });
