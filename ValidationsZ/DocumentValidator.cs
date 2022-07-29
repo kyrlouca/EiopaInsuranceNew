@@ -38,25 +38,27 @@ namespace Validations
         public List<RuleStructure> ModuleRules { get; private set; } = new List<RuleStructure>();
         public List<RuleStructure> DocumentRules { get; private set; } = new List<RuleStructure>();
         public int TestingRuleId { get; set; } = 0;
+        public int TestingTechnicalRuleId { get; set; } = 0;
         public ConfigObject ConfigObject { get; private set; }
 
 
 
-        public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0)
+        public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId =0)
         {
-            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId);
+            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId,testingTechnicalRuleId);
             validatorDg.ValidateRules(testingRuleId);
         }
 
 
 
 
-        private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0)
+        private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId=0)
         {
 
             SolvencyVersion = solverncyVersion;
             DocumentId = documentId;
             TestingRuleId = testingRuleId;
+            TestingTechnicalRuleId = testingTechnicalRuleId;
 
 
             GetConfiguration();
@@ -349,21 +351,39 @@ namespace Validations
                  ,kval.Scope
                  ,kval.Fallback
                 FROM dbo.KyrTechnicalValidationRules kval
-                WHERE (kval.ValidationId ='TV11' Or kval.ValidationId ='TV34')
+                WHERE 1=1
+                and kval.IsActive = 1
+                --and (kval.ValidationId ='TV11' Or kval.ValidationId ='TV34')
             ";
             var technicalDocumentRules = new List<RuleStructure>();
             var technicalModuleRules = new List<RuleStructure>();
 
             var techRulesAll = connectionEiopa.Query<KyrTechnicalValidationRules>(sqlTechRules);
 
-            //process the fact document rules
+            if (TestingTechnicalRuleId > 0)
+            {
+                techRulesAll = techRulesAll.Where(item => item.TechnicalValidationId == TestingTechnicalRuleId).ToList();
+            }
+
+
+            //process the xbrl document rules
             var techFactRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Fact");
             foreach (var techRule in techFactRules)
             {
-                var rules = CreateKyrTechnicalDocumentRules(techRule);
+                var rules = CreateKyrTechnicalXbrlDocumentRules (techRule);
                 technicalDocumentRules.AddRange(rules);
             }
+
+            //process the dim document rules
+            var techDimRules = techRulesAll
+                .Where(rule => rule.CheckType.Trim() == "Dim");
+            foreach (var techRule in techDimRules)
+            {
+                var rules = CreateKyrTechnicalDimDocumentRules(techRule);
+                technicalDocumentRules.AddRange(rules);
+            }
+
 
             //process the normal module rules
             var techNormalRules = techRulesAll
@@ -377,7 +397,7 @@ namespace Validations
             return (technicalDocumentRules, technicalModuleRules);
         }
 
-        private List<RuleStructure> CreateKyrTechnicalDocumentRules(KyrTechnicalValidationRules techRule)
+        private List<RuleStructure> CreateKyrTechnicalXbrlDocumentRules(KyrTechnicalValidationRules techRule)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
@@ -457,6 +477,92 @@ namespace Validations
         }
 
 
+
+        private List<RuleStructure> CreateKyrTechnicalDimDocumentRules(KyrTechnicalValidationRules techRule)
+        {
+            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  
+            using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+
+            var documentRules = new List<RuleStructure>();
+
+            var rawValidationFormula = techRule.ValidationFomulaPrep;
+
+            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  
+            var technicalRegex = new Regex(@"(.*?)\s*like\s*(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);            
+            var singleMatch = technicalRegex.Match(rawValidationFormula);
+            if (!singleMatch.Success)
+            {
+                return documentRules;
+            }
+
+            var rgDim = new Regex(@"dim:(\w\w)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var dim =  rgDim.Match(singleMatch.Groups[1].Value.Trim());            
+            var expression = singleMatch.Groups[2].Value.Trim();
+
+            var formulaRegex = FixExpression(expression);
+
+            var sqlFacts = @"
+                SELECT
+                  fd.FactId
+                 ,[Dim]
+                 ,[Dom]
+                 ,[DomValue]
+                 ,[IsExplicit]
+                 ,[FactDimId]
+                 ,fact.TemplateSheetId
+                 ,fact.TextValue
+                 ,fact.Row
+                 ,fact.Col
+                 ,sheet.SheetTabName
+                FROM TemplateSheetFactDim fd
+                JOIN TemplateSheetFact fact
+                  ON fact.FactId = fd.FactId
+                JOIN TemplateSheetInstance sheet
+                  ON sheet.TemplateSheetId = fact.TemplateSheetId
+                WHERE fact.InstanceId = @documentId
+                AND fact.IsRowKey = 0
+                AND fd.Dim = @dim
+                AND fd.DomValue <> ''            
+                ";
+
+            var documentId = DocumentId;
+            var facts = connectionLocal.Query<TemplateSheetFact>(sqlFacts, new { documentId, dim });
+
+
+            foreach (var fact in facts)
+            {
+                var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
+
+                var fixedExpression = FixExpression(expression);
+                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
+                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
+                ruleStructure.SheetId = fact.TemplateSheetId;
+                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
+
+                documentRules.Add(ruleStructure);
+            }
+
+            return documentRules;
+
+            static string FixExpression(string symbolExpression)
+            {
+                var fixedExpression = symbolExpression;
+                fixedExpression = fixedExpression.Replace("allows", "like");
+                fixedExpression = fixedExpression.Replace("\"", "");
+                fixedExpression = fixedExpression.Replace("or", "|");
+                fixedExpression = fixedExpression.Replace("{{", "{");
+                fixedExpression = fixedExpression.Replace("}}", "}");
+                fixedExpression = fixedExpression.Replace(" ", "");
+
+                return fixedExpression;
+            }
+
+
+        }
+
+
         private List<RuleStructure> CreateKyrTechnicalModuleRules(KyrTechnicalValidationRules techRule)
         {
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -482,14 +588,18 @@ namespace Validations
 
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
 
-                var rows = techRule.Rows == "All" ? "" : techRule.Rows.Trim().ToUpper();
-                var columns = techRule.Colums == "All" ? "" : techRule.Colums.Trim().ToUpper();
-                var scope = FixScope(sheet.TableCode,rows,columns);                
+                var rows = techRule.Rows.Trim().ToUpper() == "(ALL)" ? "" : techRule.Rows.Trim().ToUpper();
+                var columns = techRule.Colums.Trim().ToUpper() == "(ALL)" ? "" : techRule.Colums.Trim().ToUpper();
+                var scope = FixScope(sheet.TableCode,rows,columns); 
+                
+
 
                 var valFormula = FixExpression(techRule.ValidationFomulaPrep);
+                valFormula = FixTableCode(valFormula, sheet.TableCode);
+
                 var ruleStructure = new RuleStructure(valFormula, "", scope, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
                 ruleStructure.SheetId = sheet.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{techRule.Rows},{techRule.Colums}";
+                ruleStructure.ScopeRowCol = $"{rows},{columns}";
 
                 moduleRules.Add(ruleStructure);                
             }
@@ -501,12 +611,12 @@ namespace Validations
 
                 var fixedExpression = expression.Trim();                
                 var rg = new Regex(@"({.*?}\s*?<>empty)", RegexOptions.IgnoreCase);
-                var evaluator = new MatchEvaluator(Mixer);
+                var evaluator = new MatchEvaluator(FunctionNameChanger);
 
-                string res = rg.Replace(fixedExpression, Mixer);                               
+                string res = rg.Replace(fixedExpression, FunctionNameChanger);                               
                 return res;
 
-                string Mixer(Match match)
+                string FunctionNameChanger(Match match)
                 {
                     var rgTerm = new Regex(@"({.*?})");
                     var matchTerm= rgTerm.Match(match.Value);
@@ -514,6 +624,28 @@ namespace Validations
                     return newTerm;
                 }
             }
+
+            static string FixTableCode(string expression,string tableCode)
+            {
+
+                var fixedExpression = expression.Trim();
+                var rg = new Regex(@"{(.*?),.*?}", RegexOptions.IgnoreCase);                
+
+                string res = rg.Replace(fixedExpression, TableCodeChanger);
+                return res;
+
+                string TableCodeChanger(Match match)
+                {
+
+                    var original = match.Groups[1].Value;
+                    var newVal = match.Value.Replace(original, tableCode);
+                    return newVal;
+                }
+
+
+            }
+
+
             static string FixScope(string scope, string rows, string cols)
             {
                 var newScope = $"{{{scope}";
