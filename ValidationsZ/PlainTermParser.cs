@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeneralUtilsNs;
+
 
 
 namespace Validations
@@ -14,7 +16,8 @@ namespace Validations
         public string TableCode { get; internal set; }
         public string Row { get; internal set; } = "";
         public string Col { get; internal set; } = "";        
-        public bool IsSum { get; internal set; }        
+        public bool IsSum { get; internal set; }
+        public string TermValue { get; set; } = "";
 
         private PlainTermParser(string termText)
         {
@@ -46,6 +49,13 @@ namespace Validations
             Row = textParts.FirstOrDefault(part => part.ToUpper().Contains("R"))?.Trim()??"";
             Col = textParts.FirstOrDefault(part => part.Trim().ToUpper().Contains("C"))?.Trim()??"";
             IsSum = textParts.Any(part => part.ToUpper().Contains("SNN") || part.ToUpper().Contains("-"));
+
+            //this is to used in technical terms
+            //It captures the  value instead which will later help to avoid looking for the fact value
+            //{S.01.02.07.01, r0180,c0010,val=[abc]} => TermValue=abc
+            Regex rgTermValue = new Regex(@"VAL=\[(.*)\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var valuePartMatch = textParts.FirstOrDefault(part => rgTermValue.IsMatch(part));
+            TermValue = valuePartMatch is null ? "" : rgTermValue.Match(valuePartMatch).Groups[1].Value;
 
         }
 

@@ -16,6 +16,9 @@ namespace TestingValidationsZ
         {
             var normalTerm = "";
 
+            
+
+
             normalTerm = @"{S.01.02.07.01, r0180,c0010}";
             var res1 = PlainTermParser.ParseTerm(normalTerm);
             res1.TableCode.Should().Be("S.01.02.07.01");            
@@ -43,6 +46,16 @@ namespace TestingValidationsZ
             res4.Row.Should().Be("R0040-0190");
             res4.Col.Should().Be("");
             res4.IsSum.Should().BeTrue();
+
+            //this is used for technical terms when i want to get the value directly instead from the fact
+            normalTerm = @"{S.01.02.07.01, r0180,c0010,val=[abc]}";
+            var res0 = PlainTermParser.ParseTerm(normalTerm);
+            res0.TableCode.Should().Be("S.01.02.07.01");
+            res0.Row.Should().Be("R0180");
+            res0.Col.Should().Be("C0010");
+            res0.IsSum.Should().BeFalse();
+            res0.TermValue.Should().Be("ABC");
+
 
         }
     }

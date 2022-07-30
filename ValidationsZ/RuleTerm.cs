@@ -22,6 +22,7 @@ namespace Validations
         public DataTypeMajorUU DataTypeOfTerm { get; set; }
         public bool BooleanValue { get; set; }
         public string TextValue { get; set; }
+        public string TextValueFixed { get; set; } = ""; //abc from=> "{S.01.02.07.01, r0180,c0010,val=[abc]}";
         public decimal DecimalValue { get; set; }
         public int NumberOfDecimals { get; set; }
         public DateTime DateValue { get; set; }
@@ -37,6 +38,7 @@ namespace Validations
         public int SheetId { get; set; }
         public bool IsMissing { get; set; }
         public bool IsSum { get; internal set; }
+        
         private RuleTerm() { }
 
 
@@ -67,6 +69,7 @@ namespace Validations
                 Row = normalTerm.Row;
                 Col = normalTerm.Col;
                 IsSum = normalTerm.IsSum;
+                TextValueFixed = normalTerm.TermValue;
             }
                 
             DataTypeOfTerm = GetValueType(FunctionType);

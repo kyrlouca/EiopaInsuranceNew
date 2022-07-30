@@ -34,7 +34,7 @@ namespace Validations
         public bool IsTechnical { get; set; }
         public string Severity { get; set; }
         public string ErrorMessage { get; set; }
-        public string DimValue { get; set; }//only used for technical terms using "dim"
+        
 
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
@@ -62,7 +62,7 @@ namespace Validations
             //to prevent user from creating default constructor;
         }
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
-        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error",string dimValue="")
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error")
         {
             //xx
             //xx
@@ -76,15 +76,17 @@ namespace Validations
             FilterFormula = filterFormula?.Trim();
             Severity = validationRuleDb is null ? severity : validationRuleDb?.Severity;
             ErrorMessage = validationRuleDb is null ? tableBaseForumla?.Trim() : validationRuleDb.ErrorMessage;
-            DimValue = dimValue;
+            
 
             if (isTechnical)
             {
-                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula,dimValue);
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula);
 
             }
             else
             {
+                //TableBaseFormula = "if ({S.01.01.01.01,r0540,c0010}=[s2c_CN:x1]) then {S.26.05.01.04,r0700,c0160}=exp({S.26.05.01.02,r0300,c0100},...)
+                //will become 
                 (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolFormulaAndTerms(TableBaseFormula);
             }
 
@@ -107,7 +109,7 @@ namespace Validations
             return newRule;
         }
 
-        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression,string dimValue="")
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression)
         {
             //Create symbol formula and finalSymbol formula. Same for filter
             //Two kind of terms: normal and function terms. 
@@ -151,15 +153,17 @@ namespace Validations
             //resmm.RuleTerms.Count.Should().Be(5);
 
             //*********************************************************************************
-            //Create the plain Terms "X".
-            //The formula will change from  min({S.23.01.01.01,r0540,c0040}) to min(X00) . X00 term will be created
+            //Change the formula to replace  terms like {S.23.01.01.01,r0540,c0040} to X00. ruleterms are also created
+            //functions are not affected yet.
+            //Therefor, the formula will change from  min({S.23.01.01.01,r0540,c0040}) ===> min(X00)
             (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
             var theFormula = symbolFormula;
             var theTerms = ruleTerms;
 
             //*********************************************************************************
-            //Create the Function Terms "Z".
-            //Define FinalSymbolFormula.  "max(0,min(0.5*X0-3*X1))" => with Z00. Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            //Change the formula to replace functions  and create Function Terms "Z00".            
+            //the FinalSymbolFormula will change from   "max(0,min(0.5*X0-3*X1))" => with Z00.
+            //Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
             (var finalSymbolFormula, var newFunctionTerms) = CreateFunctionTerms(theFormula, "Z");
             var theSymbolFinalFormula = finalSymbolFormula;
             foreach (var newTerm in newFunctionTerms)
@@ -206,22 +210,22 @@ namespace Validations
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
 
-
+            //replace
             var distinctMatches = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
                 .Select(item => item.Captures[0].Value.Trim()).ToList()
                 .Distinct()
                 .ToList();
 
 
-            var ruleTerms = distinctMatches
+            var ruleFunctionTerms = distinctMatches
                 .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
 
-            if (ruleTerms.Count == 0)
+            if (ruleFunctionTerms.Count == 0)
                 return (expression, new List<RuleTerm>());
 
-            var symbolExpression = ruleTerms
+            var symbolExpression = ruleFunctionTerms
                 .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
-            return (symbolExpression, ruleTerms);
+            return (symbolExpression, ruleFunctionTerms);
         }
 
         private static (string symbolExpression, List<RuleTerm>) CreateFunctionTermsTechnical(string expression, string termLetter)
@@ -233,6 +237,10 @@ namespace Validations
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
 
+
+
+
+            //si1495 like "^LEI/[A-Z0-9]{{20}}$" or "^None" convert this to like(X00,"^LEI/[A-Z0-9]{{20}}$")            
             var technicalRegex = new Regex(@"(X\d\d.*?)\s*like\s*('.*?')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
             var distinctMatches = technicalRegex.Matches(expression)
                 .Select(item => item.Captures[0].Value.Trim()).ToList()

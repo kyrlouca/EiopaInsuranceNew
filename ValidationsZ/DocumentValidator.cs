@@ -27,7 +27,7 @@ namespace Validations
         public int FactId { get; set; }
         public string Dim { get; set; }
         public string Dom { get; set; }
-        public string DomValue { get; set; }        
+        public string DomValue { get; set; }
         public string FactDimId { get; set; }
         public string TextValue { get; set; }
         public string Row { get; set; }
@@ -58,7 +58,7 @@ namespace Validations
 
 
 
-        public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 0)
+        public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
         {
             var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);
             validatorDg.ValidateRules(testingRuleId);
@@ -213,10 +213,10 @@ namespace Validations
                 //retrun
             }
 
-            if (testingRuleId > 0)
-            {
-                DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == testingRuleId).ToList();
-            }
+            //if (testingRuleId > 0)
+            //{
+            //    DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == testingRuleId).ToList();
+            //}
 
             //****************************************************************
             //validate the document rules
@@ -382,6 +382,7 @@ namespace Validations
 
 
             //process the xbrl document rules
+            Console.WriteLine("\nCreate Technical Xbrl Rules");
             var techFactRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Fact");
             foreach (var techRule in techFactRules)
@@ -391,6 +392,7 @@ namespace Validations
             }
 
             //process the dim document rules
+            Console.WriteLine("\nCreate Technical Dim Rules");
             var techDimRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Dim");
             foreach (var techRule in techDimRules)
@@ -470,6 +472,7 @@ namespace Validations
                 ruleStructure.SheetId = fact.TemplateSheetId;
                 ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
 
+                Console.Write(".");
                 documentRules.Add(ruleStructure);
             }
 
@@ -506,7 +509,7 @@ namespace Validations
             //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  
             var technicalRegex = new Regex(@"(.*?)\s*like\s*?(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-            var singleMatch = technicalRegex.Match(rawValidationFormula.Trim());            
+            var singleMatch = technicalRegex.Match(rawValidationFormula.Trim());
             if (!singleMatch.Success)
             {
                 return documentRules;
@@ -548,19 +551,20 @@ namespace Validations
             var documentId = DocumentId;
             var dimFacts = connectionLocal.Query<FactDim>(sqlFacts, new { documentId, dim });
 
-
+            
             foreach (var dimFact in dimFacts)
             {
-                var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{dimFact.Col}}}";
+                var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{dimFact.Col},VAL=[{dimFact.DomValue}]}}";
 
                 var fixedExpression = FixExpression(expression);
                 var valFormula = $"{factCoordinates} like '{fixedExpression}'";
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity,dimFact.DomValue);
+                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
                 ruleStructure.SheetId = dimFact.TemplateSheetId;
                 ruleStructure.ScopeRowCol = $"{dimFact.Row},{dimFact.Col}";
 
                 documentRules.Add(ruleStructure);
+                Console.Write(".");
             }
 
             return documentRules;
@@ -723,7 +727,7 @@ namespace Validations
 
         private void AssignValueToFunctionTerm(RuleStructure rule, List<RuleTerm> allTerms, RuleTerm term, string filterFomula)
         {
-             
+
 
             var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
             switch (term.FunctionType)
@@ -877,6 +881,18 @@ namespace Validations
                 //make it numeric to avoid rejection of rule
                 plainTerm.SheetId = rule.SheetId;
                 plainTerm.DataTypeOfTerm = DataTypeMajorUU.NumericDtm;
+                return 0;
+            }
+
+            if (!string.IsNullOrEmpty(plainTerm.TextValueFixed))
+            {
+                //for technical rules the value is assigned from the dim so do not get the fact value
+                //var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
+                plainTerm.FactId = plainTerm.FactId;                
+                plainTerm.SheetId = rule.SheetId;                
+                plainTerm.TextValue=plainTerm.TextValueFixed;
+                plainTerm.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
+                plainTerm.IsMissing = false;
                 return 0;
             }
 
@@ -1782,8 +1798,8 @@ namespace Validations
             //likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
-
-            var res = Regex.IsMatch(text, likeRegexValue);
+            
+            var res = Regex.IsMatch(text ?? "", likeRegexValue);
             return res;
 
             static string ReplaceWildCards(string wildCardString)
