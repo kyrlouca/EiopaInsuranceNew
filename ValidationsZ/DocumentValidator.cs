@@ -546,19 +546,19 @@ namespace Validations
                 ";
 
             var documentId = DocumentId;
-            var facts = connectionLocal.Query<FactDim>(sqlFacts, new { documentId, dim });
+            var dimFacts = connectionLocal.Query<FactDim>(sqlFacts, new { documentId, dim });
 
 
-            foreach (var fact in facts)
+            foreach (var dimFact in dimFacts)
             {
-                var factCoordinates = $"{{{fact.TableCode},{fact.Row},{fact.Col}}}";
+                var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{dimFact.Col}}}";
 
                 var fixedExpression = FixExpression(expression);
                 var valFormula = $"{factCoordinates} like '{fixedExpression}'";
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", fact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
-                ruleStructure.SheetId = fact.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
+                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity,dimFact.DomValue);
+                ruleStructure.SheetId = dimFact.TemplateSheetId;
+                ruleStructure.ScopeRowCol = $"{dimFact.Row},{dimFact.Col}";
 
                 documentRules.Add(ruleStructure);
             }
@@ -723,7 +723,7 @@ namespace Validations
 
         private void AssignValueToFunctionTerm(RuleStructure rule, List<RuleTerm> allTerms, RuleTerm term, string filterFomula)
         {
-
+             
 
             var termLetterx = RegexValidationFunctions.FunctionTypesRegex.Match(term.TermText).Groups[2]?.Value ?? "";
             switch (term.FunctionType)

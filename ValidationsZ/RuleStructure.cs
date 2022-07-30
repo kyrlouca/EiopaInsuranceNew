@@ -34,6 +34,7 @@ namespace Validations
         public bool IsTechnical { get; set; }
         public string Severity { get; set; }
         public string ErrorMessage { get; set; }
+        public string DimValue { get; set; }//only used for technical terms using "dim"
 
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
@@ -61,7 +62,7 @@ namespace Validations
             //to prevent user from creating default constructor;
         }
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
-        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error")
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error",string dimValue="")
         {
             //xx
             //xx
@@ -75,10 +76,11 @@ namespace Validations
             FilterFormula = filterFormula?.Trim();
             Severity = validationRuleDb is null ? severity : validationRuleDb?.Severity;
             ErrorMessage = validationRuleDb is null ? tableBaseForumla?.Trim() : validationRuleDb.ErrorMessage;
+            DimValue = dimValue;
 
             if (isTechnical)
             {
-                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula);
+                (SymbolFormula, SymbolFinalFormula, RuleTerms) = CreateSymbolForumulaAndTermsForTechnicalRules(TableBaseFormula,dimValue);
 
             }
             else
@@ -105,7 +107,7 @@ namespace Validations
             return newRule;
         }
 
-        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression)
+        private static (string symbolFormula, string finalSymbolFormula, List<RuleTerm> theTerms) CreateSymbolForumulaAndTermsForTechnicalRules(string theFormulaExpression,string dimValue="")
         {
             //Create symbol formula and finalSymbol formula. Same for filter
             //Two kind of terms: normal and function terms. 
