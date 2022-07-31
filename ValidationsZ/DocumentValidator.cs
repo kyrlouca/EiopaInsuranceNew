@@ -476,7 +476,7 @@ namespace Validations
                 var likeExpressionFixed = FixRegexExpression(likeExpression);
                 var valFormula = $"like({factCoordinates},'{likeExpressionFixed}')";
 
-                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var severity = techRule.Severity.Trim() == "Blocking" ? "Error" : "Warning";
                 var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
                 var ruleStructure = new RuleStructure(valFormula, "", fact.TableCodeDerived, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
                 {
@@ -522,6 +522,7 @@ namespace Validations
                  ,fact.Row
 				 ,sheet.TemplateSheetId	             
 				 ,sheet.SheetTabName
+                ,sheet.TableCode
                 FROM TemplateSheetFactDim fd
                 JOIN TemplateSheetFact fact
                   ON fact.FactId = fd.FactId
@@ -531,7 +532,7 @@ namespace Validations
                 AND fact.IsRowKey = 0
                 AND fd.Dim = @dim
                 AND fd.DomValue <> ''            
-			 group by  fd.DomValue,fact.row, sheet.TemplateSheetId,sheet.SheetTabName
+			 group by  fd.DomValue,fact.row, sheet.TemplateSheetId,sheet.SheetTabName,sheet.TableCode
 			 order by SheetTabName, fact.Row
 
             ";
@@ -566,10 +567,11 @@ namespace Validations
 
             foreach (var dimFact in dimFacts)
             {
-                var factCoordinates = $"{{{dimFact.SheetTabName},{dimFact.Row},\"C0000\",VAL=[{dimFact.DomValue}]}}";
+                var anyCol = "C0000";
+                var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{anyCol},VAL=[{dimFact.DomValue}]}}";
                 var valFormula = $"like({factCoordinates},'{likeRegexFixed}')";
 
-                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var severity = techRule.Severity.Trim() == "Blocking" ? "Error" : "Warning";
                 var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
                 var ruleStructure = new RuleStructure(valFormula, "", dimFact.SheetTabName, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
                 {
@@ -593,6 +595,7 @@ namespace Validations
             fixedExpression = fixedExpression.Replace("{{", "{");
             fixedExpression = fixedExpression.Replace("}}", "}");
             fixedExpression = fixedExpression.Replace(" ", "");
+            fixedExpression = fixedExpression.Replace("#", "\\w");
 
             return fixedExpression;
         }
@@ -621,8 +624,7 @@ namespace Validations
 
 
                 var severity = techRule.Severity.Trim() == "Blocking" ? "Error" : "Warning";
-
-                //var rows = techRule.Rows.Trim().ToUpper() == "(ALL)" ? "" : techRule.Rows.Trim().ToUpper();
+                
                 var rows = techRule.Rows.Trim().ToUpper();
                 if (rows == "(ALL)")
                 {
@@ -1824,7 +1826,7 @@ namespace Validations
             //likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
 
-            var res = Regex.IsMatch(text ?? "", likeRegexValue);
+            var res = Regex.IsMatch(text ?? "", likeRegexValue,RegexOptions.Compiled|RegexOptions.IgnoreCase);
             return res;
 
             static string ReplaceWildCards(string wildCardString)
