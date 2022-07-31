@@ -34,6 +34,7 @@ namespace Validations
         public string Col { get; set; }
         public int TemplateSheetId { get; set; }
         public string TableCode { get; set; }
+        public string SheetTabName { get; set; }
 
 
     }
@@ -61,10 +62,9 @@ namespace Validations
         public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
         {
             var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);
-            validatorDg.ValidateRules();
+            validatorDg.CreateAllRules();
+            validatorDg.ValidateRules();            
         }
-
-
 
 
         private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 0)
@@ -145,12 +145,16 @@ namespace Validations
                 return;
             }
             ModuleId = module.ModuleID;
-
-            var message = $"---Validation started for Document:{DocumentId}";
-            Log.Information(message);
-
+            
             //to prevent anyone else validating when processed
             UpdateDocumentStatus("P");
+            
+        }
+
+        private void CreateAllRules()
+        {
+            var message = $"---Validation started for Document:{DocumentId}";
+            Log.Information(message);
 
             CreateErrorDocument();
 
@@ -180,6 +184,7 @@ namespace Validations
                 AssignValuesToTerms(rule);
             }
         }
+
 
         private void UpdateDocumentStatus(string status)
         {
@@ -512,6 +517,26 @@ namespace Validations
             var likeRegexFixed = FixRegexExpression(likeRegex);
 
             var sqlDimFacts = @"
+                SELECT                  
+                 fd.DomValue                                  
+                 ,fact.Row
+				 ,sheet.TemplateSheetId	             
+				 ,sheet.SheetTabName
+                FROM TemplateSheetFactDim fd
+                JOIN TemplateSheetFact fact
+                  ON fact.FactId = fd.FactId
+                JOIN TemplateSheetInstance sheet
+                  ON sheet.TemplateSheetId = fact.TemplateSheetId
+                WHERE fact.InstanceId = @documentId
+                AND fact.IsRowKey = 0
+                AND fd.Dim = @dim
+                AND fd.DomValue <> ''            
+			 group by  fd.DomValue,fact.row, sheet.TemplateSheetId,sheet.SheetTabName
+			 order by SheetTabName, fact.Row
+
+            ";
+
+            var sqlDimFacts2 = @"
                 SELECT
                   fd.FactId
                  ,Dim
@@ -541,12 +566,12 @@ namespace Validations
 
             foreach (var dimFact in dimFacts)
             {
-                var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{dimFact.Col},VAL=[{dimFact.DomValue}]}}";
+                var factCoordinates = $"{{{dimFact.SheetTabName},{dimFact.Row},\"C0000\",VAL=[{dimFact.DomValue}]}}";
                 var valFormula = $"like({factCoordinates},'{likeRegexFixed}')";
 
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
                 var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
-                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
+                var ruleStructure = new RuleStructure(valFormula, "", dimFact.SheetTabName, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
                 {
                     SheetId = dimFact.TemplateSheetId,
                     ScopeRowCol = $"{dimFact.Row},{dimFact.Col}"
