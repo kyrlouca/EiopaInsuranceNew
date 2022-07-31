@@ -12,7 +12,7 @@ namespace EntityClassesZ
         public string ValidationId { get; set; }
         public string TableCode { get; set; }
         public string Rows { get; set; }
-        public string Colums { get; set; }
+        public string Columns { get; set; }
         public string ValidationFomula { get; set; }
         public string ValidationFomulaPrep { get; set; }
         public string ErrorMessage { get; set; }

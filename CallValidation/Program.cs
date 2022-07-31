@@ -95,8 +95,9 @@ namespace ValidationCall
                 //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
 
                 //DocumentValidator.ValidateDocument("IU260", 11833, 6406);
-                DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
-                //DocumentValidator.ValidateDocument("IU260", 11839, 4780, 20023);//
+                //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
+                DocumentValidator.ValidateDocument("IU260", 11853, 49202, 0);//4920 /56
+
                 return 1;
             }
 

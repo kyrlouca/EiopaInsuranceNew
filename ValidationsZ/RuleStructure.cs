@@ -448,6 +448,14 @@ namespace Validations
                 return true;
             }
 
+
+            if (HasAllTheTermsAsNull(rule.RuleTerms))
+            {
+                return true;
+            }
+
+            
+
             var isValidRuleUntyped = AssertIfThenElseExpression(rule.ValidationRuleId, rule.SymbolFinalFormula, rule.RuleTerms);
             var isValidRule = isValidRuleUntyped is not null && (bool)isValidRuleUntyped;
             return isValidRule;
@@ -481,6 +489,47 @@ namespace Validations
             }
 
         }
+
+
+        private static bool HasAllTheTermsAsNull(List<RuleTerm> terms)
+        {
+            // returns true if all the terms are NULL.  provided that they are not arguments of fallback or empty functions
+            // check for null non-numeric terms
+
+            var valueTerms = terms
+                .Where(term => !term.IsFunctionTerm);
+
+            //if (!valueTerms.Any())
+            //{
+            //    return true;
+            //}
+
+            var validValueTerms=valueTerms
+                .Where(term => !isUsedInFallback(term.Letter));
+
+            var hasAllNull = validValueTerms.All(term => term.IsMissing);
+            if (validValueTerms.Count() == 0)
+            {
+                return false;
+            }
+
+            return hasAllNull ;
+
+            bool isUsedInFallback(string letter)
+            {
+                //the letter of the term.
+                //find the function term which uses the term
+                //is true null => the term is NOT used by a function  Or the function is NOT IsFallback
+                var functionTerm = terms.FirstOrDefault(term => term.IsFunctionTerm && term.TermText.Contains(letter));
+
+                //var isFallback = (functionTerm.FunctionType == FunctionTypes.ISFALLBACK || functionTerm.FunctionType == FunctionTypes.EMPTY);
+                var isFallback = functionTerm is not null &&( functionTerm.FunctionType == FunctionTypes.ISFALLBACK || functionTerm.FunctionType == FunctionTypes.EMPTY);
+                return isFallback;
+            }
+
+        }
+
+
 
         private static bool HasNullFilterTermsNew(List<RuleTerm> terms)
         {

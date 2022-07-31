@@ -111,6 +111,10 @@ namespace XbrlReader
 
             var documentId = reader.CreateDocInstanceInDb();
 
+
+            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
+
+
             //*************************************************
             //***Create loose facts not assigned to sheets
             //*************************************************
@@ -142,7 +146,7 @@ namespace XbrlReader
                 return;
             }
 
-            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
+           
             var xbrlFund = GetFundByLei(reader.ConfigObject, factWithLei?.TextValue);
 
             var testFundId = true;
@@ -352,8 +356,7 @@ namespace XbrlReader
             }
 
             Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
-
-            //DocumentId = CreateDocInstanceInDb();
+            
 
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
@@ -829,5 +832,15 @@ VALUES (
 
         //}
 
+
+        private DateTime GetReferenceDate()
+        {
+            return DateTime.Now;
+        }
+        //select fact.DateTimeValue from TemplateSheetFact fact where fact.InstanceId= 11850 and fact.XBRLCode= 's2md_met:di1043'
+
     }
+
+
+
 }

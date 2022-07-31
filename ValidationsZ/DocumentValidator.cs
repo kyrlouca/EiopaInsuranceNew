@@ -359,7 +359,7 @@ namespace Validations
                  ,kval.ValidationId
                  ,kval.Rows
                  ,kval.TableCode
-                 ,kval.Colums
+                 ,kval.Columns
                  ,kval.ValidationFomula
                  ,kval.ValidationFomulaPrep
                  ,kval.Severity
@@ -537,31 +537,6 @@ namespace Validations
 
             ";
 
-            var sqlDimFacts2 = @"
-                SELECT
-                  fd.FactId
-                 ,Dim
-                 ,Dom
-                 ,DomValue
-                 ,IsExplicit
-                 ,FactDimId
-                 ,fact.TemplateSheetId
-                 ,fact.TextValue
-                 ,fact.Row
-                 ,fact.Col
-                 ,sheet.TemplateSheetId
-	             ,sheet.TableCode                 
-                FROM TemplateSheetFactDim fd
-                JOIN TemplateSheetFact fact
-                  ON fact.FactId = fd.FactId
-                JOIN TemplateSheetInstance sheet
-                  ON sheet.TemplateSheetId = fact.TemplateSheetId
-                WHERE fact.InstanceId = @documentId
-                AND fact.IsRowKey = 0
-                AND fd.Dim = @dim
-                AND fd.DomValue <> ''            
-                ";
-
             var documentId = DocumentId;
             var dimFacts = connectionLocal.Query<FactDim>(sqlDimFacts, new { documentId, dim });
 
@@ -633,7 +608,7 @@ namespace Validations
                     rows = string.Join(";", sheetRows);
                 }
 
-                var columns = techRule.Colums.Trim().ToUpper();
+                var columns = techRule.Columns.Trim().ToUpper();
                 var scope = FixScope(sheet.TableCode, rows, columns);
 
                 var valFormula = FixExpressionForEmpty(techRule.ValidationFomulaPrep);
@@ -680,7 +655,6 @@ namespace Validations
                 newScope = $"{newScope}}}";
                 return newScope;
             }
-
 
         }
 
