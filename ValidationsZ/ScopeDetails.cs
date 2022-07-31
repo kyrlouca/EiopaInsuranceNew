@@ -35,7 +35,7 @@ namespace Validations
             //1645	BV272_1-1	S.27.01.01.03 (c0140-0150;0170-0200)	{S.27.01.01.03, r1030} = sum({S.27.01.01.03, r0830-1020})
             //1280	BV252_1-1	S.17.01.01.01 (r0010;0050;0060;0100;0110-0150;0160;0200-0280;0290-0310;0320-0340;0370-0440;0460-0490)
             //--> r001,r0050,..., R0110,R0110,R0120,R0130,R0140,R0150,R0160, R0200,R00210,...
-            //** we are creating one row in increments of 10. They may actually not exist, but they will be rejected anywy
+            //** for ranges, we are creating one row in increments of 10. They may actually not exist, but they will be rejected anywy
             var sc = new ScopeDetails(scopeString);
             var emptyList = new List<string>();
             scopeString = scopeString.ToUpper();

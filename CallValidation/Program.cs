@@ -90,13 +90,13 @@ namespace ValidationCall
                 docId = 11823;//to check for small differences
                 docId = 11833;
 
-                //var validatorDg = new DocumentValidator
+                //var validatorDg = new DocumentValidator   
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
                 //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
 
                 //DocumentValidator.ValidateDocument("IU260", 11833, 6406);
-                //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 20);//
-                DocumentValidator.ValidateDocument("IU260", 11839, 4780, 20023);//
+                DocumentValidator.ValidateDocument("IU260", 11839, 121222, 71);//
+                //DocumentValidator.ValidateDocument("IU260", 11839, 4780, 20023);//
                 return 1;
             }
 

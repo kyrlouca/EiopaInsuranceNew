@@ -34,7 +34,7 @@ namespace Validations
         public bool IsTechnical { get; set; }
         public string Severity { get; set; }
         public string ErrorMessage { get; set; }
-        
+
 
         public int ValidationRuleId { get; private set; } = 0;
         public string TableBaseFormula { get; set; } = "";
@@ -62,7 +62,7 @@ namespace Validations
             //to prevent user from creating default constructor;
         }
         //public RuleStructure(string tableBaseForumla, string filterFormula = "")
-        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error")
+        public RuleStructure(string tableBaseForumla, string filterFormula = "", string scope = "", int ruleId = 0, C_ValidationRuleExpression validationRuleDb = null, bool isTechnical = false, string severity = "Error", string errorMessage = "")
         {
             //xx
             //xx
@@ -75,8 +75,8 @@ namespace Validations
             TableBaseFormula = tableBaseForumla?.Trim();
             FilterFormula = filterFormula?.Trim();
             Severity = validationRuleDb is null ? severity : validationRuleDb?.Severity;
-            ErrorMessage = validationRuleDb is null ? tableBaseForumla?.Trim() : validationRuleDb.ErrorMessage;
-            
+            ErrorMessage = !string.IsNullOrEmpty(errorMessage) ? errorMessage : validationRuleDb?.ErrorMessage ?? "";
+
 
             if (isTechnical)
             {
@@ -156,14 +156,17 @@ namespace Validations
             //Change the formula to replace  terms like {S.23.01.01.01,r0540,c0040} to X00. ruleterms are also created
             //functions are not affected yet.
             //Therefor, the formula will change from  min({S.23.01.01.01,r0540,c0040}) ===> min(X00)
+            //*********************************************************************************
             (var symbolFormula, var ruleTerms) = CreateRuleTerms(theFormulaExpression);
             var theFormula = symbolFormula;
             var theTerms = ruleTerms;
 
-            //*********************************************************************************
+
+            //*************************************************************** ******************
             //Change the formula to replace functions  and create Function Terms "Z00".            
             //the FinalSymbolFormula will change from   "max(0,min(0.5*X0-3*X1))" => with Z00.
             //Z00 term will be created (Z00 may have a nested term) Z00 = max(0,T01) and T01=min(0.5*X01-3*X02)
+            //*************************************************************** ******************
             (var finalSymbolFormula, var newFunctionTerms) = CreateFunctionTerms(theFormula, "Z");
             var theSymbolFinalFormula = finalSymbolFormula;
             foreach (var newTerm in newFunctionTerms)
@@ -232,16 +235,34 @@ namespace Validations
         {
             //1.Return a new SymbolExpression with term symbols for each FUNCTION (not term)
             //2 Create one new term  for each function     
-            
+
 
             if (string.IsNullOrWhiteSpace(expression))
                 return ("", new List<RuleTerm>());
 
-
-
-
             //si1495 like "^LEI/[A-Z0-9]{{20}}$" or "^None" convert this to like(X00,"^LEI/[A-Z0-9]{{20}}$")            
             var technicalRegex = new Regex(@"(X\d\d.*?)\s*like\s*('.*?')", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            if (!technicalRegex.IsMatch(expression))
+            {
+                var distinctMatchesNormal = RegexValidationFunctions.FunctionTypesRegex.Matches(expression)
+                .Select(item => item.Captures[0].Value.Trim()).ToList()
+                .Distinct()
+                .ToList();
+                var ruleFunctionTerms = distinctMatchesNormal
+                    .Select((item, Idx) => new RuleTerm($"{termLetter}{Idx:D2}", item, true)).ToList();
+
+                if (ruleFunctionTerms.Count == 0)
+                    return (expression, new List<RuleTerm>());
+
+                var symbolExpressionNormal = ruleFunctionTerms
+                .Aggregate(expression, (currValue, item) => currValue.Replace(item.TermText, item.Letter));
+                return (symbolExpressionNormal, ruleFunctionTerms);
+
+            }
+
+
+
+
             var distinctMatches = technicalRegex.Matches(expression)
                 .Select(item => item.Captures[0].Value.Trim()).ToList()
                 .Distinct()
@@ -256,6 +277,7 @@ namespace Validations
 
             functionTerms.ForEach(term => TransformTechnicalTerm(term));
             return (symbolExpression, functionTerms);
+
             static RuleTerm TransformTechnicalTerm(RuleTerm term)
             {
                 //
@@ -275,6 +297,25 @@ namespace Validations
                 return term;
 
             }
+
+            static string TransformEmptyStatement(string expression)
+            {
+                var regEx = new Regex(@"({.*?})\s*<>\s*empty", RegexOptions.Compiled);
+                if (!regEx.IsMatch(expression))
+                {
+                    return expression;
+                }
+                var fixedExpression = regEx.Replace(expression, ev);
+                return fixedExpression;
+
+                static string ev(Match match)
+                {
+                    var val = $"!EMPTY({match.Groups[0].Value})";
+                    return "";
+                }
+
+            }
+
         }
 
 
@@ -381,8 +422,8 @@ namespace Validations
             //do NOT check the filter if the rule has a sum(SNN) since the filter is used to filter out the rows
             //if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
-            
-            
+
+
 
 
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))

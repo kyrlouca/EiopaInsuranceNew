@@ -61,7 +61,7 @@ namespace Validations
         public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
         {
             var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);
-            validatorDg.ValidateRules(testingRuleId);
+            validatorDg.ValidateRules();
         }
 
 
@@ -69,15 +69,17 @@ namespace Validations
 
         private DocumentValidator(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 0)
         {
+            //Normally, a constructor should only create the bear minimum
+            //However,here, we create first the Module and finally the Document rules
+            //Document ruleTerms and functionTerms are also assigned with values
+            //The document rules will be validated in another class
 
             SolvencyVersion = solverncyVersion;
             DocumentId = documentId;
             TestingRuleId = testingRuleId;
             TestingTechnicalRuleId = testingTechnicalRuleId;
 
-
             GetConfiguration();
-
 
             var document = InsuranceData.GetDocumentById(documentId);
             if (document is null)
@@ -152,16 +154,22 @@ namespace Validations
 
             CreateErrorDocument();
 
-            //Technical rules which are written in eiopa document EIOPA_SolvencyII_Validations_2.6.0_PWD
+            //**********************************************
+            //Technical rules which are written in eiopa excel file EIOPA_SolvencyII_Validations_2.6.0_PWD
             var (techDocumentRules, techModuleRules) = CreateTechnicalRulesNew();
             DocumentRules.AddRange(techDocumentRules);
             ModuleRules.AddRange(techModuleRules);
 
 
+            //**********************************************
             //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
             //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
-            CreateModuleAndDocumentRules();
+            Console.WriteLine($"Create Module Rules");
+            CreateModuleRules();
 
+            //Create DocumentRules out of Module Rules
+            Console.WriteLine("\nCreate Document Rules");
+            CreateDocumentRulesFromModuleRules();
 
             //Update the values of the terms and the function terms
             Console.WriteLine("\n update rule terms and function terms");
@@ -171,9 +179,7 @@ namespace Validations
                 Console.Write($"\nupdate rule terms for rule:{rule.ValidationRuleId}");
                 AssignValuesToTerms(rule);
             }
-
         }
-
 
         private void UpdateDocumentStatus(string status)
         {
@@ -182,8 +188,7 @@ namespace Validations
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
 
-
-        private bool ValidateRules(int testingRuleId = 0)
+        private bool ValidateRules()
         {
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
@@ -213,10 +218,6 @@ namespace Validations
                 //retrun
             }
 
-            //if (testingRuleId > 0)
-            //{
-            //    DocumentRules = DocumentRules.Where(item => item.ValidationRuleId == testingRuleId).ToList();
-            //}
 
             //****************************************************************
             //validate the document rules
@@ -322,7 +323,6 @@ namespace Validations
             return isDocumentValid;
         }
 
-
         private void CreateModuleAndDocumentRules()
         {
 
@@ -333,14 +333,12 @@ namespace Validations
             //--Function terms may be nested (min(max...)
 
             Console.WriteLine($"Starting validating {DocumentId}");
-            Console.WriteLine($"Create Module Rules");
+            //Console.WriteLine($"Create Module Rules");            
+            //CreateModuleRules();
 
-            //Module Rules
-            CreateModuleRules();
-
-            //DocumentRules
-            Console.WriteLine("\nCreate Document Rules");
-            CreateDocumentRulesFromModuleRules();
+            ////DocumentRules
+            //Console.WriteLine("\nCreate Document Rules");
+            //CreateDocumentRulesFromModuleRules();
 
             return;
         }
@@ -357,6 +355,7 @@ namespace Validations
                  ,kval.Rows
                  ,kval.TableCode
                  ,kval.Colums
+                 ,kval.ValidationFomula
                  ,kval.ValidationFomulaPrep
                  ,kval.Severity
                  ,kval.CheckType
@@ -381,17 +380,19 @@ namespace Validations
             }
 
 
-            //process the xbrl document rules
+            //*******************************************************************************
+            //process the xbrl *Document* rules
             Console.WriteLine("\nCreate Technical Xbrl Rules");
-            var techFactRules = techRulesAll
+            var techXbrlRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Fact");
-            foreach (var techRule in techFactRules)
+            foreach (var techXbrlRule in techXbrlRules)
             {
-                var rules = CreateKyrTechnicalXbrlDocumentRules(techRule);
+                var rules = CreateKyrTechnicalXbrlDocumentRules(techXbrlRule);
                 technicalDocumentRules.AddRange(rules);
             }
 
-            //process the dim document rules
+            //*******************************************************************************
+            //process the dim *Document* rules
             Console.WriteLine("\nCreate Technical Dim Rules");
             var techDimRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Dim");
@@ -401,8 +402,8 @@ namespace Validations
                 technicalDocumentRules.AddRange(rules);
             }
 
-
-            //process the normal module rules
+            //*******************************************************************************
+            //process the technical *module* rules
             var techNormalRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Normal");
             foreach (var normalRule in techNormalRules)
@@ -421,21 +422,20 @@ namespace Validations
 
             var documentRules = new List<RuleStructure>();
 
-            var rawValidationFormula = techRule.ValidationFomulaPrep;
+            var validationFormulaPrep = techRule.ValidationFomulaPrep;
 
-            //(.*?)\s*(like|allows combinations of values|allows)\s*(.*)
-            var technicalRegex = new Regex(@"(.*?)\s*(like|allows)\s*(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            var match = technicalRegex.Matches(rawValidationFormula);
-            if (match.Count() == 0)
+            //find all the facts which have an xbrl of si1355
+            //then si1355 like ([1-9],?)+  => like({S.06.02,01,02,R0001,C0100},'([1-9],?)+')
+
+            var rgSi = new Regex(@"(si.*)\s*?like\s*?(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            if (!rgSi.IsMatch(validationFormulaPrep))
             {
                 return documentRules;
             }
-            var matchValues = match.First().Groups.Values.Select(x => x.Value).ToArray();
-            var xbrlCode = $"s2md_met:{matchValues[1].Trim()}";
-            var expression = matchValues[3].Trim();
+            var match = rgSi.Match(validationFormulaPrep);
+            var siValue = match.Groups[1].Value;
+            var xbrlCode = $"s2md_met:{siValue}";
 
-
-            var formulaRegex = FixExpression(expression);
             var sqlFacts = @"
                 SELECT 
                  fact.FactId
@@ -446,7 +446,7 @@ namespace Validations
                 ,fact.TextValue
                 ,fact.TemplateSheetId
                 ,sheet.SheetCode
-                ,sheet.TableCode
+                ,sheet.TableCode as TableCodeDerived
                 FROM TemplateSheetFact fact
                 LEFT OUTER JOIN TemplateSheetInstance sheet
                   ON sheet.TemplateSheetId = fact.TemplateSheetId
@@ -463,14 +463,21 @@ namespace Validations
 
             foreach (var fact in facts)
             {
-                var factCoordinates = $"{{{fact.SheetCode},{fact.Row},{fact.Col}}}";
+                //si1355 like([1 - 9],?)+  => like({ S.06.02,01,02,R0001,C0100},'([1-9],?)+')
+                //si1558 like "^LEI/[A-Z0-9]{{20}}$" or "^None" => like({},'')
 
-                var fixedExpression = FixExpression(expression);
-                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
+                var factCoordinates = $"{{{fact.TableCodeDerived},{fact.Row},{fact.Col}}}";
+                var likeExpression = match.Groups[2].Value.Trim();
+                var likeExpressionFixed = FixRegexExpression(likeExpression);
+                var valFormula = $"like({factCoordinates},'{likeExpressionFixed}')";
+
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", fact.SheetCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
-                ruleStructure.SheetId = fact.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{fact.Row},{fact.Col}";
+                var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
+                var ruleStructure = new RuleStructure(valFormula, "", fact.TableCodeDerived, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
+                {
+                    SheetId = fact.TemplateSheetId,
+                    ScopeRowCol = $"{fact.Row},{fact.Col}"
+                };
 
                 Console.Write(".");
                 documentRules.Add(ruleStructure);
@@ -478,27 +485,12 @@ namespace Validations
 
             return documentRules;
 
-            static string FixExpression(string symbolExpression)
-            {
-                var fixedExpression = symbolExpression;
-                fixedExpression = fixedExpression.Replace("allows", "like");
-                fixedExpression = fixedExpression.Replace("\"", "");
-                fixedExpression = fixedExpression.Replace("or", "|");
-                fixedExpression = fixedExpression.Replace("{{", "{");
-                fixedExpression = fixedExpression.Replace("}}", "}");
-                fixedExpression = fixedExpression.Replace(" ", "");
-
-                return fixedExpression;
-            }
-
-
         }
-
 
 
         private List<RuleStructure> CreateKyrTechnicalDimDocumentRules(KyrTechnicalValidationRules techRule)
         {
-            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  
+            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  => like({ S.06.02,01,02,R0001,C0100},'^LEI/[A-Z0-9]{{20}}$')
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
 
@@ -506,24 +498,20 @@ namespace Validations
 
             var rawValidationFormula = techRule.ValidationFomulaPrep;
 
-            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  
-            var technicalRegex = new Regex(@"(.*?)\s*like\s*?(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            //dim:CA like "^LEI/[A-Z0-9]{{20}}$" or "^SC/.*"  => like({ S.06.02,01,02,R0001,C0100},'^LEI/[A-Z0-9]{{20}}$')
+            var regDim = new Regex(@"dim:(.*?)\s*?like\s*?(.+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-            var singleMatch = technicalRegex.Match(rawValidationFormula.Trim());
-            if (!singleMatch.Success)
+            var match = regDim.Match(rawValidationFormula.Trim());
+            if (!match.Success)
             {
                 return documentRules;
             }
 
-            var rgDim = new Regex(@"dim:(\w\w)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            var dim = match.Groups[1].Value.Trim();
+            var likeRegex = match.Groups[2].Value.Trim();
+            var likeRegexFixed = FixRegexExpression(likeRegex);
 
-            var leftPart = singleMatch.Groups[1].Value.Trim();
-            var dim = rgDim.Match(leftPart).Groups[1].Value.Trim();
-            var expression = singleMatch.Groups[2].Value.Trim();
-
-            var formulaRegex = FixExpression(expression);
-
-            var sqlFacts = @"
+            var sqlDimFacts = @"
                 SELECT
                   fd.FactId
                  ,Dim
@@ -549,42 +537,40 @@ namespace Validations
                 ";
 
             var documentId = DocumentId;
-            var dimFacts = connectionLocal.Query<FactDim>(sqlFacts, new { documentId, dim });
+            var dimFacts = connectionLocal.Query<FactDim>(sqlDimFacts, new { documentId, dim });
 
-            
             foreach (var dimFact in dimFacts)
             {
                 var factCoordinates = $"{{{dimFact.TableCode},{dimFact.Row},{dimFact.Col},VAL=[{dimFact.DomValue}]}}";
+                var valFormula = $"like({factCoordinates},'{likeRegexFixed}')";
 
-                var fixedExpression = FixExpression(expression);
-                var valFormula = $"{factCoordinates} like '{fixedExpression}'";
                 var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
-                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
-                ruleStructure.SheetId = dimFact.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{dimFact.Row},{dimFact.Col}";
+                var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
+                var ruleStructure = new RuleStructure(valFormula, "", dimFact.TableCode, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
+                {
+                    SheetId = dimFact.TemplateSheetId,
+                    ScopeRowCol = $"{dimFact.Row},{dimFact.Col}"
+                };
 
                 documentRules.Add(ruleStructure);
                 Console.Write(".");
             }
 
             return documentRules;
-
-            static string FixExpression(string symbolExpression)
-            {
-                var fixedExpression = symbolExpression;
-                fixedExpression = fixedExpression.Replace("allows", "like");
-                fixedExpression = fixedExpression.Replace("\"", "");
-                fixedExpression = fixedExpression.Replace("or", "|");
-                fixedExpression = fixedExpression.Replace("{{", "{");
-                fixedExpression = fixedExpression.Replace("}}", "}");
-                fixedExpression = fixedExpression.Replace(" ", "");
-
-                return fixedExpression;
-            }
-
-
         }
 
+
+        static string FixRegexExpression(string symbolExpression)
+        {
+            var fixedExpression = symbolExpression;
+            fixedExpression = fixedExpression.Replace("\"", "");
+            fixedExpression = fixedExpression.Replace("or", "|");
+            fixedExpression = fixedExpression.Replace("{{", "{");
+            fixedExpression = fixedExpression.Replace("}}", "}");
+            fixedExpression = fixedExpression.Replace(" ", "");
+
+            return fixedExpression;
+        }
 
         private List<RuleStructure> CreateKyrTechnicalModuleRules(KyrTechnicalValidationRules techRule)
         {
@@ -609,44 +595,34 @@ namespace Validations
             {
 
 
-                var severity = techRule.Severity == "Blocking" ? "Error" : "Warning";
+                var severity = techRule.Severity.Trim() == "Blocking" ? "Error" : "Warning";
 
-                var rows = techRule.Rows.Trim().ToUpper() == "(ALL)" ? "" : techRule.Rows.Trim().ToUpper();
-                var columns = techRule.Colums.Trim().ToUpper() == "(ALL)" ? "" : techRule.Colums.Trim().ToUpper();
+                //var rows = techRule.Rows.Trim().ToUpper() == "(ALL)" ? "" : techRule.Rows.Trim().ToUpper();
+                var rows = techRule.Rows.Trim().ToUpper();
+                if (rows == "(ALL)")
+                {
+                    var sqlRows = @"select distinct fact.Row from TemplateSheetFact fact where  fact.TemplateSheetId= @TemplateSheetId";
+                    var sheetRows = connectionLocal.Query<string>(sqlRows, new { DocumentId, sheet.TemplateSheetId }).ToList();
+                    rows = string.Join(";", sheetRows);
+                }
+
+                var columns = techRule.Colums.Trim().ToUpper();
                 var scope = FixScope(sheet.TableCode, rows, columns);
 
-
-
-                var valFormula = FixExpression(techRule.ValidationFomulaPrep);
+                var valFormula = FixExpressionForEmpty(techRule.ValidationFomulaPrep);
                 valFormula = FixTableCode(valFormula, sheet.TableCode);
+                var errorMessage = $"{techRule.ValidationId.Trim()}: {techRule.ValidationFomula}";
 
-                var ruleStructure = new RuleStructure(valFormula, "", scope, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity);
-                ruleStructure.SheetId = sheet.TemplateSheetId;
-                ruleStructure.ScopeRowCol = $"{rows},{columns}";
+                var ruleStructure = new RuleStructure(valFormula, "", scope, techRule.TechnicalValidationId, validationRuleDb: null, isTechnical: true, severity, errorMessage)
+                {
+                    SheetId = sheet.TemplateSheetId,
+                    ScopeRowCol = $"{rows},{columns}"
+                };
 
                 moduleRules.Add(ruleStructure);
             }
 
             return moduleRules;
-
-            static string FixExpression(string expression)
-            {
-
-                var fixedExpression = expression.Trim();
-                var rg = new Regex(@"({.*?}\s*?<>empty)", RegexOptions.IgnoreCase);
-                var evaluator = new MatchEvaluator(FunctionNameChanger);
-
-                string res = rg.Replace(fixedExpression, FunctionNameChanger);
-                return res;
-
-                string FunctionNameChanger(Match match)
-                {
-                    var rgTerm = new Regex(@"({.*?})");
-                    var matchTerm = rgTerm.Match(match.Value);
-                    var newTerm = $"not MATCHES({matchTerm.Value})";
-                    return newTerm;
-                }
-            }
 
             static string FixTableCode(string expression, string tableCode)
             {
@@ -654,7 +630,7 @@ namespace Validations
                 var fixedExpression = expression.Trim();
                 var rg = new Regex(@"{(.*?),.*?}", RegexOptions.IgnoreCase);
 
-                string res = rg.Replace(fixedExpression, TableCodeChanger);
+                var res = rg.Replace(fixedExpression, TableCodeChanger);
                 return res;
 
                 string TableCodeChanger(Match match)
@@ -672,8 +648,8 @@ namespace Validations
             static string FixScope(string scope, string rows, string cols)
             {
                 var newScope = $"{{{scope}";
-                newScope = string.IsNullOrWhiteSpace(rows) ? newScope : $"{newScope},{rows.Trim().ToUpper()}";
-                newScope = string.IsNullOrWhiteSpace(cols) ? newScope : $"{newScope},{cols.Trim().ToUpper()}";
+                newScope = string.IsNullOrWhiteSpace(rows) ? newScope : $"{newScope},({rows.Trim().ToUpper()})";
+                newScope = string.IsNullOrWhiteSpace(cols) ? newScope : $"{newScope},({cols.Trim().ToUpper()})";
                 newScope = $"{newScope}}}";
                 return newScope;
             }
@@ -681,6 +657,27 @@ namespace Validations
 
         }
 
+
+        static string FixExpressionForEmpty(string expression)
+        {
+
+            var fixedExpression = expression.Trim();
+            var rg = new Regex(@"({.*?})\s*?((?:<>)|(?:=))\s*?empty", RegexOptions.IgnoreCase);
+            var evaluator = new MatchEvaluator(FunctionEmptyFixer);
+
+            var res = rg.Replace(fixedExpression, FunctionEmptyFixer);
+            return res;
+
+            static string FunctionEmptyFixer(Match match)
+            {
+                var rawSign = match.Groups[2].Value.Trim();
+                var sign = rawSign == "<>" ? "!" : "";
+                var termVal = match.Groups[1].Value.Trim();
+
+                var newTerm = $"{sign}Empty({termVal})";
+                return newTerm;
+            }
+        }
 
 
         private void AssignValuesToTerms(RuleStructure rule)
@@ -888,9 +885,9 @@ namespace Validations
             {
                 //for technical rules the value is assigned from the dim so do not get the fact value
                 //var resValMany = new DbValue(firstFact.FactId, firstFact.TextValue, sum, firstFact.Decimals, firstFact.DateTimeValue, firstFact.BooleanValue, majorDataType2, false);
-                plainTerm.FactId = plainTerm.FactId;                
-                plainTerm.SheetId = rule.SheetId;                
-                plainTerm.TextValue=plainTerm.TextValueFixed;
+                plainTerm.FactId = plainTerm.FactId;
+                plainTerm.SheetId = rule.SheetId;
+                plainTerm.TextValue = plainTerm.TextValueFixed;
                 plainTerm.DataTypeOfTerm = DataTypeMajorUU.StringDtm;
                 plainTerm.IsMissing = false;
                 return 0;
@@ -1144,7 +1141,7 @@ namespace Validations
         private void CreateDocumentRulesFromModuleRules()
         {
             //expand module rules using scope  for the DOCUMENT (create documentRules)
-            //go through each  ModuleRule and create DocumentRules with values from the document (sheets, facts)
+            //go through each  ModuleRule and create DocumentRules with values from the document (sheets, facts)                                    
 
             foreach (var moduleRule in ModuleRules)
             {
@@ -1156,12 +1153,15 @@ namespace Validations
         private void CreateDocumentRulesFromOneModuleRule(RuleStructure rule)
         {
             //For each Module rule use the SCOPE to create one or more Document Rules
-            //Open tables do not have rows in the SCOPE, so we need to add all the ROWS of a sheet
-            //Scope for closed tables may have explicit columns, range of columns or no columns Or rows 
-            //Scope of Closed tables  with no columns
+            //scopeDetails will exapand the rowCols and define how many document rules to make out of each module rule
+            //Scope for closed tables may have explicit columns, range of columns, Or rows, or nothing
+            //---for closed tables, create one DocRule for each row/col depending on the **axis**  
+            //---for closed tables without rowcols, just create one doc Rule
+            //Scope for Open tables do not have rows in the SCOPE, so we need to add all the ROWS of a sheet
+
 
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-
+                        
             var scopeDetails = ScopeDetails.Parse(rule.ScopeString);
 
             //find the actual sheet from the sheetcode of the scope. Required for open tables to go through all of its rows            
@@ -1200,12 +1200,12 @@ namespace Validations
                 }
                 else
                 {
+                    //Closed Tables
                     //depending on the scope
                     //S.22.01.01.01 (r0100;0110)
                     //S.22.01.01.01 (r0010-0090)
                     //S.22.04.01.01 (c0010)
-                    //PF.02.01.24.01 closed table with no row or columns, 
-                    //** for closed tables get the row cols from scope                     
+                    //PF.02.01.24.01 closed table with no row or columns, we assume that terms have both a row and a column                     
                     rowCols = scopeDetails.ScopeRowCols;
                     if (rowCols.Count == 0)//could have used scopeAxis=None
                     {
@@ -1686,11 +1686,11 @@ namespace Validations
 
             if (errorRule.RuleMessage.Length > 2500)
             {
-                errorRule.RuleMessage = errorRule.RuleMessage.Substring(0, 2449);
+                errorRule.RuleMessage = errorRule.RuleMessage[..2449];
             }
             if (errorRule.DataValue.Length > 500)
             {
-                errorRule.DataValue = errorRule.DataValue.Substring(0, 499);
+                errorRule.DataValue = errorRule.DataValue[..499];
             }
 
             connectionPension.Execute(sqlInsert, errorRule);
@@ -1791,14 +1791,14 @@ namespace Validations
         }
 
 
-        private bool FunctionForTechnicalLike(string text, string regLike)
+        private static bool FunctionForTechnicalLike(string text, string regLike)
         {
 
             var likeRegexValue = ReplaceWildCards(regLike);
             //likeRegexValue = likeRegexValue == "LeiChecksum" ? @"^LEI\/[A-Z0-9]{20}$" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
-            
+
             var res = Regex.IsMatch(text ?? "", likeRegexValue);
             return res;
 

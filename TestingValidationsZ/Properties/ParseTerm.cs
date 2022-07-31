@@ -32,7 +32,7 @@ namespace TestingValidationsZ.Properties
             //var res0 = DocumentValidator.GetMinMaxDbTerms(configObject, formula);
             //res0.Count.Should().Be(0);
 
-            formula = @"min(0.5*{S.23.01.01.01,r0580,c0010}-{S.23.01.01.01,r0540,c0040},0.15*{S.23.01.01.01,r0580,c0010},{S.23.01.01.01,r0500,c0050})";
+            //formula = @"min(0.5*{S.23.01.01.01,r0580,c0010}-{S.23.01.01.01,r0540,c0040},0.15*{S.23.01.01.01,r0580,c0010},{S.23.01.01.01,r0500,c0050})";
 
             //2681 plain
             //var res1 = DocumentValidator.GetMinMaxDbTerms(configObject, formula);
