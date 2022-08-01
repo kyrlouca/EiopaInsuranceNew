@@ -62,6 +62,7 @@ namespace XbrlReader
         {
             var reader = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
 
+
             var existingDocs = reader.GetExistingDocuments();
 
             var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
@@ -108,18 +109,30 @@ namespace XbrlReader
 
             //*************************************************
             //create the document anyway so we can attach log errors
+            //*************************************************
+            reader.CreateDocInstanceInDb();
 
-            var documentId = reader.CreateDocInstanceInDb();
 
+            //*************************************************
+            //Parxe the XML
+            //*************************************************
+            (var isValid, var parseMessage) = reader.ParseXmlFile();
 
-            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
+            if (!isValid)
+            {
+                return;
+            }
+
+            //*************************************************
+            //in the future, get the lei from the xbrl 
+            //Before inserting in the database
 
 
             //*************************************************
             //***Create loose facts not assigned to sheets
             //*************************************************
-            var (isValid,errorMessage) = reader.CreateLooseFacts(documentId, fileName);
-            if (!isValid)
+            var (isValidFacts, errorMessage) = reader.CreateLooseFacts();
+            if (!isValidFacts)
             {
                 var message = errorMessage;
                 Log.Error(message);
@@ -138,7 +151,7 @@ namespace XbrlReader
                     UserId = reader.UserId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = documentId,
+                    InstanceId = reader.DocumentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
                 TransactionLogger.LogTransaction(solvencyVersion, trans);
@@ -146,12 +159,12 @@ namespace XbrlReader
                 return;
             }
 
-           
+            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
             var xbrlFund = GetFundByLei(reader.ConfigObject, factWithLei?.TextValue);
 
             var testFundId = true;
 #if DEBUG
-            testFundId = false;
+            testFundId = true;
 #endif
 
             if (testFundId)// no check for fund id when testing
@@ -160,9 +173,9 @@ namespace XbrlReader
                 {
 
                     //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
-                    var message = $"The license number used:{reader?.FundId} is incorrect.";                    
+                    var message = $"The license number used:{reader?.FundId} is incorrect.";
                     Log.Error(message);
-                    Console.WriteLine(message);                    
+                    Console.WriteLine(message);
                     reader.UpdateDocumentStatus("E");
                     reader.IsValidProcess = false;
 
@@ -177,7 +190,7 @@ namespace XbrlReader
                         UserId = reader.UserId,
                         ProgramCode = ProgramCode.RX.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = documentId,
+                        InstanceId = reader.DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
                     TransactionLogger.LogTransaction(solvencyVersion, trans);
@@ -208,10 +221,10 @@ namespace XbrlReader
         private static Fund GetFundByLei(ConfigObject configObject, string lei)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
-           
+
             if (lei == null)
                 return null;
-            
+
             lei = lei.Replace(@"LEI/", "");//lei = "LEI/2138003JRMGVH8CGUR42"            
             var sqlFund = "select  fnd.FundId, fnd.FundName, fnd.IsActive, fnd.Lei from Fund fnd where fnd.Lei=@Lei";
             var fund = connectionLocal.QuerySingleOrDefault<Fund>(sqlFund, new { lei });
@@ -308,41 +321,103 @@ namespace XbrlReader
             return configObject;
         }
 
-        private (bool,string) CreateLooseFacts(int documentId, string sourceFile)
+
+        private (bool, string) ParseXmlFile()
         {
-            //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
-            //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
-
-            DocumentId = documentId;
-
-            if (!File.Exists(sourceFile))
+            if (!File.Exists(FileName))
             {
-                var message = $"XBRL CreateXbrlDocument ERROR: Document not Found : {sourceFile}";
+                var message = $"XBRL CreateXbrlDocument ERROR: Document not Found : {FileName}";
                 Console.WriteLine($"**** {message}");
                 Log.Error(message);
 
-     
-                return (false,message);
+
+                UpdateDocumentStatus("E");
+                IsValidProcess = false;
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 3,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+
+                return (false, message);
             }
 
 
-
-            XDocument xmlDoc;
             try
             {
-                xmlDoc = XDocument.Load(sourceFile);
+                XmlDoc = XDocument.Load(FileName);
             }
             catch (Exception e)
             {
-                var message = $" ERROR Cannot parse XBRL file : {sourceFile}";
+                var message = $" ERROR Cannot parse XBRL file : {FileName}";
                 Log.Error(message);
                 Log.Error(e.Message);
                 Console.WriteLine(e);
 
-                return (false,message);
+                UpdateDocumentStatus("E");
+                IsValidProcess = false;
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
+                    Message = message,
+                    UserId = UserId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 3,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                return (false, message);
+            }
+            return (true, "");
+
+        }
+
+        private (bool, string) CreateLooseFacts()
+        {
+            //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
+            //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
+
+            if(DocumentId==0 || XmlDoc is null)
+            {
+                return (false, "");
+            }
+            
+            if (1 == 2)
+            {
+                XDocument xmlDoc;
+                try
+                {
+                    xmlDoc = XDocument.Load(FileName);
+                }
+                catch (Exception e)
+                {
+                    var message = $" ERROR Cannot parse XBRL file : {FileName}";
+                    Log.Error(message);
+                    Log.Error(e.Message);
+                    Console.WriteLine(e);
+
+                    return (false, message);
+                }
             }
 
-            RootNode = xmlDoc.Root;
+            RootNode = XmlDoc.Root;
 
             var reference = RootNode.Element(link + "schemaRef").Attribute(xlink + "href").Value;
             var moduleCodeXbrl = GeneralUtils.GetRegexSingleMatch(@"http.*mod\/(\w*)", reference);
@@ -351,12 +426,12 @@ namespace XbrlReader
                 var message = @$"The Module Code in the Xbrl file is ""{moduleCodeXbrl}"" instead of ""{Module.ModuleCode}""";
                 Log.Error(message);
                 Console.WriteLine(message);
-                
+
                 return (false, message);
             }
 
             Console.WriteLine($"Opened Xblrl=>  Module: {moduleCodeXbrl} ");
-            
+
 
             AddValidFilingIndicators();
             Console.WriteLine("filing Indicators");
@@ -371,7 +446,7 @@ namespace XbrlReader
             AddFacts();
 
             DeleteContexts();
-            return (true,"");
+            return (true, "");
 
         }
 
@@ -453,6 +528,7 @@ namespace XbrlReader
 
 
             var result = connection.QuerySingleOrDefault<int>(sqlInsertDoc, doc);
+            DocumentId = result;
             return result;
         }
 

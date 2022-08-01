@@ -61,7 +61,7 @@ namespace Validations
 
         public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
         {
-            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);
+            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);            
             validatorDg.CreateAllRules();
             validatorDg.ValidateRules();            
         }

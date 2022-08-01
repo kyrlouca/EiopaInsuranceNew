@@ -12,7 +12,7 @@
     <PackageReference Include="NPOI" Version="2.5.6" />
     <PackageReference Include="Serilog" Version="2.11.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-    <PackageReference Include="Z.Expressions.Eval" Version="4.0.85" />
+    <PackageReference Include="Z.Expressions.Eval" Version="4.0.86" />
   </ItemGroup>
 
   <ItemGroup>

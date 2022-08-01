@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Z.Expressions.Eval" Version="4.0.85" />
+    <PackageReference Include="Z.Expressions.Eval" Version="4.0.86" />
   </ItemGroup>
 
   <ItemGroup>

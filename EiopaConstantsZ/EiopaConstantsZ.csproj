@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.0.123" />
-    <PackageReference Include="Z.Expressions.Eval" Version="4.0.85" />
+    <PackageReference Include="Z.Expressions.Eval" Version="4.0.86" />
   </ItemGroup>
 
 </Project>
