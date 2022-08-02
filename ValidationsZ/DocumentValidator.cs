@@ -61,9 +61,15 @@ namespace Validations
 
         public static void ValidateDocument(string solverncyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
         {
-            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);            
+            var validatorDg = new DocumentValidator(solverncyVersion, documentId, testingRuleId, testingTechnicalRuleId);
+            if (!validatorDg.IsValidDocument)
+            {
+                return;
+            }
+
             validatorDg.CreateAllRules();
-            validatorDg.ValidateRules();            
+
+            validatorDg.ValidateRules();
         }
 
 
@@ -145,10 +151,10 @@ namespace Validations
                 return;
             }
             ModuleId = module.ModuleID;
-            
+
             //to prevent anyone else validating when processed
             UpdateDocumentStatus("P");
-            
+
         }
 
         private void CreateAllRules()
@@ -175,6 +181,12 @@ namespace Validations
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
 
+
+            UpdateRulesTermsWithValues();
+        }
+
+        private void UpdateRulesTermsWithValues()
+        {
             //Update the values of the terms and the function terms
             Console.WriteLine("\n update rule terms and function terms");
             foreach (var rule in DocumentRules)
@@ -184,7 +196,6 @@ namespace Validations
                 AssignValuesToTerms(rule);
             }
         }
-
 
         private void UpdateDocumentStatus(string status)
         {
@@ -328,25 +339,7 @@ namespace Validations
             return isDocumentValid;
         }
 
-        private void CreateModuleAndDocumentRules()
-        {
 
-            ///****** Read the Module Rules and Construct the Document Rules             
-            //Document rules have both row and col (based on scope) and their RuleTerms and FilterTerms are evaluated
-            //--A ruleTerm has plain terms and function terms. {S.26.01.01.02, r0210,c0060} ,  max(0, {S.26.01.01.01, r0210,c0020})
-            //--First, evaluate the plain terms and then the function terms using the plain terms
-            //--Function terms may be nested (min(max...)
-
-            Console.WriteLine($"Starting validating {DocumentId}");
-            //Console.WriteLine($"Create Module Rules");            
-            //CreateModuleRules();
-
-            ////DocumentRules
-            //Console.WriteLine("\nCreate Document Rules");
-            //CreateDocumentRulesFromModuleRules();
-
-            return;
-        }
 
         private (IEnumerable<RuleStructure> factRules, IEnumerable<RuleStructure> normalRules) CreateTechnicalRulesNew()
         {
@@ -386,10 +379,10 @@ namespace Validations
 
 
             //*******************************************************************************
-            //process the xbrl *Document* rules
+            //create the xbrl *Document* rules
             Console.WriteLine("\nCreate Technical Xbrl Rules");
             var techXbrlRules = techRulesAll
-                .Where(rule => rule.CheckType.Trim() == "Fact");
+                .Where(rule => rule.CheckType.Trim() == "Xbrl");
             foreach (var techXbrlRule in techXbrlRules)
             {
                 var rules = CreateKyrTechnicalXbrlDocumentRules(techXbrlRule);
@@ -397,7 +390,7 @@ namespace Validations
             }
 
             //*******************************************************************************
-            //process the dim *Document* rules
+            //create the dim *Document* rules
             Console.WriteLine("\nCreate Technical Dim Rules");
             var techDimRules = techRulesAll
                 .Where(rule => rule.CheckType.Trim() == "Dim");
@@ -599,7 +592,7 @@ namespace Validations
 
 
                 var severity = techRule.Severity.Trim() == "Blocking" ? "Error" : "Warning";
-                
+
                 var rows = techRule.Rows.Trim().ToUpper();
                 if (rows == "(ALL)")
                 {
@@ -689,13 +682,13 @@ namespace Validations
             var plainTerms = rule.RuleTerms.Where(term => !term.IsFunctionTerm).ToList(); // {S.06.02.01.01,c0170,snnn} for terms like these we cannot get a  direct db value
             plainTerms.ForEach(term => AssignValueToPlainTerm(rule, term));
 
-            //***FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
+            //***T TERMS=>FOR NESTED functions only: evaluate function T Terms ** T terms exist only for nested functions
             //"T" terms  are the inner nested terms and  should be evaluated first T = max(Z1)
             var functionTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("T")).ToList();
             functionTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
 
             //evaluate function Z Terms
-            //"Z" terms are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
+            //"Z" TERMS=> are the function terms (without nesting) using plain terms as parameters Z = min(X1)            
             var functionZetTerms = rule.RuleTerms.Where(term => term.IsFunctionTerm && term.Letter.Contains("Z")).ToList();
             functionZetTerms.ForEach(term => AssignValueToFunctionTerm(rule, rule.RuleTerms, term, rule.FilterFormula));
 
@@ -1162,7 +1155,7 @@ namespace Validations
 
 
             using var connectionLocal = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-                        
+
             var scopeDetails = ScopeDetails.Parse(rule.ScopeString);
 
             //find the actual sheet from the sheetcode of the scope. Required for open tables to go through all of its rows            
@@ -1636,6 +1629,8 @@ namespace Validations
             var sqlInsert = @"INSERT INTO ERROR_Document( OrganisationId,ErrorDocumentId, UserId)VALUES(@PensionFundId, @DocumentId,  @userId)";
             connectionPension.Execute(sqlInsert, new { DocumentInstance.PensionFundId, DocumentId, userId = DocumentInstance.UserId });
 
+
+
         }
 
         private void CreateRuleError(ERROR_Rule errorRule)
@@ -1800,7 +1795,7 @@ namespace Validations
             //likeRegexValue = likeRegexValue == "IsinChecksum" ? "ISIN/.*" : likeRegexValue;
             //likeRegexValue = likeRegexValue == "CAUISINcurcode" ? "CAU/.*" : likeRegexValue;
 
-            var res = Regex.IsMatch(text ?? "", likeRegexValue,RegexOptions.Compiled|RegexOptions.IgnoreCase);
+            var res = Regex.IsMatch(text ?? "", likeRegexValue, RegexOptions.Compiled | RegexOptions.IgnoreCase);
             return res;
 
             static string ReplaceWildCards(string wildCardString)
@@ -2089,6 +2084,7 @@ namespace Validations
 
             return (double)res;
         }
+
 
 
 

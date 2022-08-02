@@ -114,7 +114,7 @@ namespace XbrlReader
 
 
             //*************************************************
-            //Parxe the XML
+            //Parse the Xbrl File as XML
             //*************************************************
             (var isValid, var parseMessage) = reader.ParseXmlFile();
 
@@ -399,24 +399,7 @@ namespace XbrlReader
                 return (false, "");
             }
             
-            if (1 == 2)
-            {
-                XDocument xmlDoc;
-                try
-                {
-                    xmlDoc = XDocument.Load(FileName);
-                }
-                catch (Exception e)
-                {
-                    var message = $" ERROR Cannot parse XBRL file : {FileName}";
-                    Log.Error(message);
-                    Log.Error(e.Message);
-                    Console.WriteLine(e);
-
-                    return (false, message);
-                }
-            }
-
+  
             RootNode = XmlDoc.Root;
 
             var reference = RootNode.Element(link + "schemaRef").Attribute(xlink + "href").Value;
