@@ -1124,7 +1124,7 @@ namespace Validations
             foreach (var validationRule in validationRules)
             {
                 //var ruleStructure = new RuleStructure(validationRule);
-                var ruleStructure = new RuleStructure(validationRule.TableBasedFormula, validationRule.Filter, validationRule.Scope, validationRule.ValidationRuleID, validationRule);
+                var ruleStructure = new RuleStructure(validationRule.TableBasedFormula, validationRule.Filter, validationRule.Scope, validationRule.ValidationRuleID, validationRule,false,validationRule.Severity);
                 Console.Write(".");
                 ModuleRules.Add(ruleStructure);
             }
