@@ -5,7 +5,7 @@ Console.WriteLine("Hello, ExcelV!");
 #if DEBUG
 
 Console.WriteLine("Excel in debug2");
- var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11833, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\599_EUROLIFE_IU260_qrs_2021_4.xlsx");
+ var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 11861, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xlsx");
 
 ExcelFileCreator.CreateTheExcelFile(solvencyD, userD, serialD, fileD);
 return 0;

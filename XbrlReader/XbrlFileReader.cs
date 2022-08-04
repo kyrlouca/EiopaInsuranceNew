@@ -353,38 +353,41 @@ namespace XbrlReader
                 return (false, message);
             }
 
-
-            try
-            {
-                XmlDoc = XDocument.Load(FileName);
-            }
-            catch (Exception e)
-            {
-                var message = $" ERROR Cannot parse XBRL file : {FileName}";
-                Log.Error(message);
-                Log.Error(e.Message);
-                Console.WriteLine(e);
-
-                UpdateDocumentStatus("E");
-                IsValidProcess = false;
-
-                var trans = new TransactionLog()
+            using (TextReader sr = File.OpenText(FileName))  //utf-8 stream
+            
+            
+                try
                 {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 3,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                   XmlDoc = XDocument.Load(sr);
+                    //XmlDoc = XDocument.Load(FileName);
+                }
+                catch (Exception e)
+                {
+                    var message = $" ERROR Cannot parse XBRL file : {FileName}";
+                    Log.Error(message);
+                    Log.Error(e.Message);
+                    Console.WriteLine(e);
 
-                return (false, message);
-            }
+                    UpdateDocumentStatus("E");
+                    IsValidProcess = false;
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = FundId,
+                        ModuleCode = ModuleCode,
+                        ApplicableYear = ApplicableYear,
+                        ApplicableQuarter = ApplicableQuarter,
+                        Message = message,
+                        UserId = UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = 3,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+
+                    return (false, message);
+                }
             return (true, "");
 
         }
@@ -394,12 +397,12 @@ namespace XbrlReader
             //Parse an xbrl file and create on object of the class which has the contexts, facts, etc
             //However, with the new design design, contexts and facts are saved in memory tables and NOT in data structures            
 
-            if(DocumentId==0 || XmlDoc is null)
+            if (DocumentId == 0 || XmlDoc is null)
             {
                 return (false, "");
             }
-            
-  
+
+
             RootNode = XmlDoc.Root;
 
             var reference = RootNode.Element(link + "schemaRef").Attribute(xlink + "href").Value;
