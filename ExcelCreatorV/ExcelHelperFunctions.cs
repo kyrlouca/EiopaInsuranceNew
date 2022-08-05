@@ -138,9 +138,10 @@ namespace ExcelCreatorV
             return destCell;
         }
 
-        static public void CopyRowsSameBook(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false, int offsetRow = 0)
+        static public void CopyManyRowsSameBook(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false, int offsetRow = 0, int offsetCol=0)
         {            
             //it is useful because we do not create addtional styles in the dest book
+            //copy a range of rows from orgin sheet to destination sheet 
             for (var i = firstRow; i <= lastRow; i++)
             {
                 var orgRow = sourceSheet.GetRow(i);
@@ -161,12 +162,12 @@ namespace ExcelCreatorV
                     continue;
                 }
 
-                CopyRowSameBook(orgRow, destRow, 0, IsFormattingCopied);
+                CopyOneRowSameBook(orgRow, destRow, offsetCol, IsFormattingCopied);
 
             }
         }
 
-        static public IRow? CopyRowSameBook(IRow orgRow, IRow destRow, int colOffset = 0, bool doCopyFormatting = false)
+        static public IRow? CopyOneRowSameBook(IRow orgRow, IRow destRow, int colOffset = 0, bool doCopyFormatting = false)
         {
 
             if (orgRow is null || destRow is null)

@@ -73,7 +73,7 @@ namespace ExcelCreatorV
 
 
         private bool CreateExcelFile()
-        {         
+        {
             Console.WriteLine($"in Create Excel file");
             if (!IsValidEiopaVersion)
             {
@@ -220,24 +220,24 @@ namespace ExcelCreatorV
             }
 
             //---------------------------------------------------------------
-
-            //********            
-            //Get the specialSheets from the db table
-            string[] headerSheets = { "S.20.01.01.01" };
-
-            foreach (var headerSheet in headerSheets)
+            //*****************************************                        
+            if (2 == 2)
             {
-                var childSheets = singleExcelSheets.Where(sheet => sheet.SheetDb.TableCode == headerSheet).ToList();
-                if (1 == 2)
-                {
-                    var mergedSheet = MergeSheets(childSheets, headerSheet);
-                    sheetList.Add((headerSheet, "List of assets ## Information on positions held ##  Information on assets"));
-                }
+
+                //*** execute merge in pairs :first time with row offeset and second  with a col offset to the Right
+                //string[] childSheetNames = { "S.01.01.02.01", "S.01.02.01.01" };
+                string[] childSheetNames = { "S.01.01.02.01"};
+                var childSheets = childSheetNames.Select(sheetName => singleExcelSheets.First(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName).DestSheet).ToList();
+                //S.19.01
+                var mergedSheet = CreateMergedSheet(childSheets, "fMerged", 0, 10);
+                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 500);
+
+                //S.05.01
+                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 0);
+                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 500);
 
             }
-
-            //*****************************************
-
+            //---------------------------------------------------------------
 
             var listSheet = CreateListSheet(sheetList);
 
@@ -248,25 +248,30 @@ namespace ExcelCreatorV
         }
 
 
-        private ISheet MergeSheets(List<SingleExcelSheet> sheetsToMerge, string destSheetName)
+        private ISheet CreateMergedSheet(List<ISheet> sheetsToMerge, string destSheetName, int rowGap, int colGap)
         {
-            var mergeSheet = DestExcelBook.CreateSheet(destSheetName);
-
+            var destSheet = DestExcelBook.CreateSheet(destSheetName);
+            var rowOffset = 0;
+            var colOffset = 100;
+            var sheetIdx = 0;
             foreach (var childSheet in sheetsToMerge)
             {
-                AppendSingleSheet(childSheet, mergeSheet);
+                AppendSingleSheet(childSheet, destSheet, rowOffset, colOffset);
+                rowOffset = childSheet.LastRowNum + rowGap;                
+                sheetIdx++;
             }
-            return mergeSheet;
+            //ExcelHelperFunctions.SetColumnsWidth(destSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
+            return destSheet;
         }
 
-        private void AppendSingleSheet(SingleExcelSheet singleExcelSheet, ISheet mergedSheet)
+        private static ISheet AppendSingleSheet(ISheet childSheet,ISheet parentSheet, int rowOffset, int colOffset)
         {
-            var orgSheet = singleExcelSheet.DestSheet;
-            var mergedOffset = 10;
-            var mergedStartPosition = mergedSheet.LastRowNum == 0 ? 0 : mergedSheet.LastRowNum + mergedOffset;
-            ExcelHelperFunctions.CopyRowsSameBook(orgSheet, mergedSheet, orgSheet.FirstRowNum, orgSheet.LastRowNum, true, mergedStartPosition);
-            ExcelHelperFunctions.MergeRegions(orgSheet, mergedSheet, orgSheet.LastRowNum, mergedStartPosition, 0);
-            ExcelHelperFunctions.SetColumnsWidth(mergedSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
+            
+            //var destRowStart = parentSheet.LastRowNum == 0 ? 0 : parentSheet.LastRowNum + rowOffset;
+            ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, parentSheet, childSheet.FirstRowNum,childSheet.LastRowNum, true, rowOffset, colOffset);
+            //ExcelHelperFunctions.MergeRegions(orgSheet, mergedSheet, orgSheet.LastRowNum, mergedStartPosition, 0);
+            //ExcelHelperFunctions.SetColumnsWidth(mergedSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
+            return parentSheet;
         }
 
 

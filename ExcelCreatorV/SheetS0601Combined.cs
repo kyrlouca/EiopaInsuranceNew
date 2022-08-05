@@ -84,7 +84,7 @@ namespace ExcelCreatorV
                     {
                         continue;
                     }
-                    ExcelHelperFunctions.CopyRowSameBook(s62Row, s63Row, offset, true);
+                    ExcelHelperFunctions.CopyOneRowSameBook(s62Row, s63Row, offset, true);
                 }
 
             }
