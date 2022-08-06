@@ -254,6 +254,7 @@ namespace ExcelCreatorV
         {
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var tableCodeS19 = "S.19.01.01";
 
             var sqlBlValues = @"
                     select 
@@ -285,30 +286,31 @@ namespace ExcelCreatorV
 
             var blValues = connectionLocalDb.Query<string>(sqlBlValues, new { DocumentId });
             foreach (var blValue in blValues)
-            {
-                var blList = new List<string>();
-                var blListxx = new List<ISheet>();
-                //create a sheet for each BL dim value 
+            {                
+                var blList = new List<List<ISheet>>();
+                //create a sheet for each *BL* dim value 
+                //the merged sheet consist of pairs stacked 1st pair is 'S.19.01.01.01, S.19.01.01.02' second pair is 'S.19.01.01.03, S.19.01.01.04', etc.
 
                 var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blValue });
-                //find the 'S.19.01.01.xx' sheets where xx is odd
 
-                var blSheetsOddxx = blSheets
-                    .Where(sheet => OddTableCodeSelector(sheet.TableCode));
-
-                var xx = DestExcelBook.GetSheet("S.19.01.01.01#00");
-                var x2 = DestExcelBook.GetSheet("S.19.01.01.03#00              ");
-                //S.19.01.01.01#00              
+                //find the  sheets  with odd table code
                 var blSheetsOdd = blSheets
-                    .Where(sheet => OddTableCodeSelector(sheet.TableCode))
-                    .Select(sheet => ExcelTemplateBook?.GetSheet(sheet.SheetTabName.Trim()))?.ToList() ?? new List<ISheet?>();
+                    .Where(sheet => OddTableCodeSelector(sheet.TableCode));
+                    
 
+                foreach (var blSheetOdd in blSheetsOdd)
+                {                    
+                    //create pairs of sheets and add the pair to the blList
+                    var oddSheet = DestExcelBook.GetSheet(blSheetOdd.SheetTabName.Trim());
 
-                //blListxx.AddRange(blSheetsOdd);
+                    var evenSheetTableCode = ModifyTableCode(blSheetOdd.TableCode);
+                    var evenSheet = DestExcelBook.GetSheet(evenSheetTableCode);
+                    blList.Add( new List<ISheet>() { oddSheet, evenSheet });                    
+                }
 
-
-                //AppendMultipleSheetsVertically
-                var y = 3;
+                var mergeName = $"{tableCodeS19}#{blValue.Split(":")[1].Trim()}";
+                AppendMultipleSheetsVertically(blList, mergeName);
+                
             }
 
 
@@ -328,6 +330,25 @@ namespace ExcelCreatorV
                 }
                 return false;
             }
+
+
+            static string ModifyTableCode(string tableCode)
+            {
+                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+                if (match.Success)
+                {
+                    // "S.19.01.01.05"=> "05"
+                    var lastDigits = match.Groups[2].Captures
+                        .Select(cpt => cpt.Value.Substring(1))
+                        .ToArray();
+
+                    var incDigit = int.Parse(lastDigits[3]) + 1;
+                    var modCode = $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";                    
+                }
+                return "";
+            }
+
         }
 
 

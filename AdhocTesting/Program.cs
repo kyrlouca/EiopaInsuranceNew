@@ -36,7 +36,7 @@ namespace AdhocTesting
 
             //[A-Z]{1,3}(\.\d\d){4}
             //
-            var xx = OddTableCodeSelector("S.19.01.01.0a");
+            var xx = ModifyTableCode("S.19.01.01.05");
             var vv = 3;
 
         }
@@ -57,6 +57,24 @@ namespace AdhocTesting
             return false;
         }
 
+
+        static string ModifyTableCode(string tableCode)
+        {
+            //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+            var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+            if (match.Success)
+            {
+                // "S.19.01.01.05"=> "05"
+                var lastDigits = match.Groups[2].Captures
+                    .Select(cpt => cpt.Value.Substring(1))
+                    .ToArray();
+
+                var incDigit = int.Parse(lastDigits[3])+1;
+                var modCode= $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";
+                var x = 3;
+            }
+            return tableCode;
+        }
 
 
 
