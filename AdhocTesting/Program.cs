@@ -7,6 +7,7 @@ using Validations;
 using EiopaConstants;
 
 
+
 namespace AdhocTesting
 {
     public class Program
@@ -30,17 +31,33 @@ namespace AdhocTesting
             //ExcelValidationErrors.CreateErrorsExcelFile(9772, filename,"W");
 
 
-            
-
 
             //var x4 = @"$c = $d - (-$e - $f + x2)";
 
-            
-
-            
+            //[A-Z]{1,3}(\.\d\d){4}
+            //
+            var xx = OddTableCodeSelector("S.19.01.01.0a");
+            var vv = 3;
 
         }
-        
+        static bool OddTableCodeSelector(string tableCode)
+        {
+            //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+            var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+            if (match.Success)
+            {
+                // "S.19.01.01.05"=> "05"
+                var lastDigits = match.Groups[2].Captures
+                    .Select(cpt => cpt.Value.Substring(1))
+                    .ToArray()[3];
+
+                return int.Parse(lastDigits) % 2 != 0;
+
+            }
+            return false;
+        }
+
+
 
 
     }

@@ -1,5 +1,6 @@
 ﻿using ConfigurationNs;
 using Dapper;
+using EiopaConstants;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
 using NPOI.SS.UserModel;
@@ -224,20 +225,22 @@ namespace ExcelCreatorV
             if (2 == 2)
             {
 
-                //*** execute merge in pairs :first time with row offeset and second  with a col offset to the Right
-                //string[] childSheetNames = { "S.01.01.02.01", "S.01.02.01.01" };
-                string[] childSheetNames = { "S.01.01.02.01"};
-                var childSheets = childSheetNames.Select(sheetName => singleExcelSheets.First(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName).DestSheet).ToList();
-                //S.19.01
-                var mergedSheet = CreateMergedSheet(childSheets, "fMerged", 0, 10);
-                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 500);
 
-                //S.05.01
-                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 0);
-                //var mergedSheet = MergeSheets(childSheets, "fMerged", 0, 500);
+                string[] firstBatch = { "S.01.01.02.01", "S.01.02.01.01" };
+                var firstBatchSheets = firstBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
+
+
+                string[] secondBatch = { "S.05.01.02.01", "S.01.01.02.01" };
+                var secondBatchSheets = secondBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
+
+                var allSheets = new List<List<ISheet>>() { firstBatchSheets, secondBatchSheets };
+
+                //var mergedSheet = AppendMultipleSheetsVertically(allSheets, "fMerged");
 
             }
             //---------------------------------------------------------------
+
+            MergeS190101();
 
             var listSheet = CreateListSheet(sheetList);
 
@@ -247,31 +250,123 @@ namespace ExcelCreatorV
 
         }
 
-
-        private ISheet CreateMergedSheet(List<ISheet> sheetsToMerge, string destSheetName, int rowGap, int colGap)
+        private void MergeS190101()
         {
-            var destSheet = DestExcelBook.CreateSheet(destSheetName);
-            var rowOffset = 0;
-            var colOffset = 100;
-            var sheetIdx = 0;
-            foreach (var childSheet in sheetsToMerge)
+
+            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            var sqlBlValues = @"
+                    select 
+	                    sz.Value
+                    from 
+	                    SheetZetValue sz 
+	                    join TemplateSheetInstance sheet on sheet.TemplateSheetId= sz.TemplateSheetId
+                    where 1=1 
+	                    and sheet.InstanceId= @documentId
+	                    and sheet.TableCode like 'S.19.01.01.%'
+	                    and sz.Dim='BL'
+                    group by sz.Dim, sz.Value
+
+                    ";
+
+            var sqlSheetsWithBL = @"
+                    select 
+	                    sheet.TableCode, sheet.SheetCode,SheetTabName, sheet.TemplateSheetId
+                    from 
+	                    SheetZetValue sz 
+	                    join TemplateSheetInstance sheet on sheet.TemplateSheetId= sz.TemplateSheetId
+                    where 1=1 
+	                    and sheet.InstanceId= @documentId
+	                    and sheet.TableCode like 'S.19.01.01.%'
+	                    and sz.Dim='BL'
+	                    and sz.Value=@blValue
+                    ";
+
+
+            var blValues = connectionLocalDb.Query<string>(sqlBlValues, new { DocumentId });
+            foreach (var blValue in blValues)
             {
-                AppendSingleSheet(childSheet, destSheet, rowOffset, colOffset);
-                rowOffset = childSheet.LastRowNum + rowGap;                
-                sheetIdx++;
+                var blList = new List<string>();
+                var blListxx = new List<ISheet>();
+                //create a sheet for each BL dim value 
+
+                var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blValue });
+                //find the 'S.19.01.01.xx' sheets where xx is odd
+
+                var blSheetsOddxx = blSheets
+                    .Where(sheet => OddTableCodeSelector(sheet.TableCode));
+
+                var xx = DestExcelBook.GetSheet("S.19.01.01.01#00");
+                var x2 = DestExcelBook.GetSheet("S.19.01.01.03#00              ");
+                //S.19.01.01.01#00              
+                var blSheetsOdd = blSheets
+                    .Where(sheet => OddTableCodeSelector(sheet.TableCode))
+                    .Select(sheet => ExcelTemplateBook?.GetSheet(sheet.SheetTabName.Trim()))?.ToList() ?? new List<ISheet?>();
+
+
+                //blListxx.AddRange(blSheetsOdd);
+
+
+                //AppendMultipleSheetsVertically
+                var y = 3;
+            }
+
+
+            static bool OddTableCodeSelector(string tableCode)
+            {
+                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+                if (match.Success)
+                {
+                    // "S.19.01.01.05"=> "05"
+                    var lastDigits = match.Groups[2].Captures
+                        .Select(cpt => cpt.Value.Substring(1))
+                        .ToArray()[3];
+
+                    return int.Parse(lastDigits) % 2 != 0;
+
+                }
+                return false;
+            }
+        }
+
+
+        private ISheet AppendMultipleSheetsVertically(List<List<ISheet>> sheetsToMerge, string destSheetName)
+        {
+            // add multiple times, a series of sheets VERTICALLY 
+            //Each iteration will add vertically a number of horizontal sheets
+
+            var destSheetIdx = DestExcelBook.GetSheetIndex(destSheetName);
+            var destSheet = destSheetIdx == -1 ? DestExcelBook.CreateSheet(destSheetName) : DestExcelBook.GetSheetAt(destSheetIdx);
+            var rowGap = 4;
+
+            var rowOffset = 0;
+            foreach (var sheetList in sheetsToMerge)
+            {
+                AppendHorizontalSheets(sheetList, destSheet, rowOffset);
+                rowOffset += destSheet.LastRowNum + rowGap;
             }
             //ExcelHelperFunctions.SetColumnsWidth(destSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
             return destSheet;
         }
 
-        private static ISheet AppendSingleSheet(ISheet childSheet,ISheet parentSheet, int rowOffset, int colOffset)
+
+
+        private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset)
         {
-            
-            //var destRowStart = parentSheet.LastRowNum == 0 ? 0 : parentSheet.LastRowNum + rowOffset;
-            ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, parentSheet, childSheet.FirstRowNum,childSheet.LastRowNum, true, rowOffset, colOffset);
-            //ExcelHelperFunctions.MergeRegions(orgSheet, mergedSheet, orgSheet.LastRowNum, mergedStartPosition, 0);
-            //ExcelHelperFunctions.SetColumnsWidth(mergedSheet, singleExcelSheet.SheetDb.IsOpenTable, singleExcelSheet.StartColDestIdx, singleExcelSheet.EndColDestIdx, singleExcelSheet.DestDataRange.FirstRow, singleExcelSheet.DestDataRange.LastRow);
-            return parentSheet;
+            //add each sheet in the list  HORIZONTALLY one after the other
+            var colGap = 4;
+            foreach (var childSheet in sheetsToMerge)
+            {
+                var actualColGap = childSheet == sheetsToMerge.First() ? 0 : colGap;
+
+                var ColOffset = ExcelHelperFunctions.GetMaxNumberOfColumns(destSheet, destSheet.FirstRowNum, destSheet.LastRowNum) + actualColGap;
+                var actualColOffset = childSheet == sheetsToMerge.First() ? 0 : ColOffset;
+
+                ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, destSheet, childSheet.FirstRowNum, childSheet.LastRowNum, true, rowOffset, actualColOffset);
+
+            }
+            return destSheet;
         }
 
 

@@ -138,8 +138,8 @@ namespace ExcelCreatorV
             return destCell;
         }
 
-        static public void CopyManyRowsSameBook(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false, int offsetRow = 0, int offsetCol=0)
-        {            
+        static public void CopyManyRowsSameBook(ISheet sourceSheet, ISheet destSheet, int firstRow, int lastRow, bool IsFormattingCopied = false, int offsetRow = 0, int offsetCol = 0)
+        {
             //it is useful because we do not create addtional styles in the dest book
             //copy a range of rows from orgin sheet to destination sheet 
             for (var i = firstRow; i <= lastRow; i++)
@@ -181,23 +181,23 @@ namespace ExcelCreatorV
                 {
                     destCell = destRow.CreateCell(j + colOffset);
                 }
-                CopyCellSameBook( orgRow.GetCell(j), destCell, doCopyFormatting);
+                CopyCellSameBook(orgRow.GetCell(j), destCell, doCopyFormatting);
             }
             return destRow;
         }
-        static ICell? CopyCellSameBook( ICell originCell, ICell destCell, bool doCopyFormatting)
+        static ICell? CopyCellSameBook(ICell originCell, ICell destCell, bool doCopyFormatting)
         {
             //var workBook = (XSSFWorkbook)destCell.Sheet.Workbook;            
             if (originCell is null || destCell is null)
             {
                 return null;
             }
-            
+
             CopyCellValue(originCell, destCell);
 
             if (doCopyFormatting && originCell.CellStyle is not null)
-            {                
-                destCell.CellStyle = originCell.CellStyle;                
+            {
+                destCell.CellStyle = originCell.CellStyle;
             }
 
             return destCell;
@@ -222,18 +222,18 @@ namespace ExcelCreatorV
         }
 
 
-        static public void MergeRegions(ISheet originSheet, ISheet destSheet, int orgLastRowToMerge,int destRowOffset, int destColOffset)
+        static public void MergeRegions(ISheet originSheet, ISheet destSheet, int orgLastRowToMerge, int destRowOffset, int destColOffset)
         {
             // If there are are any merged regions in the source row, copy to new row
             foreach (var orgMerged in originSheet.MergedRegions)
             {
-                
+
                 // do NOT copy any merges after data range. There are many tables in the sheet.
                 if (orgMerged.FirstRow > orgLastRowToMerge)
                 {
                     break;
                 }
-                var destMerged = new CellRangeAddress(orgMerged.FirstRow + destRowOffset, orgMerged.LastRow +destRowOffset, orgMerged.FirstColumn +destColOffset, orgMerged.LastColumn +destColOffset );
+                var destMerged = new CellRangeAddress(orgMerged.FirstRow + destRowOffset, orgMerged.LastRow + destRowOffset, orgMerged.FirstColumn + destColOffset, orgMerged.LastColumn + destColOffset);
 
                 try
                 {
@@ -263,9 +263,9 @@ namespace ExcelCreatorV
             var colIdx = startColIdx - 2;
             if (!isOpen && colIdx >= 0)
             {
-                var len = FindMaxWith(destSheet, colIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
+                var len = FindMaxWidth(destSheet, colIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
                 var DescriptionColumnLength = Math.Min(len, ExcelSheetConstants.MaxLabelSize);
-                DescriptionColumnLength = Math.Max(DescriptionColumnLength,ExcelSheetConstants.DefaultColumnSizeClosed);
+                DescriptionColumnLength = Math.Max(DescriptionColumnLength, ExcelSheetConstants.DefaultColumnSizeClosed);
                 destSheet.SetColumnWidth(colIdx, DescriptionColumnLength);//set the first column to larger width
             }
 
@@ -283,7 +283,7 @@ namespace ExcelCreatorV
             //for sheets that have only one data column, make the column big
             if (startColIdx == endColIdx)
             {
-                var firstDataColLen = FindMaxWith(destSheet, startColIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
+                var firstDataColLen = FindMaxWidth(destSheet, startColIdx, startDataRowIdx, endDataRowIdx) * 256 + 900;
                 firstDataColLen = Math.Max(firstDataColLen, ExcelSheetConstants.DefaultColumnSizeClosed);
                 destSheet.SetColumnWidth(startColIdx, firstDataColLen);
                 Console.WriteLine("aa");
@@ -292,7 +292,7 @@ namespace ExcelCreatorV
         }
 
 
-        static int FindMaxWith(ISheet destSheet, int column, int startRowIdx, int endRowIdx)
+        static int FindMaxWidth(ISheet destSheet, int column, int startRowIdx, int endRowIdx)
         {
             var maxLen = 0;
             for (var i = startRowIdx; i <= endRowIdx; i++)
@@ -310,6 +310,24 @@ namespace ExcelCreatorV
 
             }
             return maxLen;
+        }
+
+
+        public static int GetMaxNumberOfColumns(ISheet destSheet, int startRowIdx, int endRowIdx)
+        {
+            var maxCols = 0;
+            for (var i = startRowIdx; i <= endRowIdx; i++)
+            {
+                var row = destSheet?.GetRow(i);
+                if (row is null)
+                {
+                    continue;
+                }
+                //var rowCols = row.LastCellNum; cannot use because we might have empty cells at the end                
+                var rowCols = row.Cells.LastOrDefault(cell => string.IsNullOrEmpty(cell.StringCellValue))?.ColumnIndex ?? 0;
+                maxCols = Math.Max(maxCols, rowCols);
+            }
+            return maxCols;
         }
 
 

@@ -96,6 +96,7 @@ namespace EiopaConstants
         public const string TalbeCodeRegEx = @"([A-Z]{1,3}(?:\.\d\d){4})";//SR.01.01.01.01
         public const string TermTextRegEx = @"([A-Z]{1,3}(?:\.\d\d){4})\s*,\s*(r\d{4})\s*,\s*(c\d{4})";//{SR.01.01.01.01,r0920,c0010}
         public static Regex PlainTermRegEx { get; set; } = new(@"{([A-Z]{1,3}(?:\.\d\d){4})\s*,.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        public static Regex TableCodeRegExP { get; set; } = new(@"([A-Z]{1,3})(\.\d\d){4}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     }
 
     public class FFCntUnit
