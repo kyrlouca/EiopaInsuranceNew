@@ -36,8 +36,8 @@ namespace AdhocTesting
 
             //[A-Z]{1,3}(\.\d\d){4}
             //
-            var xx = ModifyTableCode("S.19.01.01.05");
-            var vv = 3;
+            //var xx = ModifyTableCode("S.19.01.01.05");
+            //var vv = 3;
 
         }
         static bool OddTableCodeSelector(string tableCode)
@@ -70,8 +70,7 @@ namespace AdhocTesting
                     .ToArray();
 
                 var incDigit = int.Parse(lastDigits[3])+1;
-                var modCode= $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";
-                var x = 3;
+                var modCode= $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";                
             }
             return tableCode;
         }

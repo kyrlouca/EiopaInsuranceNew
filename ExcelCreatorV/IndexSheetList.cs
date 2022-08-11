@@ -21,22 +21,26 @@ namespace ExcelCreatorV
         public SheetRecord(string tabSheetName, string description)
         {
             TabSheetName = tabSheetName;
-            Description = description;
-            //Sheet = sheet;
+            Description = description;            
         }
     }
     internal class IndexSheetList
     {
         ConfigObject? ConfObject { get; set; }
-        XSSFWorkbook? ExcelBook { get; set; }
-        WorkbookStyles? WorkbookStyles { get; set; } 
-        ISheet? IndexSheet { get; set; }
+        XSSFWorkbook ExcelBook { get; set; }
+        WorkbookStyles WorkbookStyles { get; set; } 
+        public ISheet IndexSheet { get; internal set; }
+        public string SheetName { get; init; }
+        public string SheetDescription { get; init; }
         List<SheetRecord> SheetRecords { get; set; } = new List<SheetRecord>();
-        public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets)
+        public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets,string sheetName, string sheetDescription)
         {
             ConfObject = confObject;
             ExcelBook = excelBook;
             WorkbookStyles = workbookStyles;
+            SheetName= sheetName;
+            SheetDescription= sheetDescription;
+            IndexSheet = ExcelBook.CreateSheet(sheetName);
             SheetRecords = CreateListOfSheets(dBsheets);
             
         }
@@ -69,19 +73,17 @@ namespace ExcelCreatorV
         }
 
 
-        public ISheet CreateTabSheet()
+        public ISheet PopulateIndexSheet()
         {
-            if (ExcelBook is null || WorkbookStyles is null)
-            {
-                return null;
-            }
-
-
-            IndexSheet = ExcelBook.CreateSheet("aaaaaList");
+            //if (ExcelBook is null || WorkbookStyles is null)
+            //{
+            //    return null;
+            //}
+            
             var titleRow = IndexSheet.CreateRow(0);
             var title = titleRow.CreateCell(0);
-            title.SetCellValue("List of Templates");
-            title.CellStyle = WorkbookStyles.TileStyle;
+            title.SetCellValue(SheetDescription);
+            title.CellStyle = WorkbookStyles?.TileStyle;
 
             var index = 2;
             foreach (var sheetRecord in SheetRecords)
@@ -116,7 +118,7 @@ namespace ExcelCreatorV
         }
         public void RemoveSheets( List<string> tabSheetNames)
         {
-            foreach (string tabSheetName in tabSheetNames)
+            foreach (var tabSheetName in tabSheetNames)
             {
                 SheetRecords = SheetRecords.Where(r => r.TabSheetName != tabSheetName).ToList();
             }
@@ -125,7 +127,8 @@ namespace ExcelCreatorV
 
         public void Sort()
         {
-            SheetRecords.Sort((SheetRecord a, SheetRecord b) => string.Compare(a.TabSheetName, b.TabSheetName));
+            SheetRecords.Sort((SheetRecord a, SheetRecord b) => string.Compare(a.TabSheetName, b.TabSheetName));            
+            SheetRecords.ForEach(sr => ExcelBook.SetSheetOrder(sr.TabSheetName.Trim(), SheetRecords.IndexOf(sr)));
         }
     }
 }

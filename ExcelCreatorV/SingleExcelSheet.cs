@@ -165,7 +165,7 @@ namespace ExcelCreatorV
             {
                 var link = new XSSFHyperlink(HyperlinkType.Document)
                 {
-                    Address = @$"'List'!A1"
+                    Address = @$"'aList'!A1"
                 };
                 var leftCell = DestSheet.GetRow(0).GetCell(0);
 
@@ -655,10 +655,7 @@ namespace ExcelCreatorV
                     {
                         var destCellColIdx = x - OffsetCol + zIdx;
                         var destCellNew = destRow.GetCell(destCellColIdx);
-                        if (destCellNew is null)
-                        {
-                            destCellNew = destRow.CreateCell(destCellColIdx);
-                        }
+                        destCellNew ??= destRow.CreateCell(destCellColIdx);
 
                         if (string.IsNullOrEmpty(rowLabel))
                         {
@@ -718,18 +715,12 @@ namespace ExcelCreatorV
                 //copy the same row for each zet value
                 var destRowIdx = FirstOrgRowIdx + zz - OffsetRow;
                 var destRow = DestSheet.GetRow(destRowIdx);
-                if (destRow is null)
-                {
-                    destRow = DestSheet.CreateRow(destRowIdx);
-                }
+                destRow ??= DestSheet.CreateRow(destRowIdx);
 
                 //write the row Label (R0040) to the left of the datarange
                 var rowLabelIdx = OrgDataRange.FirstColumn - OffsetCol - 1;//one cell to the left is the row label
                 var rowLabelCell = destRow.GetCell(rowLabelIdx);
-                if (rowLabelCell is null)
-                {
-                    rowLabelCell = destRow.CreateCell(rowLabelIdx);
-                }
+                rowLabelCell ??= destRow.CreateCell(rowLabelIdx);
                 rowLabelCell.SetCellValue(rowLabel);
                 rowLabelCell.CellStyle = WorkbookStyles.ColumnLabelStyle;
                 if (zz == 0)
@@ -741,10 +732,8 @@ namespace ExcelCreatorV
                 //write the cell value to the left of the datarange
                 var zetCellIdx = OrgDataRange.FirstColumn - OffsetCol - 2;//one cell to the left is the row label                               
                 var zetCell = destRow.GetCell(zetCellIdx);
-                if (zetCell is null)
-                {
-                    zetCell = destRow.CreateCell(zetCellIdx);
-                }
+                zetCell ??= destRow.CreateCell(zetCellIdx);
+
                 var zetLabel = GetDomainLabel(factZetList[zz]);
                 zetCell.SetCellValue(zetLabel);
                 zetCell.CellStyle = WorkbookStyles.BasicBorderStyle;
@@ -756,10 +745,7 @@ namespace ExcelCreatorV
 
                     var destCellColIdx = cIdx - OffsetCol;
                     var destCellNew = destRow.GetCell(destCellColIdx);
-                    if (destCellNew is null)
-                    {
-                        destCellNew = destRow.CreateCell(destCellColIdx);
-                    }
+                    destCellNew ??= destRow.CreateCell(destCellColIdx);
 
                     var zetValue = factZetList[zz];
                     var fact = FindFactFromRowColZet(SheetDb, rowLabel, colLabel, zetValue);
@@ -801,11 +787,9 @@ namespace ExcelCreatorV
                 lines++;
                 var destRowIndex = rowIndexWithColumnLabels + 1 - OffsetRow + rowIndex;
                 var destRow = DestSheet.GetRow(destRowIndex);
-                if (destRow is null)
-                {
-                    destRow = DestSheet.CreateRow(destRowIndex);
-                }
+                destRow ??= DestSheet.CreateRow(destRowIndex);
                 Console.Write("!");
+
                 for (var x = firstColumnIndex; x <= OrgDataRange.LastColumn; x++)
                 {
                     var colLabel = OriginSheet.GetRow(rowIndexWithColumnLabels).GetCell(x).StringCellValue;    //from origin therefore no shifting                  

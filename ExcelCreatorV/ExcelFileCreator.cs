@@ -19,12 +19,12 @@ namespace ExcelCreatorV
 
     internal readonly record struct MergedSheet
     {
-        public ISheet TabSheet {get;init;}
-        public List<TemplateSheetInstance> SheetInstances { get;init;}
+        public ISheet TabSheet { get; init; }
+        public List<TemplateSheetInstance> SheetInstances { get; init; }
         public MergedSheet(ISheet tabSheet, List<TemplateSheetInstance> sheetInstances)
         {
             TabSheet = tabSheet;
-            SheetInstances = sheetInstances ;
+            SheetInstances = sheetInstances;
         }
     }
 
@@ -173,6 +173,8 @@ namespace ExcelCreatorV
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
+            
+
             var sqlSheets = @"
                 SELECT
                   TemplateSheetInstance.TemplateSheetId
@@ -216,8 +218,8 @@ namespace ExcelCreatorV
                 singleExcelSheets.Add(newSheet);
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
-
-            var sheetIndexList = CreateListOfSheets(sheets);
+            
+            var IndexListSheet = new IndexSheetList(ConfigObject, DestExcelBook, WorkbookStyles, sheets, "List", "List of Templates");
 
             //---------------------------------------------------------------
             //Create a sheet which combines S0.06.02.01.01 with S0.06.02.01.02
@@ -226,10 +228,11 @@ namespace ExcelCreatorV
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {
-                sheetIndexList.Add(("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
-                sheetIndexList.Sort();
-                var sheetS602Position = sheetIndexList.Select(item => item.sheetName).ToList().IndexOf(sheetS06Name);
-                DestExcelBook.SetSheetOrder(sheetS06Name, sheetS602Position);
+                IndexListSheet.AddSheet(new SheetRecord("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
+                //sheetIndexList.Add(("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
+                //sheetIndexList.Sort();
+                //var sheetS602Position = sheetIndexList.Select(item => item.sheetName).ToList().IndexOf(sheetS06Name);
+                //DestExcelBook.SetSheetOrder(sheetS06Name, sheetS602Position);
             }
 
             //---------------------------------------------------------------
@@ -251,28 +254,47 @@ namespace ExcelCreatorV
 
             }
             //---------------------------------------------------------------
+            
 
-            var mergedSheets= MergeS190101("S.19.01.01","BL");
+            //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets
+            var bl19MergedSheets = MergeS190101("S.19.01.01", "BL");
+            
 
-            var listIndexXXX = new IndexSheetList(ConfigObject, DestExcelBook, WorkbookStyles,sheets);
-            var xx = listIndexXXX.CreateTabSheet();
+            foreach (var bl19MergedSheet in bl19MergedSheets)
+            {
+                var sheetNamesToDelete = bl19MergedSheet.SheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
+                var ss = sheetNamesToDelete
+                    .Select(name => DestExcelBook.GetSheet(name)).ToList();
 
-            var listTabSheet = CreateListTabSheet(sheetIndexList);
+                foreach(var snd in ss)
+                {
+                    var sdIdx = DestExcelBook.GetSheetIndex(snd);
+                    DestExcelBook.RemoveAt(sdIdx);                    
+                }
+                
+                IndexListSheet.RemoveSheets(sheetNamesToDelete);
+                IndexListSheet.AddSheet(new SheetRecord(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.TabSheet.SheetName));
+            }
+          
+            
+            IndexListSheet.PopulateIndexSheet();
+            IndexListSheet.Sort();
+            IndexListSheet.IndexSheet.SetZoom(80);
 
-            DestExcelBook.SetSheetOrder(listTabSheet.SheetName, 0);
+            DestExcelBook.SetSheetOrder("List", 0);
             DestExcelBook.SetActiveSheet(0);
-            listTabSheet.SetZoom(80);
+            
 
         }
 
-        private   List<MergedSheet>  MergeS190101(string tableCode, string dimPivot)
+        private List<MergedSheet> MergeS190101(string tableCode, string dimPivot)
         {
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var mergedSheets= new List<MergedSheet>();
+            var mergedSheets = new List<MergedSheet>();
 
             var tableCodeLike = $"{tableCode}%";
-            
+
 
             var sqlBlValues = @"
                     select 
@@ -287,28 +309,28 @@ namespace ExcelCreatorV
                     group by sz.Dim, sz.Value
 
                     ";
-            var dimBLValues = connectionLocalDb.Query<string>(sqlBlValues, new { DocumentId,tableCodeLike,dimPivot });
-            foreach(var dimBLValue in dimBLValues)
+            var dimBLValues = connectionLocalDb.Query<string>(sqlBlValues, new { DocumentId, tableCodeLike, dimPivot });
+            foreach (var dimBLValue in dimBLValues)
             {
-                var mergedSheet= MergeOneBL_S1901010(tableCode, dimPivot, dimBLValue);
+                var mergedSheet = MergeOneBL_S1901010(tableCode, dimPivot, dimBLValue);
                 mergedSheets.Add(mergedSheet);
             }
 
-            var affectedSheets = new List<TemplateSheetInstance>();            
+            var affectedSheets = new List<TemplateSheetInstance>();
 
-            return mergedSheets;            
+            return mergedSheets;
 
         }
 
-        private MergedSheet MergeOneBL_S1901010(string tableCodeS19,string dimPivot, string blDimValue)
+        private MergedSheet MergeOneBL_S1901010(string tableCodeS19, string dimPivot, string blDimValue)
         {
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var blList = new List<List<ISheet>>();
-                //create a sheet for each *BL* dim value 
-                //the merged sheet consist of pairs stacked 1st pair is 'S.19.01.01.01, S.19.01.01.02' second pair is 'S.19.01.01.03, S.19.01.01.04', etc.
+            //create a sheet for each *BL* dim value 
+            //the merged sheet consist of pairs stacked 1st pair is 'S.19.01.01.01, S.19.01.01.02' second pair is 'S.19.01.01.03, S.19.01.01.04', etc.
 
 
-                var sqlSheetsWithBL = @"
+            var sqlSheetsWithBL = @"
                     select 
 	                    sheet.TableCode, sheet.SheetCode,SheetTabName, sheet.TemplateSheetId
                     from 
@@ -320,35 +342,35 @@ namespace ExcelCreatorV
 	                    and sz.Dim='BL'
 	                    and sz.Value=@blDimValue
                     ";
-                var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blDimValue }).ToList();
-            
-
-                //find the  sheets  with odd table code
-                var blSheetsOdd = blSheets
-                    .Where(sheet => OddTableCodeSelector(sheet.TableCode));
+            var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blDimValue }).ToList();
 
 
-                foreach (var blSheetOdd in blSheetsOdd)
+            //find the  sheets  with odd table code
+            var blSheetsOdd = blSheets
+                .Where(sheet => OddTableCodeSelector(sheet.TableCode));
+
+
+            foreach (var blSheetOdd in blSheetsOdd)
+            {
+                //create pairs of sheets and add the pair to the blList
+                var oddSheet = DestExcelBook.GetSheet(blSheetOdd.SheetTabName.Trim());
+                var pairList = new List<ISheet>() { oddSheet };
+
+                var evenSheetTableCode = ModifyTableCode(blSheetOdd.TableCode.Trim());
+                var evenSheetDb = blSheets.FirstOrDefault(sheet => sheet.TableCode == evenSheetTableCode);
+                if (evenSheetDb != null)
                 {
-                    //create pairs of sheets and add the pair to the blList
-                    var oddSheet = DestExcelBook.GetSheet(blSheetOdd.SheetTabName.Trim());
-                    var pairList = new List<ISheet>() { oddSheet };
-
-                    var evenSheetTableCode = ModifyTableCode(blSheetOdd.TableCode.Trim());
-                    var evenSheetDb = blSheets.FirstOrDefault(sheet => sheet.TableCode == evenSheetTableCode);
-                    if (evenSheetDb != null)
-                    {
-                        var evenSheet = DestExcelBook.GetSheet(evenSheetDb?.SheetTabName?.Trim());
-                        pairList.Add(evenSheet);
-                    }
-
-                    blList.Add(pairList);
+                    var evenSheet = DestExcelBook.GetSheet(evenSheetDb?.SheetTabName?.Trim());
+                    pairList.Add(evenSheet);
                 }
 
-                //**********************************************
-                //Create the Merged Sheet
-                var mergeName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
-                var sheetCreated= CreateOneMergedSheet(blList, mergeName);
+                blList.Add(pairList);
+            }
+
+            //**********************************************
+            //Create the Merged Sheet
+            var mergeName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
+            var sheetCreated = CreateOneMergedSheet(blList, mergeName);
             return new MergedSheet(sheetCreated, blSheets);
             //RemoveIndividualSheets();
 
@@ -361,7 +383,7 @@ namespace ExcelCreatorV
                 {
                     // "S.19.01.01.05"=> "05"
                     var lastDigits = match.Groups[2].Captures
-                        .Select(cpt => cpt.Value.Substring(1))
+                        .Select(cpt => cpt.Value[1..])
                         .ToArray()[3];
 
                     return int.Parse(lastDigits) % 2 != 0;
@@ -379,7 +401,7 @@ namespace ExcelCreatorV
                 {
                     // "S.19.01.01.05"=> "05"
                     var lastDigits = match.Groups[2].Captures
-                        .Select(cpt => cpt.Value.Substring(1))
+                        .Select(cpt => cpt.Value[1..])
                         .ToArray();
 
                     var incDigit = int.Parse(lastDigits[3]) + 1;
@@ -394,25 +416,10 @@ namespace ExcelCreatorV
         }
 
 
-        void RemoveIndividualSheets(List<TemplateSheetInstance> dbSheets)
-        {
-            //remove the sheets used in the merged Sheet
-            foreach (var sheet in dbSheets)
-            {
-                var aSheet = DestExcelBook.GetSheet(sheet.SheetTabName.Trim());
-                if (aSheet is null)
-                {
-                    continue;
-                }
-                DestExcelBook.Remove(aSheet);
-            }
-        }
-
-
 
         private ISheet CreateOneMergedSheet(List<List<ISheet>> sheetsToMerge, string destSheetName)
         {
-            
+
             //Each iteration will add VERTICALLY a list of HORIZONTAL sheets
 
             var destSheetIdx = DestExcelBook.GetSheetIndex(destSheetName);
@@ -428,8 +435,8 @@ namespace ExcelCreatorV
             }
 
             //set columns width            
-            var firstRow =destSheet.GetRow(0); 
-            for (int i = firstRow.FirstCellNum; i <= firstRow.LastCellNum;i++)
+            var firstRow = destSheet.GetRow(0);
+            for (int i = firstRow.FirstCellNum; i <= firstRow.LastCellNum; i++)
             {
                 destSheet.SetColumnWidth(i, 4000);
             }
@@ -441,18 +448,18 @@ namespace ExcelCreatorV
         private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset)
         {
             //add each sheet in the list  HORIZONTALLY one after the other
-            var colGap = 2;            
+            var colGap = 2;
             var totalColOffset = 0;
             foreach (var childSheet in sheetsToMerge)
             {
-                if(childSheet is null)
+                if (childSheet is null)
                 {
                     continue;
                 }
 
                 ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, destSheet, childSheet.FirstRowNum, childSheet.LastRowNum, true, rowOffset, totalColOffset);
-                var childColOffset = ExcelHelperFunctions.GetMaxNumberOfColumns(childSheet, childSheet.FirstRowNum, childSheet.LastRowNum);                
-                totalColOffset += childColOffset + colGap;                               
+                var childColOffset = ExcelHelperFunctions.GetMaxNumberOfColumns(childSheet, childSheet.FirstRowNum, childSheet.LastRowNum);
+                totalColOffset += childColOffset + colGap;
 
             }
             return destSheet;
@@ -484,38 +491,6 @@ namespace ExcelCreatorV
             return list;
         }
 
-
-        private ISheet CreateListTabSheet(List<(string sheetName, string sheetLable)> sheets)
-        {
-
-            var listSheet = DestExcelBook.CreateSheet("List");
-            var titleRow = listSheet.CreateRow(0);
-            var title = titleRow.CreateCell(0);
-            title.SetCellValue("List of Templates");
-            title.CellStyle = WorkbookStyles.TileStyle;
-
-            var index = 2;
-            foreach (var (sheetName, sheetLable) in sheets)
-            {
-                var row = listSheet.CreateRow(index++);
-                var cell = row.CreateCell(0);
-                cell.SetCellValue(sheetName);
-
-                var link = new XSSFHyperlink(HyperlinkType.Document)
-                {
-                    Address = @$"'{sheetName}'!A1"
-                };
-                cell.Hyperlink = link;
-                cell.CellStyle = WorkbookStyles.HyperStyle;
-
-                var titleCell = row.CreateCell(1);
-                titleCell.SetCellValue(sheetLable);
-            }
-            listSheet.SetColumnWidth(0, 5000);
-
-            return listSheet;
-
-        }
 
         private ConfigObject GetConfiguration()
         {

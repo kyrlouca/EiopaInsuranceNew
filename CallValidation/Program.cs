@@ -90,6 +90,7 @@ namespace ValidationCall
                 docId = 11823;//to check for small differences
                 docId = 11833;
 
+                Console.WriteLine($"{docId}");
                 //var validatorDg = new DocumentValidator   
                 //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
                 //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
