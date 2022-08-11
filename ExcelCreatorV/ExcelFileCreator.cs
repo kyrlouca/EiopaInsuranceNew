@@ -423,7 +423,7 @@ namespace ExcelCreatorV
 
             var destSheetIdx = DestExcelBook.GetSheetIndex(destSheetName);
             var destSheet = destSheetIdx == -1 ? DestExcelBook.CreateSheet(destSheetName) : DestExcelBook.GetSheetAt(destSheetIdx);
-            var rowGap = 1;
+            var rowGap = 4;
 
             //write horizontally a list of sheets
             var rowOffset = 0;
