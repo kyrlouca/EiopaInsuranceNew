@@ -165,7 +165,7 @@ namespace ExcelCreatorV
             {
                 var link = new XSSFHyperlink(HyperlinkType.Document)
                 {
-                    Address = @$"'aList'!A1"
+                    Address = @$"'List'!A1"
                 };
                 var leftCell = DestSheet.GetRow(0).GetCell(0);
 
@@ -221,31 +221,31 @@ namespace ExcelCreatorV
 
 
 
-            void MergeRegionsOld()
-            {
-                // If there are are any merged regions in the source row, copy to new row
-                foreach (var orgMerged in OriginSheet.MergedRegions)
-                {
-                    // do NOT copy any merges after data range. There are many tables in the sheet.
-                    if (orgMerged.FirstRow >= OrgDataRange.FirstRow)
-                    {
-                        continue;
-                    }
+            //void MergeRegionsOldxxx()
+            //{
+            //    // If there are are any merged regions in the source row, copy to new row
+            //    foreach (var orgMerged in OriginSheet.MergedRegions)
+            //    {
+            //        // do NOT copy any merges after data range. There are many tables in the sheet.
+            //        if (orgMerged.FirstRow >= OrgDataRange.FirstRow)
+            //        {
+            //            continue;
+            //        }
 
-                    var destMerged = new CellRangeAddress(orgMerged.FirstRow - OffsetRowIns, orgMerged.LastRow - OffsetRowIns, orgMerged.FirstColumn - OffsetCol, orgMerged.LastColumn - OffsetCol);
+            //        var destMerged = new CellRangeAddress(orgMerged.FirstRow - OffsetRowIns, orgMerged.LastRow - OffsetRowIns, orgMerged.FirstColumn - OffsetCol, orgMerged.LastColumn - OffsetCol);
 
-                    try
-                    {
+            //        try
+            //        {
 
-                        DestSheet.AddMergedRegion(destMerged);
-                    }
-                    catch
-                    {
-                        //nothing really
-                    }
+            //            DestSheet.AddMergedRegion(destMerged);
+            //        }
+            //        catch
+            //        {
+            //            //nothing really
+            //        }
 
-                }
-            }
+            //    }
+            //}
 
             void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum)
             {
@@ -534,9 +534,8 @@ namespace ExcelCreatorV
                 for (var i = startingIdx; i < startingIdx + 4; i++)
                 {
                     var cellval = DestSheet?.GetRow(i)?.GetCell(0);
-                    if (cellval is not null && cellval.ToString().Trim() == subtitleTrim)
-                    {
-                        //cellval.SetCellValue("cccc");
+                    if (cellval is not null && cellval?.ToString().Trim() == subtitleTrim)
+                    {                        
                         DestSheet.GetRow(i).RemoveCell(cellval);
                     }
                 }

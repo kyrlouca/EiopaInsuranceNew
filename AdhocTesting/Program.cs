@@ -27,7 +27,7 @@ namespace AdhocTesting
             //var xx = SimplifiedExpression.Process(1, null, @"X1>X2+3||(X1=X3 && X4)");
             //var x3 = SimplifiedExpression.ParseExpression(@"abcef", 0);
 
-            var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
+            //var filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\test.xlsx";
             //ExcelValidationErrors.CreateErrorsExcelFile(9772, filename,"W");
 
 
@@ -66,7 +66,7 @@ namespace AdhocTesting
             {
                 // "S.19.01.01.05"=> "05"
                 var lastDigits = match.Groups[2].Captures
-                    .Select(cpt => cpt.Value.Substring(1))
+                    .Select(cpt => cpt.Value[1..])
                     .ToArray();
 
                 var incDigit = int.Parse(lastDigits[3])+1;

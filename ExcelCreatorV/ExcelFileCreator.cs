@@ -241,14 +241,14 @@ namespace ExcelCreatorV
             {
                 //testing 
 
-                string[] firstBatch = { "S.01.01.02.01", "S.01.02.01.01" };
-                var firstBatchSheets = firstBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
+                //string[] firstBatch = { "S.01.01.02.01", "S.01.02.01.01" };
+                //var firstBatchSheets = firstBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
 
 
-                string[] secondBatch = { "S.05.01.02.01", "S.01.01.02.01" };
-                var secondBatchSheets = secondBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
+                //string[] secondBatch = { "S.05.01.02.01", "S.01.01.02.01" };
+                //var secondBatchSheets = secondBatch.Select(sheetName => singleExcelSheets.FirstOrDefault(sheet => sheet.SheetDb.SheetTabName.Trim() == sheetName)?.DestSheet)?.ToList() ?? new List<ISheet>();
 
-                var allSheets = new List<List<ISheet>>() { firstBatchSheets, secondBatchSheets };
+                //var allSheets = new List<List<ISheet>>() { firstBatchSheets, secondBatchSheets };
 
                 //var mergedSheet = AppendMultipleSheetsVertically(allSheets, "fMerged");
 
@@ -265,20 +265,13 @@ namespace ExcelCreatorV
                 var sheetNamesToDelete = bl19MergedSheet.SheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                 var ss = sheetNamesToDelete
                     .Select(name => DestExcelBook.GetSheet(name)).ToList();
-
-                foreach(var snd in ss)
-                {
-                    var sdIdx = DestExcelBook.GetSheetIndex(snd);
-                    DestExcelBook.RemoveAt(sdIdx);                    
-                }
                 
                 IndexListSheet.RemoveSheets(sheetNamesToDelete);
                 IndexListSheet.AddSheet(new SheetRecord(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.TabSheet.SheetName));
             }
-          
-            
-            IndexListSheet.PopulateIndexSheet();
+
             IndexListSheet.Sort();
+            IndexListSheet.PrepareIndexSheet();            
             IndexListSheet.IndexSheet.SetZoom(80);
 
             DestExcelBook.SetSheetOrder("List", 0);
@@ -415,8 +408,6 @@ namespace ExcelCreatorV
 
         }
 
-
-
         private ISheet CreateOneMergedSheet(List<List<ISheet>> sheetsToMerge, string destSheetName)
         {
 
@@ -443,8 +434,6 @@ namespace ExcelCreatorV
             return destSheet;
         }
 
-
-
         private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset)
         {
             //add each sheet in the list  HORIZONTALLY one after the other
@@ -464,33 +453,6 @@ namespace ExcelCreatorV
             }
             return destSheet;
         }
-
-
-        private List<(string sheetName, string desctiption)> CreateListOfSheets(List<TemplateSheetInstance> sheets)
-        {
-
-            var list = new List<(string sheetName, string sheetLabel)>();
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-
-            foreach (var sheet in sheets)
-            {
-                var sheetName = sheet.SheetTabName.Trim();
-
-                var sqlTab = @"select tab.TableLabel,tab.TableCode from mTable tab where tab.TableID = @tableId";
-                var tab = connectionEiopa.QuerySingleOrDefault<MTable>(sqlTab, new { sheet.TableID });
-
-                var tableCodeList = tab.TableCode.Split(".").Take(4);
-                var templateCode = string.Join(".", tableCodeList);
-                var sqlTemplate = @"select  TemplateOrTableLabel from mTemplateOrTable tt where tt.TemplateOrTableCode = @templateCode ";
-
-                var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
-                var desc = $"{templateLabel} ## {tab.TableLabel}";
-
-                list.Add((sheetName, desc));
-            }
-            return list;
-        }
-
 
         private ConfigObject GetConfiguration()
         {

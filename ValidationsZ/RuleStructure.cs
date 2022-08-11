@@ -508,7 +508,7 @@ namespace Validations
                 .Where(term => !isUsedInFallback(term.Letter));
 
             var hasAllNull = validValueTerms.All(term => term.IsMissing);
-            if (validValueTerms.Count() == 0)
+            if (!validValueTerms.Any())
             {
                 return false;
             }

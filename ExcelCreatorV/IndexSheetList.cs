@@ -73,7 +73,7 @@ namespace ExcelCreatorV
         }
 
 
-        public ISheet PopulateIndexSheet()
+        public ISheet PrepareIndexSheet()
         {
             //if (ExcelBook is null || WorkbookStyles is null)
             //{
@@ -97,7 +97,7 @@ namespace ExcelCreatorV
                     Address = @$"'{sheetRecord.TabSheetName}'!A1"
                 };
                 cell.Hyperlink = link;
-                cell.CellStyle = WorkbookStyles.HyperStyle;
+                cell.CellStyle = WorkbookStyles?.HyperStyle;
 
                 var titleCell = row.CreateCell(1);
                 titleCell.SetCellValue(sheetRecord.Description);
@@ -120,9 +120,12 @@ namespace ExcelCreatorV
         {
             foreach (var tabSheetName in tabSheetNames)
             {
-                SheetRecords = SheetRecords.Where(r => r.TabSheetName != tabSheetName).ToList();
-            }
-            
+                var shIdx= ExcelBook.GetSheetIndex(tabSheetName);
+                ExcelBook.RemoveAt(shIdx);
+                var shrIdx = SheetRecords.First(r => r.TabSheetName == tabSheetName);
+                SheetRecords.Remove(shrIdx);
+                //SheetRecords = SheetRecords.Where(r => r.TabSheetName != tabSheetName).ToList();
+            }            
         }
 
         public void Sort()
