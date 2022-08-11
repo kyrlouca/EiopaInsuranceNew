@@ -20,11 +20,13 @@ namespace ExcelCreatorV
     internal readonly record struct MergedSheet
     {
         public ISheet TabSheet { get; init; }
-        public List<TemplateSheetInstance> SheetInstances { get; init; }
-        public MergedSheet(ISheet tabSheet, List<TemplateSheetInstance> sheetInstances)
+        public List<TemplateSheetInstance> ChildrenSheetInstances { get; init; }
+        public string SheetDescription { get; init; }
+        public MergedSheet(ISheet tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances)
         {
             TabSheet = tabSheet;
-            SheetInstances = sheetInstances;
+            SheetDescription = sheetDescription;
+            ChildrenSheetInstances = childrenSheetInstances;
         }
     }
 
@@ -262,12 +264,12 @@ namespace ExcelCreatorV
 
             foreach (var bl19MergedSheet in bl19MergedSheets)
             {
-                var sheetNamesToDelete = bl19MergedSheet.SheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
+                var sheetNamesToDelete = bl19MergedSheet.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                 var ss = sheetNamesToDelete
                     .Select(name => DestExcelBook.GetSheet(name)).ToList();
                 
                 IndexListSheet.RemoveSheets(sheetNamesToDelete);
-                IndexListSheet.AddSheet(new SheetRecord(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.TabSheet.SheetName));
+                IndexListSheet.AddSheet(new SheetRecord(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
             }
 
             IndexListSheet.Sort();
@@ -342,7 +344,7 @@ namespace ExcelCreatorV
             var blSheetsOdd = blSheets
                 .Where(sheet => OddTableCodeSelector(sheet.TableCode));
 
-
+            //will also get the corresponding sheets with the even tablecode
             foreach (var blSheetOdd in blSheetsOdd)
             {
                 //create pairs of sheets and add the pair to the blList
@@ -362,11 +364,11 @@ namespace ExcelCreatorV
 
             //**********************************************
             //Create the Merged Sheet
-            var mergeName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
-            var sheetCreated = CreateOneMergedSheet(blList, mergeName);
-            return new MergedSheet(sheetCreated, blSheets);
-            //RemoveIndividualSheets();
+            var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
+            var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
 
+            var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
+            return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
 
             static bool OddTableCodeSelector(string tableCode)
             {
@@ -404,7 +406,13 @@ namespace ExcelCreatorV
                 return "";
             }
 
-
+            static string GetDimValueDescription(ConfigObject confObject, string dimValue)
+            {
+                using var connectionEiopa = new SqlConnection(confObject.EiopaDatabaseConnectionString);
+                var sqlDimValue = "select MemberLabel from mMember mem where mem.MemberXBRLCode=@dimValue";
+                var res = connectionEiopa.QueryFirstOrDefault<MMember>(sqlDimValue, new { dimValue });
+                return res is null ? "" : res.MemberLabel;
+            }
 
         }
 
