@@ -11,6 +11,27 @@ namespace ExcelCreatorV
 {
     public static class ExcelHelperFunctions
     {
+
+        static public void ClearRows(ISheet sheet, int startRow, int count)
+        {
+            //clears startRow including
+            //clear by removing and inserting
+            if (sheet is null || startRow < 0 || count <= 0)
+            {
+                return;
+            }
+
+            for (var j = startRow; j < startRow + count; j++)
+            {
+                var row = sheet.GetRow(j);
+                if (row == null)
+                {
+                    continue;
+                }
+                sheet.RemoveRow(row);
+                sheet.ShiftRows(j, j, 1);
+            }
+        }
         static public void CopyRange(CellRangeAddress range, ISheet sourceSheet, ISheet destinationSheet)
         {
             for (var rowNum = range.FirstRow; rowNum <= range.LastRow; rowNum++)
@@ -233,6 +254,11 @@ namespace ExcelCreatorV
                 {
                     break;
                 }
+
+                var orgRow = originSheet.GetRow(orgMerged.FirstRow);
+                var destRow= destSheet.GetRow( orgMerged.FirstRow+destRowOffset);
+                var orgRowView = ExcelHelperFunctions.ShowRowContents(destRow);
+                var destRowView = ExcelHelperFunctions.ShowRowContents(orgRow);
                 var destMerged = new CellRangeAddress(orgMerged.FirstRow + destRowOffset, orgMerged.LastRow + destRowOffset, orgMerged.FirstColumn + destColOffset, orgMerged.LastColumn + destColOffset);
 
                 try
@@ -330,7 +356,12 @@ namespace ExcelCreatorV
             return maxCols;
         }
 
-
+        public static string ShowRowContents(IRow row)
+        {
+            var debugCells = row?.Cells?.Select(cell => cell?.ToString()).ToArray() ?? Array.Empty<string>();
+            var debugViewLine = string.Join("#", debugCells);
+            return debugViewLine;
+        }
 
     }
 }

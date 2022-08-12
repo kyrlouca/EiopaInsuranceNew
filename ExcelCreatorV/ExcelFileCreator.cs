@@ -33,7 +33,7 @@ namespace ExcelCreatorV
     public class ExcelFileCreator
     {
         //public string DebugTableCode { get; set; } = "S.23.01.01.01";
-        public string DebugTableCode { get; set; } = "";
+        public string DebugTableCode { get; set; } = "S.18.01.01.01";
 
         public ConfigObject ConfigObject { get; private set; }
 
@@ -98,11 +98,7 @@ namespace ExcelCreatorV
                 Console.WriteLine("valide versions: IU250, IU260");
                 return false;
             }
-
-            //if (GetConfiguration() is null)
-            //{
-            //    return false;
-            //}
+            
 
             Document = HelperInsuranceFunctions.InsuranceData.GetDocumentById(DocumentIdInput);
             if (Document is null)
@@ -256,9 +252,9 @@ namespace ExcelCreatorV
 
             }
             //---------------------------------------------------------------
-            
+                    
 
-            //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets
+            //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets            
             var bl19MergedSheets = MergeS190101("S.19.01.01", "BL");
             
 
@@ -364,12 +360,15 @@ namespace ExcelCreatorV
 
             //**********************************************
             //Create the Merged Sheet
-            var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
-            var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
+            
 
-            var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
-            return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
+                var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
+                var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
 
+                var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
+                return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
+
+            
             static bool OddTableCodeSelector(string tableCode)
             {
                 //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
@@ -434,7 +433,7 @@ namespace ExcelCreatorV
             }
 
             //set columns width            
-            var firstRow = destSheet.GetRow(0);
+            var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
             for (int i = firstRow.FirstCellNum; i <= firstRow.LastCellNum; i++)
             {
                 destSheet.SetColumnWidth(i, 4000);

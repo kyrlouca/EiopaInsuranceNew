@@ -15,6 +15,8 @@ using HelperInsuranceFunctions;
 
 namespace ExcelCreatorV
 {
+
+
     public class SingleExcelSheet
     {
         public TemplateSheetInstance SheetDb { get; private set; }
@@ -28,9 +30,12 @@ namespace ExcelCreatorV
         public CellRangeAddress? OrgExtendedRange;
 
 
+        public const int DestDataRowPositionShort = 13;
+        public const int DestDataRowPositionLong = 16;
+
 
         public int OffsetRow { get; set; }
-        public int OffsetRowIns { get; set; }
+        public int OffsetRowInsToDelete { get; set; }
 
         public int OffsetCol { get; set; }
         public CellRangeAddress DestDataRange { get; set; }
@@ -85,7 +90,7 @@ namespace ExcelCreatorV
             //All the rows copied from the origin to the dest will be shifted 
 
             (OffsetRow, OffsetCol) = FindSheetCodePosition(SheetDb, OriginSheet);
-            OffsetRowIns = OffsetRow;
+            //OffsetRowIns = OffsetRow;
 
             var templateOrTable = GetTableOrTemplate(SheetDb);
 
@@ -137,21 +142,16 @@ namespace ExcelCreatorV
             //After populating the tables, adjust column width xxx           
             ExcelHelperFunctions.SetColumnsWidth(DestSheet, SheetDb.IsOpenTable, StartColDestIdx, EndColDestIdx, DestDataRange.FirstRow, DestDataRange.LastRow);
 
-
-
-            WriteSheetTopTitlesAndZet();//this must be last because it insert rows and messes up the offsetrow
-
-            //*** the old merged
-            //MergeRegions();//need to take care of inserted rows and offset row
-
-
             // do NOT copy any merges after data range. There are many tables in the sheet.
             //**********************************
             var lastRowToMerge = OrgDataRange.FirstRow;
-            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRowIns, -OffsetCol);
+            //ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRow, -OffsetCol);
             //****************************************
 
-
+            var addedLines = WriteSheetTopTitlesAndZetNew();//this must be last because it insert rows and messes up the offsetrow
+            //apply merge after shifting rows. it is a bug
+            var oof = OffsetRow + addedLines;
+            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -addedLines, -OffsetCol);
 
             DestSheet.SetZoom(80);
 
@@ -219,33 +219,6 @@ namespace ExcelCreatorV
             }
 
 
-
-
-            //void MergeRegionsOldxxx()
-            //{
-            //    // If there are are any merged regions in the source row, copy to new row
-            //    foreach (var orgMerged in OriginSheet.MergedRegions)
-            //    {
-            //        // do NOT copy any merges after data range. There are many tables in the sheet.
-            //        if (orgMerged.FirstRow >= OrgDataRange.FirstRow)
-            //        {
-            //            continue;
-            //        }
-
-            //        var destMerged = new CellRangeAddress(orgMerged.FirstRow - OffsetRowIns, orgMerged.LastRow - OffsetRowIns, orgMerged.FirstColumn - OffsetCol, orgMerged.LastColumn - OffsetCol);
-
-            //        try
-            //        {
-
-            //            DestSheet.AddMergedRegion(destMerged);
-            //        }
-            //        catch
-            //        {
-            //            //nothing really
-            //        }
-
-            //    }
-            //}
 
             void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum)
             {
@@ -410,7 +383,7 @@ namespace ExcelCreatorV
         }
 
 
-        void WriteSheetTopTitlesAndZet()
+        void WriteSheetTopTitlesAndZetOld()
         {
 
             //at the top of each sheet             
@@ -429,20 +402,20 @@ namespace ExcelCreatorV
             var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
 
 
-            var sheetCodeCell = InsertRowCell(0, 0, SheetDb.TableCode);
+            var sheetCodeCell = WriteInClearRow(0, 0, SheetDb.TableCode);
             sheetCodeCell.CellStyle = WorkbookStyles.TitleH2Style;
 
-            var titleCell = InsertRowCell(1, 0, templateLabel);
+            var titleCell = WriteInClearRow(1, 0, templateLabel);
             titleCell.CellStyle = WorkbookStyles.TitleH2Style;
 
-            var subTitleCell = InsertRowCell(2, 0, table.TableLabel);
+            var subTitleCell = WriteInClearRow(2, 0, table.TableLabel);
             subTitleCell.CellStyle = WorkbookStyles.TitleH2Style;
 
 
             var emptyRowIdx = 3;
             DestSheet.ShiftRows(emptyRowIdx, DestSheet.LastRowNum, 1);
-            OffsetRowIns -= 1;
-            InsertRowCell(3, 0, "");
+            OffsetRowInsToDelete -= 1;
+            WriteInClearRow(3, 0, "");
 
 
             //write the zet values of the sheet
@@ -461,15 +434,15 @@ namespace ExcelCreatorV
                 var member = connectionEiopa.QueryFirstOrDefault<MMember>(sqlMember, new { memCode = zetDim.Value }) ?? new MMember();
                 var activeRowIdx = emptyRowIdx + 1 + i;
                 DestSheet.ShiftRows(activeRowIdx, DestSheet.LastRowNum, 1);
-                OffsetRowIns -= 1;
-                updateCell(activeRowIdx, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
-                updateCell(activeRowIdx, 1, $"{member.MemberLabel}");
+                OffsetRowInsToDelete -= 1;
+                WriteInClearRow(activeRowIdx, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
+                WriteInClearRow(activeRowIdx, 1, $"{member.MemberLabel}");
             }
 
             var afterZetIdx = emptyRowIdx + sheetZetDims.Count + 1;
             DestSheet.ShiftRows(afterZetIdx, DestSheet.LastRowNum, 1);
-            OffsetRowIns -= 1;
-            InsertRowCell(afterZetIdx, 0, "");
+            OffsetRowInsToDelete -= 1;
+            WriteInClearRow(afterZetIdx, 0, "");
 
 
             //remove rows above 6th row from the datarange. 
@@ -498,14 +471,15 @@ namespace ExcelCreatorV
             if (linesToDelete > 0)
             {
                 DestSheet.ShiftRows(startDel + linesToDelete, DestSheet.LastRowNum, -linesToDelete);
-                OffsetRowIns += linesToDelete;
+                OffsetRowInsToDelete += linesToDelete;
             }
 
             clearSubtitle(subTitleCell, afterZetIdx);
 
+
             return;
 
-            ICell InsertRowCell(int row, int col, string val)
+            ICell WriteInClearRow(int row, int col, string val)
             {
                 var rowLine = DestSheet.GetRow(row);
                 if (rowLine is not null)
@@ -535,12 +509,145 @@ namespace ExcelCreatorV
                 {
                     var cellval = DestSheet?.GetRow(i)?.GetCell(0);
                     if (cellval is not null && cellval?.ToString().Trim() == subtitleTrim)
-                    {                        
+                    {
                         DestSheet.GetRow(i).RemoveCell(cellval);
                     }
                 }
             }
         }
+
+
+        int WriteSheetTopTitlesAndZetNew()
+        {
+
+            //at the top of each sheet             
+            //-- write the sheetcode,  titles
+            //-- write all the Z values of the sheet  
+            // the shift function shifts also the starting row
+            var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            //******************************************************
+            //Shift the area below sheetcode to have a fixed row position of the datarange in the dest sheet
+            //Actually we have two different fixed positions. the long one is applied when sheets has more than 3 dims
+            var sqlZet = @"select sheet.Dim,sheet.Value from SheetZetValue sheet where sheet.TemplateSheetId = @sheetId";
+            var sheetZetDims = connectionInsurance.Query<SheetZetValue>(sqlZet, new { sheetId = SheetDb.TemplateSheetId }).ToList();
+
+            var zetDimsCount = Math.Min(sheetZetDims.Count, 6);
+            var destFixedDataRow = zetDimsCount > 3 ? DestDataRowPositionLong : DestDataRowPositionShort;
+            var rowsToShift = destFixedDataRow - DestDataRange.FirstRow;    
+            if(rowsToShift > 0)
+            {
+                 DestSheet.ShiftRows(DestSheet.FirstRowNum + 1, DestSheet.LastRowNum, rowsToShift);
+            }
+            
+            //************************************************
+
+
+            var sqlTab = @"select tab.TableLabel, tab.TableCode from mTable tab where tab.TableID = @tableId";
+            var table = connectionEiopa.QuerySingleOrDefault<MTable>(sqlTab, new { tableId = SheetDb.TableID });
+
+            var tableCodeList = table.TableCode.Split(".").Take(4);
+            var templateCode = string.Join(".", tableCodeList);
+            var sqlTemplate = @"select  TemplateOrTableLabel from mTemplateOrTable tt where tt.TemplateOrTableCode = @templateCode ";
+            var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
+
+
+            var sheetCodeCell = WriteCellInRow(0, 0, SheetDb.TableCode);
+            sheetCodeCell.CellStyle = WorkbookStyles.TitleH2Style;
+
+            var titleCell = WriteCellInRow(1, 0, templateLabel);
+            titleCell.CellStyle = WorkbookStyles.TitleH2Style;
+
+            var subTitleCell = WriteCellInRow(2, 0, table.TableLabel);
+            subTitleCell.CellStyle = WorkbookStyles.TitleH2Style;
+
+            var emptyRowIdx = 3;            
+            WriteCellInRow(3, 0, "");
+
+            
+
+            for (var i = 0; i < sheetZetDims.Count; i++)
+            {
+                var zetDim = sheetZetDims[i];
+                var sqlMember = @"
+                        select 
+                         mem.MemberXBRLCode , mem.MemberLabel 
+                         from mMember mem 
+                        join mDomain dom on dom.DomainID=mem.DomainID
+                        where mem.MemberXBRLCode = @memCode";
+
+                var member = connectionEiopa.QueryFirstOrDefault<MMember>(sqlMember, new { memCode = zetDim.Value }) ?? new MMember();                
+                WriteCellInRow(emptyRowIdx+1+i, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
+                updateCell(emptyRowIdx+1+i, 1, $"{member.MemberLabel}");
+            }
+                     
+
+            //remove rows above 6th row from the datarange. 
+            //for some tables we need to leave some additinal lines above the datarange. For example for  "S.20.01.01.01" leave 8 lines intact
+            var specialTables = new Dictionary<string, int>()
+            {
+                { "S.25.01.01.01",7},
+                { "S.25.01.01.03",7},
+                { "S.25.01.01.04",7},
+                { "S.29.03.01.01",7},
+                { "S.29.03.01.03",7},
+            }; 
+
+            var linesToSpare = 5;
+            if (specialTables.ContainsKey(table.TableCode))
+            {
+                linesToSpare = specialTables[table.TableCode];
+            }
+            var rowsToDelete = destFixedDataRow -  (emptyRowIdx + zetDimsCount) - linesToSpare;
+            ExcelHelperFunctions.ClearRows(DestSheet, emptyRowIdx + 1 + zetDimsCount, rowsToDelete );
+            
+            
+
+           
+            clearSubtitle(subTitleCell, emptyRowIdx, destFixedDataRow -3);
+
+            return rowsToShift;
+
+            ICell WriteCellInRow(int row, int col, string val)
+            {
+                var rowLine = DestSheet.GetRow(row);
+
+                if (rowLine is not null)
+                {
+                    DestSheet.RemoveRow(rowLine);
+                }
+                rowLine = DestSheet.CreateRow(row);
+                var cell = rowLine.CreateCell(col);
+                cell.SetCellValue($"{val}");
+                return cell;
+            }
+
+            ICell updateCell(int row, int col, string val)
+            {
+                var rowLine = DestSheet.GetRow(row) ?? DestSheet.CreateRow(row);
+                var cell = rowLine.GetCell(col) ?? rowLine.CreateCell(col);
+                cell.SetCellValue($"{val}");
+                return cell;
+            }
+
+            void clearSubtitle(ICell subTitleCell, int startingIdx, int endIdx)
+            {
+                var subtitleTrim = subTitleCell?.ToString()?.Trim();
+                if (subtitleTrim is null) return;
+
+                for (var i = startingIdx; i <= endIdx; i++)
+                {
+                    var cellval = DestSheet?.GetRow(i)?.GetCell(0);
+                    if (cellval is not null && cellval?.ToString().Trim() == subtitleTrim)
+                    {
+                        DestSheet?.GetRow(i)?.RemoveCell(cellval);
+                    }
+                }
+            }
+        }
+
+        
 
 
         private void WriteFactZetLabels(List<string> factZetList)
@@ -771,7 +878,7 @@ namespace ExcelCreatorV
             //it only specifies the first row which help us to find the row wich has the column labels
             //instead, read all the distinct rows from the FACTs if the table is open
 
-            var rowIndexWithColumnLabels = OrgDataRange.FirstRow - 1;
+            var rowWithColumnLabelsIdx = OrgDataRange.FirstRow - 1;
             var rowWithcolumnLabels = OriginSheet.GetRow(OrgDataRange.FirstRow - 1);
             var firstColumnIndex = FindFirstColumnOpenTable(rowWithcolumnLabels, OrgDataRange.LastColumn);
 
@@ -784,14 +891,14 @@ namespace ExcelCreatorV
             foreach (var rowLabel in rowLabels)
             {
                 lines++;
-                var destRowIndex = rowIndexWithColumnLabels + 1 - OffsetRow + rowIndex;
+                var destRowIndex = rowWithColumnLabelsIdx + 1 - OffsetRow + rowIndex;
                 var destRow = DestSheet.GetRow(destRowIndex);
                 destRow ??= DestSheet.CreateRow(destRowIndex);
                 Console.Write("!");
 
                 for (var x = firstColumnIndex; x <= OrgDataRange.LastColumn; x++)
                 {
-                    var colLabel = OriginSheet.GetRow(rowIndexWithColumnLabels).GetCell(x).StringCellValue;    //from origin therefore no shifting                  
+                    var colLabel = OriginSheet.GetRow(rowWithColumnLabelsIdx).GetCell(x).StringCellValue;    //from origin therefore no shifting                  
                     var colIndex = x + OffsetCol;
 
                     var lbl = $"{rowIndex}={rowLabel},{colIndex}={colLabel}";

@@ -121,10 +121,13 @@ namespace ExcelCreatorV
             foreach (var tabSheetName in tabSheetNames)
             {
                 var shIdx= ExcelBook.GetSheetIndex(tabSheetName);
+                if(shIdx == -1)
+                {
+                    continue;
+                }
                 ExcelBook.RemoveAt(shIdx);
                 var shrIdx = SheetRecords.First(r => r.TabSheetName == tabSheetName);
-                SheetRecords.Remove(shrIdx);
-                //SheetRecords = SheetRecords.Where(r => r.TabSheetName != tabSheetName).ToList();
+                SheetRecords.Remove(shrIdx);                
             }            
         }
 
