@@ -367,5 +367,17 @@ namespace ExcelCreatorV
             return debugViewLine;
         }
 
+        public static void CreateHyperLink(ISheet sheet,WorkbookStyles workbookStyles)
+        {
+            var link = new XSSFHyperlink(HyperlinkType.Document)
+            {
+                Address = @$"'List'!A1"
+            };
+            var leftCell = sheet.GetRow(0).GetCell(0);
+
+            leftCell.Hyperlink = link;
+            leftCell.CellStyle = workbookStyles.HyperStyle;
+        }
+
     }
 }

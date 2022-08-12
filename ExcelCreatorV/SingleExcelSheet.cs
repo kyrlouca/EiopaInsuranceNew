@@ -44,15 +44,12 @@ namespace ExcelCreatorV
         public int StartColDestIdx { get; set; }
         public int EndColDestIdx { get; set; }
 
-
         public WorkbookStyles WorkbookStyles { get; }
 
         //static int DefaultColumnSizeClosed { get; } = 5500;
         //static int DefaultColumnSizeOpen { get; } = 5300;
         //static int MaxLabelSize { get; } = 17000;
         public bool isTesting = false;
-
-
 
         public SingleExcelSheet(string solvencyVersion, XSSFWorkbook excelTemplateBook, WorkbookStyles workbookStyles, XSSFWorkbook destExcelBook, TemplateSheetInstance sheetDb)
         {
@@ -65,8 +62,6 @@ namespace ExcelCreatorV
             ConfigObject = Configuration.GetInstance(solvencyVersion).Data;
 
         }
-
-
 
         public int FillSingleExcelSheet()
         {
@@ -155,23 +150,12 @@ namespace ExcelCreatorV
 
             DestSheet.SetZoom(80);
 
-            CreateHyperLink();
+            ExcelHelperFunctions.CreateHyperLink(DestSheet,WorkbookStyles);
             var yx = DestExcelBook.NumCellStyles;
 
 
             return lines;
 
-            void CreateHyperLink()
-            {
-                var link = new XSSFHyperlink(HyperlinkType.Document)
-                {
-                    Address = @$"'List'!A1"
-                };
-                var leftCell = DestSheet.GetRow(0).GetCell(0);
-
-                leftCell.Hyperlink = link;
-                leftCell.CellStyle = WorkbookStyles.HyperStyle;
-            }
 
             static string CopyCellToDestination(ICell originCell, ICell destCell)
             {
@@ -381,141 +365,7 @@ namespace ExcelCreatorV
 
 
         }
-
-
-        void WriteSheetTopTitlesAndZetOld()
-        {
-
-            //at the top of each sheet             
-            //-- write the sheetcode,  titles
-            //-- write all the Z values of the sheet  
-            // the shift function shifts also the starting row
-            var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-
-            var sqlTab = @"select tab.TableLabel, tab.TableCode from mTable tab where tab.TableID = @tableId";
-            var table = connectionEiopa.QuerySingleOrDefault<MTable>(sqlTab, new { tableId = SheetDb.TableID });
-
-            var tableCodeList = table.TableCode.Split(".").Take(4);
-            var templateCode = string.Join(".", tableCodeList);
-            var sqlTemplate = @"select  TemplateOrTableLabel from mTemplateOrTable tt where tt.TemplateOrTableCode = @templateCode ";
-            var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
-
-
-            var sheetCodeCell = WriteInClearRow(0, 0, SheetDb.TableCode);
-            sheetCodeCell.CellStyle = WorkbookStyles.TitleH2Style;
-
-            var titleCell = WriteInClearRow(1, 0, templateLabel);
-            titleCell.CellStyle = WorkbookStyles.TitleH2Style;
-
-            var subTitleCell = WriteInClearRow(2, 0, table.TableLabel);
-            subTitleCell.CellStyle = WorkbookStyles.TitleH2Style;
-
-
-            var emptyRowIdx = 3;
-            DestSheet.ShiftRows(emptyRowIdx, DestSheet.LastRowNum, 1);
-            OffsetRowInsToDelete -= 1;
-            WriteInClearRow(3, 0, "");
-
-
-            //write the zet values of the sheet
-            var sqlZet = @"select sheet.Dim,sheet.Value from SheetZetValue sheet where sheet.TemplateSheetId = @sheetId";
-            var sheetZetDims = connectionInsurance.Query<SheetZetValue>(sqlZet, new { sheetId = SheetDb.TemplateSheetId }).ToList();
-            for (var i = 0; i < sheetZetDims.Count; i++)
-            {
-                var zetDim = sheetZetDims[i];
-                var sqlMember = @"
-                        select 
-                         mem.MemberXBRLCode , mem.MemberLabel 
-                         from mMember mem 
-                        join mDomain dom on dom.DomainID=mem.DomainID
-                        where mem.MemberXBRLCode = @memCode";
-
-                var member = connectionEiopa.QueryFirstOrDefault<MMember>(sqlMember, new { memCode = zetDim.Value }) ?? new MMember();
-                var activeRowIdx = emptyRowIdx + 1 + i;
-                DestSheet.ShiftRows(activeRowIdx, DestSheet.LastRowNum, 1);
-                OffsetRowInsToDelete -= 1;
-                WriteInClearRow(activeRowIdx, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
-                WriteInClearRow(activeRowIdx, 1, $"{member.MemberLabel}");
-            }
-
-            var afterZetIdx = emptyRowIdx + sheetZetDims.Count + 1;
-            DestSheet.ShiftRows(afterZetIdx, DestSheet.LastRowNum, 1);
-            OffsetRowInsToDelete -= 1;
-            WriteInClearRow(afterZetIdx, 0, "");
-
-
-            //remove rows above 6th row from the datarange. 
-            //for some tables we need to leave some additinal lines above the datarange. For example for  "S.20.01.01.01" leave 8 lines intact
-            var specialTables = new Dictionary<string, int>()
-            {
-                { "S.25.01.01.01",7},
-                { "S.25.01.01.03",7},
-                { "S.25.01.01.04",7},
-                { "S.29.03.01.01",7},
-                { "S.29.03.01.03",7},
-            };
-
-            var linesToSpare = 5;
-            if (specialTables.ContainsKey(table.TableCode))
-            {
-                linesToSpare = specialTables[table.TableCode];
-            }
-
-            //remove deleting rows after the zet lines 
-            //delete until 6 lines above the datarange first line
-            var startDel = afterZetIdx + 1;
-            var updatedDataPos = DestDataRange.FirstRow + 1 + sheetZetDims.Count + 1; //count the lines inserted
-
-            var linesToDelete = updatedDataPos - startDel - linesToSpare;
-            if (linesToDelete > 0)
-            {
-                DestSheet.ShiftRows(startDel + linesToDelete, DestSheet.LastRowNum, -linesToDelete);
-                OffsetRowInsToDelete += linesToDelete;
-            }
-
-            clearSubtitle(subTitleCell, afterZetIdx);
-
-
-            return;
-
-            ICell WriteInClearRow(int row, int col, string val)
-            {
-                var rowLine = DestSheet.GetRow(row);
-                if (rowLine is not null)
-                {
-                    DestSheet.RemoveRow(rowLine);
-                }
-                rowLine = DestSheet.CreateRow(row);
-                var cell = rowLine.CreateCell(col);
-                cell.SetCellValue($"{val}");
-                return cell;
-            }
-
-            ICell updateCell(int row, int col, string val)
-            {
-                var rowLine = DestSheet.GetRow(row) ?? DestSheet.CreateRow(row);
-                var cell = rowLine.GetCell(col) ?? rowLine.CreateCell(col);
-                cell.SetCellValue($"{val}");
-                return cell;
-            }
-
-            void clearSubtitle(ICell subTitleCell, int startingIdx)
-            {
-                var subtitleTrim = subTitleCell?.ToString()?.Trim();
-                if (subtitleTrim is null) return;
-
-                for (var i = startingIdx; i < startingIdx + 4; i++)
-                {
-                    var cellval = DestSheet?.GetRow(i)?.GetCell(0);
-                    if (cellval is not null && cellval?.ToString().Trim() == subtitleTrim)
-                    {
-                        DestSheet.GetRow(i).RemoveCell(cellval);
-                    }
-                }
-            }
-        }
-
+        
 
         int WriteSheetTopTitlesAndZetNew()
         {
@@ -528,19 +378,19 @@ namespace ExcelCreatorV
             var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
             //******************************************************
-            //Shift the area below sheetcode to have a fixed row position of the datarange in the dest sheet
+            //the first row of the datarange should be always fixed
+            //therefore, insert a few rows (ShiftRows) below the sheetcode 
             //Actually we have two different fixed positions. the long one is applied when sheets has more than 3 dims
             var sqlZet = @"select sheet.Dim,sheet.Value from SheetZetValue sheet where sheet.TemplateSheetId = @sheetId";
             var sheetZetDims = connectionInsurance.Query<SheetZetValue>(sqlZet, new { sheetId = SheetDb.TemplateSheetId }).ToList();
 
             var zetDimsCount = Math.Min(sheetZetDims.Count, 6);
             var destFixedDataRow = zetDimsCount > 3 ? DestDataRowPositionLong : DestDataRowPositionShort;
-            var rowsToShift = destFixedDataRow - DestDataRange.FirstRow;    
-            if(rowsToShift > 0)
+            var rowsToShift = destFixedDataRow - DestDataRange.FirstRow;
+            if (rowsToShift > 0)
             {
-                 DestSheet.ShiftRows(DestSheet.FirstRowNum + 1, DestSheet.LastRowNum, rowsToShift);
+                DestSheet.ShiftRows(DestSheet.FirstRowNum + 1, DestSheet.LastRowNum, rowsToShift);
             }
-            
             //************************************************
 
 
@@ -552,7 +402,6 @@ namespace ExcelCreatorV
             var sqlTemplate = @"select  TemplateOrTableLabel from mTemplateOrTable tt where tt.TemplateOrTableCode = @templateCode ";
             var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
 
-
             var sheetCodeCell = WriteCellInRow(0, 0, SheetDb.TableCode);
             sheetCodeCell.CellStyle = WorkbookStyles.TitleH2Style;
 
@@ -562,10 +411,9 @@ namespace ExcelCreatorV
             var subTitleCell = WriteCellInRow(2, 0, table.TableLabel);
             subTitleCell.CellStyle = WorkbookStyles.TitleH2Style;
 
-            var emptyRowIdx = 3;            
+            var emptyRowIdx = 3;
             WriteCellInRow(3, 0, "");
 
-            
 
             for (var i = 0; i < sheetZetDims.Count; i++)
             {
@@ -577,14 +425,13 @@ namespace ExcelCreatorV
                         join mDomain dom on dom.DomainID=mem.DomainID
                         where mem.MemberXBRLCode = @memCode";
 
-                var member = connectionEiopa.QueryFirstOrDefault<MMember>(sqlMember, new { memCode = zetDim.Value }) ?? new MMember();                
-                WriteCellInRow(emptyRowIdx+1+i, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
-                updateCell(emptyRowIdx+1+i, 1, $"{member.MemberLabel}");
+                var member = connectionEiopa.QueryFirstOrDefault<MMember>(sqlMember, new { memCode = zetDim.Value }) ?? new MMember();
+                WriteCellInRow(emptyRowIdx + 1 + i, 0, $"{sheetZetDims[i].Dim.Trim()} -- {sheetZetDims[i].Value.Trim()}");
+                updateCell(emptyRowIdx + 1 + i, 1, $"{member.MemberLabel}");
             }
-                     
 
-            //remove rows above 6th row from the datarange. 
-            //for some tables we need to leave some additinal lines above the datarange. For example for  "S.20.01.01.01" leave 8 lines intact
+            //clear the rows above the first title row (up to the z rows)
+            //for some tables we need to leave some additinal lines above the titles. For example for  "S.25.01.01.01" leave 7 lines intact
             var specialTables = new Dictionary<string, int>()
             {
                 { "S.25.01.01.01",7},
@@ -592,20 +439,17 @@ namespace ExcelCreatorV
                 { "S.25.01.01.04",7},
                 { "S.29.03.01.01",7},
                 { "S.29.03.01.03",7},
-            }; 
+            };
 
-            var linesToSpare = 5;
+            var linesToSpare = 5; //includes the column row and the title rows above the datarange
             if (specialTables.ContainsKey(table.TableCode))
             {
                 linesToSpare = specialTables[table.TableCode];
             }
-            var rowsToDelete = destFixedDataRow -  (emptyRowIdx + zetDimsCount) - linesToSpare;
-            ExcelHelperFunctions.ClearRows(DestSheet, emptyRowIdx + 1 + zetDimsCount, rowsToDelete );
-            
-            
+            var rowsToDelete = destFixedDataRow - (emptyRowIdx + zetDimsCount) - linesToSpare;
+            ExcelHelperFunctions.ClearRows(DestSheet, emptyRowIdx + 1 + zetDimsCount, rowsToDelete);
 
-           
-            clearSubtitle(subTitleCell, emptyRowIdx, destFixedDataRow -3);
+            clearSubtitle(subTitleCell, emptyRowIdx, destFixedDataRow - 3);
 
             return rowsToShift;
 
@@ -647,10 +491,7 @@ namespace ExcelCreatorV
             }
         }
 
-        
-
-
-        private void WriteFactZetLabels(List<string> factZetList)
+        private void WriteMultiZetFactLabels(List<string> factZetList)
         {
             //Normally facts have a row and col
             //But some tables such as S.02.02.01.02 have facts which have an additional zet (for currency for example)
@@ -674,14 +515,10 @@ namespace ExcelCreatorV
             for (var i = 0; i < factZetList.Count; i++)
             {
                 var colIdx = DestDataRange.FirstColumn + i;
-                var zetLabelCell = zetRow.GetCell(colIdx)
-                    ?? zetRow.CreateCell(colIdx);
-
-
+                var zetLabelCell = zetRow.GetCell(colIdx) ?? zetRow.CreateCell(colIdx);
                 var zetLabel = GetDomainLabel(factZetList[i]);
-                //zetLabelCell.SetCellValue(DimDom.GetParts(factZetList[i]).DomValue); //GBP
+                
                 zetLabelCell.SetCellValue(zetLabel); //GBP
-
 
                 zetLabelCell.CellStyle = WorkbookStyles.ColumnLabelStyle;
                 if (i == 0)
@@ -695,7 +532,6 @@ namespace ExcelCreatorV
 
             }
         }
-
 
         private void SetGlobalDestStartColumnIdx()
         {
@@ -727,7 +563,7 @@ namespace ExcelCreatorV
             var rowofColumnLabelsIdx = OrgDataRange.FirstRow - 1;
             var rowOfColumnLabels = OriginSheet.GetRow(rowofColumnLabelsIdx);
 
-            WriteFactZetLabels(factZetList);//if facts have more than on zet then write the z on top of col labels
+            WriteMultiZetFactLabels(factZetList);//if facts have more than on zet then write the z on top of col labels
 
 
             //go through each ROW
@@ -867,8 +703,6 @@ namespace ExcelCreatorV
             return lines;
         }
 
-
-
         int UpdateOpenTableValues()
         {
             var lines = 0;
@@ -924,8 +758,6 @@ namespace ExcelCreatorV
 
             return lines;
         }
-
-
 
         private (int row, int col) FindSheetCodePosition(TemplateSheetInstance sheet, ISheet xSheet)
         {
@@ -1134,8 +966,6 @@ namespace ExcelCreatorV
             var val = connectionEiopa.QuerySingleOrDefault<string>(sqlMem, new { xbrlCode });
             return val;
         }
-
-
 
 
     }

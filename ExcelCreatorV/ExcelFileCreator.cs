@@ -98,7 +98,7 @@ namespace ExcelCreatorV
                 Console.WriteLine("valide versions: IU250, IU260");
                 return false;
             }
-            
+
 
             Document = HelperInsuranceFunctions.InsuranceData.GetDocumentById(DocumentIdInput);
             if (Document is null)
@@ -171,7 +171,7 @@ namespace ExcelCreatorV
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
-            
+
 
             var sqlSheets = @"
                 SELECT
@@ -216,7 +216,7 @@ namespace ExcelCreatorV
                 singleExcelSheets.Add(newSheet);
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
-            
+
             var IndexListSheet = new IndexSheetList(ConfigObject, DestExcelBook, WorkbookStyles, sheets, "List", "List of Templates");
 
             //---------------------------------------------------------------
@@ -252,29 +252,29 @@ namespace ExcelCreatorV
 
             }
             //---------------------------------------------------------------
-                    
+
 
             //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets            
             var bl19MergedSheets = MergeS190101("S.19.01.01", "BL");
-            
+
 
             foreach (var bl19MergedSheet in bl19MergedSheets)
             {
                 var sheetNamesToDelete = bl19MergedSheet.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                 var ss = sheetNamesToDelete
                     .Select(name => DestExcelBook.GetSheet(name)).ToList();
-                
+
                 IndexListSheet.RemoveSheets(sheetNamesToDelete);
                 IndexListSheet.AddSheet(new SheetRecord(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
             }
 
             IndexListSheet.Sort();
-            IndexListSheet.PrepareIndexSheet();            
+            IndexListSheet.PrepareIndexSheet();
             IndexListSheet.IndexSheet.SetZoom(80);
 
             DestExcelBook.SetSheetOrder("List", 0);
             DestExcelBook.SetActiveSheet(0);
-            
+
 
         }
 
@@ -304,6 +304,7 @@ namespace ExcelCreatorV
             foreach (var dimBLValue in dimBLValues)
             {
                 var mergedSheet = MergeOneBL_S1901010(tableCode, dimPivot, dimBLValue);
+                mergedSheet.TabSheet.SetZoom(80);
                 mergedSheets.Add(mergedSheet);
             }
 
@@ -359,16 +360,16 @@ namespace ExcelCreatorV
             }
 
             //**********************************************
-            //Create the Merged Sheet
-            
+            //Create the Merged Sheet  for table s.19.01.01          
 
-                var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
-                var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
+            var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
+            var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
 
-                var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
-                return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
+            var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
+            ExcelHelperFunctions.CreateHyperLink(sheetCreated, WorkbookStyles);
+            return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
+            //**********************************************
 
-            
             static bool OddTableCodeSelector(string tableCode)
             {
                 //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
@@ -415,6 +416,112 @@ namespace ExcelCreatorV
 
         }
 
+
+
+        private MergedSheet MergeS050202_123(string tableCodeS19, string dimPivot, string blDimValue)
+        {
+            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var blList = new List<List<ISheet>>();
+            
+            //the merged sheet consist of sheets 'S.15.02.01.xx, where xx is 01,02,03
+
+
+            var sqlSheetsWithBL = @"
+                    select 
+	                    sheet.TableCode, sheet.SheetCode,SheetTabName, sheet.TemplateSheetId
+                    from 
+	                    SheetZetValue sz 
+	                    join TemplateSheetInstance sheet on sheet.TemplateSheetId= sz.TemplateSheetId
+                    where 1=1 
+	                    and sheet.InstanceId= @documentId
+	                    and sheet.TableCode like 'S.19.01.01.%'
+	                    and sz.Dim='BL'
+	                    and sz.Value=@blDimValue
+                    ";
+            var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blDimValue }).ToList();
+
+
+            //find the  sheets  with odd table code
+            var blSheetsOdd = blSheets
+                .Where(sheet => OddTableCodeSelector(sheet.TableCode));
+
+            //will also get the corresponding sheets with the even tablecode
+            foreach (var blSheetOdd in blSheetsOdd)
+            {
+                //create pairs of sheets and add the pair to the blList
+                var oddSheet = DestExcelBook.GetSheet(blSheetOdd.SheetTabName.Trim());
+                var pairList = new List<ISheet>() { oddSheet };
+
+                var evenSheetTableCode = ModifyTableCode(blSheetOdd.TableCode.Trim());
+                var evenSheetDb = blSheets.FirstOrDefault(sheet => sheet.TableCode == evenSheetTableCode);
+                if (evenSheetDb != null)
+                {
+                    var evenSheet = DestExcelBook.GetSheet(evenSheetDb?.SheetTabName?.Trim());
+                    pairList.Add(evenSheet);
+                }
+
+                blList.Add(pairList);
+            }
+
+            //**********************************************
+            //Create the Merged Sheet  for table s.19.01.01          
+
+            var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
+            var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
+
+            var sheetCreated = CreateOneMergedSheet(blList, mergedSheetName);
+            ExcelHelperFunctions.CreateHyperLink(sheetCreated, WorkbookStyles);
+            return new MergedSheet(sheetCreated, mergedDimValueDescription, blSheets);
+            //**********************************************
+
+            static bool OddTableCodeSelector(string tableCode)
+            {
+                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+                if (match.Success)
+                {
+                    // "S.19.01.01.05"=> "05"
+                    var lastDigits = match.Groups[2].Captures
+                        .Select(cpt => cpt.Value[1..])
+                        .ToArray()[3];
+
+                    return int.Parse(lastDigits) % 2 != 0;
+
+                }
+                return false;
+            }
+
+
+            static string ModifyTableCode(string tableCode)
+            {
+                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
+                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
+                if (match.Success)
+                {
+                    // "S.19.01.01.05"=> "05"
+                    var lastDigits = match.Groups[2].Captures
+                        .Select(cpt => cpt.Value[1..])
+                        .ToArray();
+
+                    var incDigit = int.Parse(lastDigits[3]) + 1;
+                    var modCode = $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";
+                    return modCode;
+                }
+                return "";
+            }
+
+            static string GetDimValueDescription(ConfigObject confObject, string dimValue)
+            {
+                using var connectionEiopa = new SqlConnection(confObject.EiopaDatabaseConnectionString);
+                var sqlDimValue = "select MemberLabel from mMember mem where mem.MemberXBRLCode=@dimValue";
+                var res = connectionEiopa.QueryFirstOrDefault<MMember>(sqlDimValue, new { dimValue });
+                return res is null ? "" : res.MemberLabel;
+            }
+
+        }
+
+
+
         private ISheet CreateOneMergedSheet(List<List<ISheet>> sheetsToMerge, string destSheetName)
         {
 
@@ -428,7 +535,7 @@ namespace ExcelCreatorV
             var rowOffset = 0;
             foreach (var sheetList in sheetsToMerge)
             {
-                AppendHorizontalSheets(sheetList, destSheet, rowOffset);
+                AppendHorizontalSheets(sheetList, destSheet, rowOffset,0);
                 rowOffset = destSheet.LastRowNum + rowGap;
             }
 
@@ -436,15 +543,15 @@ namespace ExcelCreatorV
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
             for (int i = firstRow.FirstCellNum; i <= firstRow.LastCellNum; i++)
             {
-                destSheet.SetColumnWidth(i, 4000);
+                destSheet.SetColumnWidth(i, 4500);
             }
             return destSheet;
         }
 
-        private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset)
+        private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset,int colGap)
         {
             //add each sheet in the list  HORIZONTALLY one after the other
-            var colGap = 2;
+            //var colGap = 2;
             var totalColOffset = 0;
             foreach (var childSheet in sheetsToMerge)
             {
