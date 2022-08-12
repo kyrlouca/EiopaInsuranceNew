@@ -150,8 +150,8 @@ namespace ExcelCreatorV
 
             var addedLines = WriteSheetTopTitlesAndZetNew();//this must be last because it insert rows and messes up the offsetrow
             //apply merge after shifting rows. it is a bug
-            var oof = OffsetRow + addedLines;
-            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -addedLines, -OffsetCol);
+            var finalRowOffset = OffsetRow - addedLines;
+            ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -finalRowOffset, -OffsetCol);
 
             DestSheet.SetZoom(80);
 

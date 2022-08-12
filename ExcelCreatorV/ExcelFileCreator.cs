@@ -32,8 +32,8 @@ namespace ExcelCreatorV
 
     public class ExcelFileCreator
     {
-        //public string DebugTableCode { get; set; } = "S.23.01.01.01";
-        public string DebugTableCode { get; set; } = "S.18.01.01.01";
+        //public string DebugTableCode { get; set; } = "S.29.04.01.01";
+        public string DebugTableCode { get; set; } = "";
 
         public ConfigObject ConfigObject { get; private set; }
 

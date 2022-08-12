@@ -257,8 +257,8 @@ namespace ExcelCreatorV
 
                 var orgRow = originSheet.GetRow(orgMerged.FirstRow);
                 var destRow= destSheet.GetRow( orgMerged.FirstRow+destRowOffset);
-                var orgRowView = ExcelHelperFunctions.ShowRowContents(destRow);
-                var destRowView = ExcelHelperFunctions.ShowRowContents(orgRow);
+                var orgRowView = ExcelHelperFunctions.ShowRowContents(orgRow);
+                var destRowView = ExcelHelperFunctions.ShowRowContents(destRow);
                 var destMerged = new CellRangeAddress(orgMerged.FirstRow + destRowOffset, orgMerged.LastRow + destRowOffset, orgMerged.FirstColumn + destColOffset, orgMerged.LastColumn + destColOffset);
 
                 try
@@ -358,7 +358,11 @@ namespace ExcelCreatorV
 
         public static string ShowRowContents(IRow row)
         {
-            var debugCells = row?.Cells?.Select(cell => cell?.ToString()).ToArray() ?? Array.Empty<string>();
+            if(row is null)
+            {
+                return "null row";
+            }
+            var debugCells = row.Cells.Select(cell => cell?.ToString()??"").ToArray() ?? Array.Empty<string>();
             var debugViewLine = string.Join("#", debugCells);
             return debugViewLine;
         }
