@@ -349,9 +349,9 @@ namespace ExcelCreatorV
                 {
                     continue;
                 }
-                //var rowCols = row.LastCellNum; cannot use because we might have empty cells at the end                
-                var rowCols = row.Cells.LastOrDefault(cell => string.IsNullOrEmpty(cell.ToString()))?.ColumnIndex ?? 0;
-                maxCols = Math.Max(maxCols, rowCols);
+                //var lastNonEmpty = row.Cells.LastOrDefault(cell => !string.IsNullOrEmpty(cell.ToString()));
+                var numberOfCols = row.Cells.Count;                    
+                maxCols = Math.Max(maxCols, numberOfCols);
             }
             return maxCols;
         }

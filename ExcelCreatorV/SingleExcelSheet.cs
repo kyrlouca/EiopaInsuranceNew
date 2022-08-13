@@ -25,7 +25,7 @@ namespace ExcelCreatorV
         public XSSFWorkbook DestExcelBook { get; private set; }
         public ConfigObject ConfigObject { get; private set; }
 
-        public ISheet DestSheet { get; set; }
+        public ISheet? DestSheet { get; set; }
         public ISheet OriginSheet { get; set; }
         public CellRangeAddress OrgDataRange { get; set; }
         public CellRangeAddress? OrgExtendedRange;
@@ -56,32 +56,27 @@ namespace ExcelCreatorV
 
             SheetDb = sheetDb;
             ConfigObject = Configuration.GetInstance(solvencyVersion).Data;
+            var originSheetName = SheetDb.TableCode.Split(".").ToList().GetRange(0, 4); //excel sheet tabs have only tηe  first 4 parts of the sheet code
+            var filingSheetCode = string.Join(".", originSheetName).Trim();
+
+            OriginSheet = ExcelTemplateBook.GetSheet(filingSheetCode);            
 
         }
 
         public int FillSingleExcelSheet()
         {
-
             //Table mTemplateOrTable has the field TD which defines the range of data. For Open tables only the first Row            
             //First, copy the extended range which starts from the left corner where the "SheetCode" is  up to the last cell of the dataRange
             //The copied range in the destination sheet  will start from ZERO point at the dest sheet
-            //Then, fill the values of the *datarange* which will start from zero in the dest sheet 
+            //Then, fill the values of the *datarange* which will start from zero in the dest sheet             
 
             var lines = 0;
 
-            var originSheetName = SheetDb.TableCode.Split(".").ToList().GetRange(0, 4); //excel sheet tabs have only tηe  first 4 parts of the sheet code
-            var filingSheetCode = string.Join(".", originSheetName).Trim();
-
-            OriginSheet = ExcelTemplateBook.GetSheet(filingSheetCode);
-            if (OriginSheet is null)
-            {
-                return 0;
-            }
+            //*************************************
             //sheetCodePosition is shifted to the top left corner ( row= and col=0 col) in the destination excel sheet.
             //All the rows copied from the origin to the dest will be shifted 
 
-            (OffsetRow, OffsetCol) = FindSheetCodePosition(SheetDb, OriginSheet);
-            //OffsetRowIns = OffsetRow;
+            (OffsetRow, OffsetCol) = FindSheetCodePosition(SheetDb, OriginSheet);            
 
             var templateOrTable = GetTableOrTemplate(SheetDb);
 
@@ -344,6 +339,10 @@ namespace ExcelCreatorV
 
         int WriteSheetTopTitlesAndZetNew()
         {
+            if(DestSheet is null)
+            {
+                return 0;
+            }
 
             //at the top of each sheet             
             //-- write the sheetcode,  titles
@@ -483,7 +482,7 @@ namespace ExcelCreatorV
             }
 
             //two rows above because 1 row above are the col labels
-            var zetRow = DestSheet.GetRow(DestDataRange.FirstRow - 2)
+            var zetRow = DestSheet?.GetRow(DestDataRange.FirstRow - 2)
                 ?? DestSheet.CreateRow(DestDataRange.FirstRow - 2);
 
             //write the zet values as labels one row above the column labels
@@ -550,7 +549,7 @@ namespace ExcelCreatorV
                                                                                       //var rowLabel = originRow.GetCell(OrgDataRange.FirstColumn - 1)?.StringCellValue; //Get the row label (ROO10) one cell left of the data 
                 var rowLabel = orgRowLabelCell?.StringCellValue;
 
-                var destRow = DestSheet.GetRow(y - OffsetRow);
+                var destRow = DestSheet?.GetRow(y - OffsetRow);
                 if (destRow is null)
                 {
                     continue;
@@ -701,8 +700,8 @@ namespace ExcelCreatorV
             {
                 lines++;
                 var destRowIndex = rowWithColumnLabelsIdx + 1 - OffsetRow + rowIndex;
-                var destRow = DestSheet.GetRow(destRowIndex);
-                destRow ??= DestSheet.CreateRow(destRowIndex);
+                var destRow = DestSheet?.GetRow(destRowIndex);
+                destRow ??= DestSheet?.CreateRow(destRowIndex);
                 Console.Write("!");
 
                 for (var x = firstColumnIndex; x <= OrgDataRange.LastColumn; x++)
@@ -714,8 +713,8 @@ namespace ExcelCreatorV
                     var destCell = destRow?.GetCell(colIndex);
                     if (destCell is null)
                     {
-                        destCell = destRow.CreateCell(colIndex);
-                        destCell.SetCellValue("");
+                        destCell = destRow?.CreateCell(colIndex);
+                        destCell?.SetCellValue("");
                         destCell.CellStyle = WorkbookStyles.BasicBorderStyle;
                     }
 
@@ -763,7 +762,7 @@ namespace ExcelCreatorV
                         var pp = rowSelect.GetCell(j);
                         if (pp is not null)
                         {
-                            if (pp.ToString().Trim() == sheet.TableCode.Trim())
+                            if (pp?.ToString()?.Trim() == sheet.TableCode.Trim())
                             {
                                 var vv = pp.StringCellValue;
                                 var frow = i;

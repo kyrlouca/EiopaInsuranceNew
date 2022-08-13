@@ -13,12 +13,12 @@ using Dapper;
 
 namespace ExcelCreatorV
 {
-    readonly record struct SheetRecord
+    readonly record struct IndexSheetListItem
     {
         //public ISheet Sheet { get; init; }
         public string TabSheetName { get; init; }
         public string Description { get; init; }
-        public SheetRecord(string tabSheetName, string description)
+        public IndexSheetListItem(string tabSheetName, string description)
         {
             TabSheetName = tabSheetName;
             Description = description;            
@@ -32,7 +32,7 @@ namespace ExcelCreatorV
         public ISheet IndexSheet { get; internal set; }
         public string SheetName { get; init; }
         public string SheetDescription { get; init; }
-        List<SheetRecord> SheetRecords { get; set; } = new List<SheetRecord>();
+        List<IndexSheetListItem> SheetRecords { get; set; } = new List<IndexSheetListItem>();
         public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets,string sheetName, string sheetDescription)
         {
             ConfObject = confObject;
@@ -47,10 +47,10 @@ namespace ExcelCreatorV
 
 
 
-        private List<SheetRecord> CreateListOfSheets(List<TemplateSheetInstance> dbSheets)
+        private List<IndexSheetListItem> CreateListOfSheets(List<TemplateSheetInstance> dbSheets)
         {
 
-            var list = new List<SheetRecord>();
+            var list = new List<IndexSheetListItem>();
             using var connectionEiopa = new SqlConnection(ConfObject?.EiopaDatabaseConnectionString);
 
             foreach (var dbSsheet in dbSheets)
@@ -67,7 +67,7 @@ namespace ExcelCreatorV
                 var templateLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlTemplate, new { templateCode });
                 var desc = $"{templateLabel} ## {tab.TableLabel}";
 
-                list.Add(new SheetRecord(sheetName, desc));
+                list.Add(new IndexSheetListItem(sheetName, desc));
             }
             return list;
         }
@@ -107,7 +107,7 @@ namespace ExcelCreatorV
             return IndexSheet;
 
         }
-        public void AddSheet(SheetRecord sheetRecord)
+        public void AddSheet(IndexSheetListItem sheetRecord)
         {
             SheetRecords.Add(sheetRecord);
         }
@@ -133,7 +133,7 @@ namespace ExcelCreatorV
 
         public void Sort()
         {
-            SheetRecords.Sort((SheetRecord a, SheetRecord b) => string.Compare(a.TabSheetName, b.TabSheetName));            
+            SheetRecords.Sort((IndexSheetListItem a, IndexSheetListItem b) => string.Compare(a.TabSheetName, b.TabSheetName));            
             SheetRecords.ForEach(sr => ExcelBook.SetSheetOrder(sr.TabSheetName.Trim(), SheetRecords.IndexOf(sr)));
         }
     }
