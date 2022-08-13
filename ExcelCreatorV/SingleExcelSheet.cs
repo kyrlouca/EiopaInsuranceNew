@@ -15,10 +15,11 @@ using HelperInsuranceFunctions;
 
 namespace ExcelCreatorV
 {
-
-
     public class SingleExcelSheet
     {
+        public const int DestDataRowPositionShort = 13;
+        public const int DestDataRowPositionLong = 16;
+
         public TemplateSheetInstance SheetDb { get; private set; }
         public XSSFWorkbook ExcelTemplateBook { get; private set; }
         public XSSFWorkbook DestExcelBook { get; private set; }
@@ -28,11 +29,6 @@ namespace ExcelCreatorV
         public ISheet OriginSheet { get; set; }
         public CellRangeAddress OrgDataRange { get; set; }
         public CellRangeAddress? OrgExtendedRange;
-
-
-        public const int DestDataRowPositionShort = 13;
-        public const int DestDataRowPositionLong = 16;
-
 
         public int OffsetRow { get; set; }
         public int OffsetRowInsToDelete { get; set; }
@@ -101,16 +97,16 @@ namespace ExcelCreatorV
 
             DestSheet = DestExcelBook.CreateSheet(tabName);
 
+            //**********************************
+            //* copy extended range from the sheetCode  up to the last row of the original template
             CopyExtentedRange();
-
 
             SetGlobalDestStartColumnIdx();
 
             FormatColumnRow(OrgDataRange.FirstRow - OffsetRow - 1); //column row is one row above data range
 
-
-
-            //****************** CLOSED tables : Fill up the cells with values 
+            //**********************************
+            //*CLOSED tables : Fill up the cells with values 
             if (!SheetDb.IsOpenTable)
             {
                 //some facts in addition to row, col they have a pivot zet value (many facts in the same cell- kind of 3rd dimension)
@@ -123,41 +119,40 @@ namespace ExcelCreatorV
                 {
                     lines = UpdateClosedTableValues(factPivotZets);
                 }
-
-
             };
 
-            //*********** OPEN Tables :Fill the cells with values
+            //**********************************
+            //*OPEN Tables :Fill the cells with values
             if (SheetDb.IsOpenTable)
             {
                 lines = UpdateOpenTableValues();
             }
 
-
-            //After populating the tables, adjust column width xxx           
             ExcelHelperFunctions.SetColumnsWidth(DestSheet, SheetDb.IsOpenTable, StartColDestIdx, EndColDestIdx, DestDataRange.FirstRow, DestDataRange.LastRow);
 
-            // do NOT copy any merges after data range. There are many tables in the sheet.
             //**********************************
+            // do NOT copy any merges after data range.
             var lastRowToMerge = OrgDataRange.FirstRow;
-            //ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -OffsetRow, -OffsetCol);
-            //****************************************
+            
 
-            var addedLines = WriteSheetTopTitlesAndZetNew();//this must be last because it insert rows and messes up the offsetrow
-            //apply merge after shifting rows. it is a bug
+            //**********************************
+            //inserting titles must be last because it insert rows and messes up the offsetrow
+            var addedLines = WriteSheetTopTitlesAndZetNew();
+
+
+            //**********************************
+            //apply merge after shifting rows. it is a bug            
             var finalRowOffset = OffsetRow - addedLines;
             ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -finalRowOffset, -OffsetCol);
 
             DestSheet.SetZoom(80);
 
-            ExcelHelperFunctions.CreateHyperLink(DestSheet,WorkbookStyles);
+            ExcelHelperFunctions.CreateHyperLink(DestSheet, WorkbookStyles);
             var yx = DestExcelBook.NumCellStyles;
-
 
             return lines;
 
-
-            static string CopyCellToDestination(ICell originCell, ICell destCell)
+            static string CopyCellTypedValue(ICell originCell, ICell destCell)
             {
                 if (originCell is null || destCell is null)
                 {
@@ -202,18 +197,10 @@ namespace ExcelCreatorV
                 return errorMessage;
             }
 
-
-
             void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum)
             {
                 var destRow = DestSheet.CreateRow(destRowNum);
-                var xx = originRow.Cells.Select(cell => cell.ToString());
-                var x1 = string.Join(",", xx);
-                //Console.Write("-");
-                //var dCol = 0;
-
-
-
+                var debugdest=ExcelHelperFunctions.ShowRowContents(originRow);                
 
                 for (var x = OrgExtendedRange.FirstColumn; x <= OrgDataRange.LastColumn; x++) //no need to go beyond 
                 {
@@ -228,21 +215,16 @@ namespace ExcelCreatorV
                         destStyle.CloneStyleFrom(originStyle);
                         destCell.CellStyle = destStyle;
 
-                        CopyCellToDestination(originCell, destCell);
-
+                        CopyCellTypedValue(originCell, destCell);
                     }
                 }
                 return;
             }
 
-
             void CopyDataRow(IRow originRow, int originRowNum, int destRowNum)
             {
                 var destRow = DestSheet.CreateRow(destRowNum);
-                var xx = originRow.Cells.Select(cell => cell.ToString());
-                var x1 = string.Join(",", xx);
-                //Console.Write("-");
-                //var dCol = 0;
+                var debugdest = ExcelHelperFunctions.ShowRowContents(destRow);                
 
                 for (var x = OrgExtendedRange.FirstColumn; x <= OrgExtendedRange.LastColumn; x++)
                 {
@@ -257,7 +239,7 @@ namespace ExcelCreatorV
 
                         if (originCell is not null)
                         {
-                            CopyCellToDestination(originCell, destCellL);
+                            CopyCellTypedValue(originCell, destCellL);
                         }
                         else
                         {
@@ -300,10 +282,7 @@ namespace ExcelCreatorV
 
                     }
                 }
-
-
             }
-
 
             void CopyExtentedRange()
             {
@@ -331,9 +310,7 @@ namespace ExcelCreatorV
                     {
                         CopyDataRow(originRow, y, destRowNum);
                     }
-
                     var yd = DestExcelBook.NumCellStyles;
-
                 }
             }
 
@@ -363,9 +340,7 @@ namespace ExcelCreatorV
 
             }
 
-
         }
-        
 
         int WriteSheetTopTitlesAndZetNew()
         {
@@ -483,7 +458,7 @@ namespace ExcelCreatorV
                 for (var i = startingIdx; i <= endIdx; i++)
                 {
                     var cellval = DestSheet?.GetRow(i)?.GetCell(0);
-                    if (cellval is not null && cellval?.ToString().Trim() == subtitleTrim)
+                    if (cellval is not null && cellval?.ToString()?.Trim() == subtitleTrim)
                     {
                         DestSheet?.GetRow(i)?.RemoveCell(cellval);
                     }
@@ -517,7 +492,7 @@ namespace ExcelCreatorV
                 var colIdx = DestDataRange.FirstColumn + i;
                 var zetLabelCell = zetRow.GetCell(colIdx) ?? zetRow.CreateCell(colIdx);
                 var zetLabel = GetDomainLabel(factZetList[i]);
-                
+
                 zetLabelCell.SetCellValue(zetLabel); //GBP
 
                 zetLabelCell.CellStyle = WorkbookStyles.ColumnLabelStyle;
