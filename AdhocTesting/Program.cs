@@ -31,13 +31,12 @@ namespace AdhocTesting
             //ExcelValidationErrors.CreateErrorsExcelFile(9772, filename,"W");
 
 
+            var xx = Enumerable.Range(1, 10).ToArray();
+            
 
-            //var x4 = @"$c = $d - (-$e - $f + x2)";
+            var bb = 3;  
 
-            //[A-Z]{1,3}(\.\d\d){4}
-            //
-            //var xx = ModifyTableCode("S.19.01.01.05");
-            //var vv = 3;
+
 
         }
         static bool OddTableCodeSelector(string tableCode)

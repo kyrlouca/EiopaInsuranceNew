@@ -3,7 +3,9 @@ using Dapper;
 using EiopaConstants;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
+using NPOI.SS.Formula;
 using NPOI.SS.UserModel;
+using NPOI.Util.ArrayExtensions;
 using NPOI.XSSF.UserModel;
 using Serilog;
 using System;
@@ -225,9 +227,9 @@ namespace ExcelCreatorV
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {
-                IndexListSheet.AddSheet(new IndexSheetListItem("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));                
+                IndexListSheet.AddSheet(new IndexSheetListItem("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
             }
-            
+
             //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets            
             var bl19MergedSheets = MergeAllS1901("S.19.01.01", "BL");
 
@@ -240,13 +242,13 @@ namespace ExcelCreatorV
                 IndexListSheet.RemoveSheets(sheetNamesToDelete);
                 IndexListSheet.AddSheet(new IndexSheetListItem(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
             }
-            
+
 
             var S05 = MergeS05_02_01("S.05.02.01", "Premiums, claims and expenses by country");
-            S05.TabSheet.SetZoom(80);
+
             var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-            //IndexListSheet.RemoveSheets(S05ToRemove);
-            IndexListSheet.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName,S05.SheetDescription ));
+            IndexListSheet.RemoveSheets(S05SheetsToRemove);
+            IndexListSheet.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
 
             //*******************************************
             IndexListSheet.Sort();
@@ -348,6 +350,11 @@ namespace ExcelCreatorV
 
             var sheetCreated = CreateMergedSheet(blList, mergedSheetName);
             ExcelHelperFunctions.CreateHyperLink(sheetCreated, WorkbookStyles);
+
+            sheetCreated.SetColumnHidden(18, true);
+            sheetCreated.SetColumnHidden(19, true);
+
+
             return new MergedSheetRecord(sheetCreated, mergedDimValueDescription, blSheets);
             //**********************************************
 
@@ -399,7 +406,7 @@ namespace ExcelCreatorV
 
 
 
-        private MergedSheetRecord MergeS05_02_01(string mergedSheetTabName,string mergedSheetDescription)
+        private MergedSheetRecord MergeS05_02_01(string mergedSheetTabName, string mergedSheetDescription)
         {
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var blList = new List<List<ISheet>>();
@@ -412,17 +419,41 @@ namespace ExcelCreatorV
                     and sheet.TableCode in ('S.05.02.01.01','S.05.02.01.03','S.05.02.01.02')
                     ";
             var dbSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheets, new { DocumentId }).ToList();
-            var iSheets = dbSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim())).ToList();
+            var iUnsortedSheets = dbSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim())).ToList();
+            var iSheets = new List<ISheet>();
+
+            var s1 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.01");
+            if (s1 is not null) iSheets.Add(s1);
+
+            var s3 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.03");
+            if (s3 is not null) iSheets.Add(s3);
+
+            var s2 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.02");
+            if (s2 is not null) iSheets.Add(s2);
+
             blList.Add(iSheets);
 
+
             //**********************************************
-            //Create the Merged Sheet 
-            //sheetTitle = "Premiums, claims and expenses by country#Non-life obligations";
-            
+            //Create the Merged Sheet             
             var mergedSheetCreated = CreateMergedSheet(blList, mergedSheetTabName);
 
+            mergedSheetCreated.SetZoom(80);
+            if (s3 is not null)
+            {
+                mergedSheetCreated.SetColumnHidden(3, true);
+                mergedSheetCreated.SetColumnHidden(4, true);
+            }
+            if (s2 is not null && s3 is not null)
+            {
+                mergedSheetCreated.SetColumnHidden(6, true);
+                mergedSheetCreated.SetColumnHidden(7, true);
+            }
+
+
+
             ExcelHelperFunctions.CreateHyperLink(mergedSheetCreated, WorkbookStyles);
-            return new MergedSheetRecord(mergedSheetCreated, mergedSheetDescription, dbSheets);            
+            return new MergedSheetRecord(mergedSheetCreated, mergedSheetDescription, dbSheets);
 
         }
 
@@ -447,9 +478,18 @@ namespace ExcelCreatorV
 
             //set columns width            
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
-            for (int i = firstRow.FirstCellNum; i <= firstRow.LastCellNum; i++)
+            
+
+            for (int i = firstRow.FirstCellNum; i <25; i++)
             {
-                destSheet.SetColumnWidth(i, 5000);
+                var cell = firstRow.GetCell(i)??firstRow.CreateCell(i);                
+            }
+
+            destSheet.SetColumnWidth(0, 12000);
+            destSheet.SetColumnWidth(1, 2000);
+            for (var j = 2; j < firstRow.Cells.Count; j++)
+            {
+                destSheet.SetColumnWidth(j, 4000);
             }
             return destSheet;
         }
