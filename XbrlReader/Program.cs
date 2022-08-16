@@ -42,7 +42,7 @@ namespace XbrlReader
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\x6\ALTIUS INSURANCE LTD Q1 2022.xbrl
 
             (var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");            
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 99, fundIdT, "qrs", 2025, 1,filePath);            
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 0, fundIdT, "qrs", 2022, 1,filePath);            
                         
 
             Console.WriteLine("Finish");

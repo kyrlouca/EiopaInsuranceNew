@@ -149,10 +149,7 @@ namespace ConfigurationNs
         }
         public static Configuration GetInstance(string version)
         {
-            if (Instance is null)
-            {
-                Instance = new Configuration(version);
-            }
+            Instance ??= new Configuration(version);
             return Instance;
         }
     }

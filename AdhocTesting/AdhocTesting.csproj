@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
     <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
     <ProjectReference Include="..\ValidationsZ\ValidationsZ.csproj" />

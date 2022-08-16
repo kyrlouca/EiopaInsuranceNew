@@ -2,6 +2,7 @@
 using Dapper;
 using EiopaConstants;
 using EntityClasses;
+using EntityClassesZ;
 using GeneralUtilsNs;
 using HelperInsuranceFunctions;
 using Microsoft.Data.SqlClient;
@@ -10,7 +11,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using System.Xml.Schema;
 using TransactionLoggerNs;
 
 namespace XbrlReader
@@ -116,17 +119,94 @@ namespace XbrlReader
             //*************************************************
             //Parse the Xbrl File as XML
             //*************************************************
-            (var isValid, var parseMessage) = reader.ParseXmlFile();
+            (var isValidXml, var parseMessage) = reader.ParseXmlFile();
 
-            if (!isValid)
+            if (!isValidXml)
             {
                 return;
             }
 
-            //*************************************************
-            //in the future, get the lei from the xbrl 
-            //Before inserting in the database
+            var is_Test_debug = false;
+#if DEBUG
+            is_Test_debug = true;
+#endif
 
+            //****************************************************
+            //* check if the fund in xbrl is the same as fund submited by user  
+
+            var fundLei = GetXmlElementFromXbrl(reader.XmlDoc, "si1899");
+            var fundFromXml = GetFundByLei(reader.ConfigObject, fundLei);
+
+
+            if (!is_Test_debug)
+            {
+                var fundIdNew = fundFromXml?.FundId ?? -1;
+                if (fundIdNew != reader.FundId)
+                {
+                    //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
+                    var message = $"The license number used:{reader?.FundId} is incorrect.";
+                    Log.Error(message);
+                    Console.WriteLine(message);
+                    reader.UpdateDocumentStatus("E");
+                    reader.IsValidProcess = false;
+
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = reader.FundId,
+                        ModuleCode = reader.ModuleCode,
+                        ApplicableYear = reader.ApplicableYear,
+                        ApplicableQuarter = reader.ApplicableQuarter,
+                        Message = message,
+                        UserId = reader.UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = reader.DocumentId,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(solvencyVersion, trans);
+                    return;
+                }
+            }
+
+
+            var fundCategory = fundFromXml.Wave;
+            //****************************************************
+            //* check if the document was submited after the validation date  
+
+            if (!is_Test_debug && reader.UserId > 0 )// no check for fund id when testing
+            {
+                var lastValidDate = GetLastSubmissionDate(reader.ConfigObject, fundCategory, reader.ApplicableQuarter, reader.ApplicableYear);
+
+                if (lastValidDate is null || DateTime.Today > lastValidDate )
+                {
+                    var message = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
+                    Log.Error(message);
+                    Console.WriteLine(message);
+                    reader.UpdateDocumentStatus("E");
+                    reader.IsValidProcess = false;
+
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = reader.FundId,
+                        ModuleCode = reader.ModuleCode,
+                        ApplicableYear = reader.ApplicableYear,
+                        ApplicableQuarter = reader.ApplicableQuarter,
+                        Message = message,
+                        UserId = reader.UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = reader.DocumentId,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(solvencyVersion, trans);
+
+                    return;
+
+                }
+            }
+            
 
             //*************************************************
             //***Create loose facts not assigned to sheets
@@ -158,49 +238,7 @@ namespace XbrlReader
 
                 return;
             }
-
-            var factWithLei = GetFactByXbrl(reader.ConfigObject, reader.DocumentId, "s2md_met:si1899");
-            var xbrlFund = GetFundByLei(reader.ConfigObject, factWithLei?.TextValue);
-
-            var testFundId = true;
-#if DEBUG
-            testFundId = true;
-#endif
-
-            if (testFundId)// no check for fund id when testing
-            {
-                if (xbrlFund is null || xbrlFund.FundId != reader.FundId)
-                {
-
-                    //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
-                    var message = $"The license number used:{reader?.FundId} is incorrect.";
-                    Log.Error(message);
-                    Console.WriteLine(message);
-                    reader.UpdateDocumentStatus("E");
-                    reader.IsValidProcess = false;
-
-
-                    var trans = new TransactionLog()
-                    {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
-                        Message = message,
-                        UserId = reader.UserId,
-                        ProgramCode = ProgramCode.RX.ToString(),
-                        ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = reader.DocumentId,
-                        MessageType = MessageType.ERROR.ToString()
-                    };
-                    TransactionLogger.LogTransaction(solvencyVersion, trans);
-
-                    return;
-
-                }
-            }
-
-
+            
             FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
 
             var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
@@ -226,7 +264,7 @@ namespace XbrlReader
                 return null;
 
             lei = lei.Replace(@"LEI/", "");//lei = "LEI/2138003JRMGVH8CGUR42"            
-            var sqlFund = "select  fnd.FundId, fnd.FundName, fnd.IsActive, fnd.Lei from Fund fnd where fnd.Lei=@Lei";
+            var sqlFund = "select  fnd.FundId, fnd.FundName, fnd.IsActive, fnd.Lei , fnd.Wave from Fund fnd where fnd.Lei=@Lei";
             var fund = connectionLocal.QuerySingleOrDefault<Fund>(sqlFund, new { lei });
             return fund;
         }
@@ -354,11 +392,11 @@ namespace XbrlReader
             }
 
             using (TextReader sr = File.OpenText(FileName))  //utf-8 stream
-            
-            
+
+
                 try
                 {
-                   XmlDoc = XDocument.Load(sr);
+                    XmlDoc = XDocument.Load(sr);
                     //XmlDoc = XDocument.Load(FileName);
                 }
                 catch (Exception e)
@@ -882,17 +920,6 @@ VALUES (
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
-        //private void CreateErrorDocument(int organisationId, int documentId,int userId=0)
-        //{
-        //    //var connectionPensionString = Configuration.GetConnectionPensionString();
-        //    using var localDbConnection = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-
-        //    var sqlDelete = @"delete from ERROR_Document where ErrorDocumentId = @documentId";
-        //    localDbConnection.Execute(sqlDelete, new { documentId });
-        //    var sqlInsert = @"INSERT INTO ERROR_Document( OrganisationId,ErrorDocumentId, UserId)VALUES(@organisationId, @documentId,  @userId)";
-        //    localDbConnection.Execute(sqlInsert, new { organisationId,documentId,userId });
-
-        //}
 
 
         private DateTime GetReferenceDate()
@@ -900,6 +927,63 @@ VALUES (
             return DateTime.Now;
         }
         //select fact.DateTimeValue from TemplateSheetFact fact where fact.InstanceId= 11850 and fact.XBRLCode= 's2md_met:di1043'
+
+
+
+        static DateTime? GetLastSubmissionDate(ConfigObject confObject, int category, int quarter, int referenceYear)
+        {
+            using var connectionInsurance = new SqlConnection(confObject.LocalDatabaseConnectionString);
+            var date2000 = new DateTime(2000, 1, 1);
+
+            var rgQuarter = new Regex(@"[0-4]");
+            if (!rgQuarter.IsMatch(quarter.ToString()))
+            {
+                return null;
+
+            }
+
+
+            var sqlSubDate = @"
+            SELECT            
+              sdate.Q1             
+             ,sdate.Q2
+             ,sdate.Q3
+             ,sdate.Q4
+             ,sdate.A
+             ,sdate.ReferenceYear
+             ,sdate.SubmissionDateId
+            FROM dbo.SubmissionDate sdate
+            WHERE sdate.ReferenceYear = @referenceYear
+            AND sdate.Category = @category";
+            var sRecord = connectionInsurance.QueryFirstOrDefault<SubmissionDate>(sqlSubDate, new { referenceYear, category });
+            if (sRecord is null)
+            {
+                return null;
+            }
+            var sDate = quarter switch
+            {
+                0 => sRecord.A,
+                1 => sRecord.Q1,
+                2 => sRecord.Q1,
+                3 => sRecord.Q1,
+                4 => sRecord.Q1,
+                _ => date2000
+            };
+
+
+            return sDate == date2000 ? null : sDate;
+        }
+
+        static string GetXmlElementFromXbrl(XDocument xDoc, string xbrlCode)
+        {
+            //XNamespace ns = "http://CalculatorService/";
+            //var html = xml.Descendants(ns + "html").ToList();
+
+            //<s2md_met:si1899 contextRef="c0">LEI/2138006PEHZTJLNAPC69</s2md_met:si1899>  
+            XNamespace metFactNs = "http://eiopa.europa.eu/xbrl/s2md/dict/met";
+            var leiVal = xDoc.Root.Descendants(metFactNs + xbrlCode).FirstOrDefault()?.Value ?? "";
+            return leiVal;
+        }
 
     }
 
