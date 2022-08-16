@@ -15,7 +15,7 @@ namespace XbrlReader
             //var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
             //var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
             //var SMuaeAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\SMUAE Annual 2020.xbrl";
-            
+
 
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl
             //(var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\99-Altius Insurance - Annual 2020.xbrl");
@@ -39,10 +39,12 @@ namespace XbrlReader
             //FactsProcessor.UpdateCellsForeignRow(configObject, 11815);
             //return 1;
 
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\x6\ALTIUS INSURANCE LTD Q1 2022.xbrl
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl
+            //
 
-            (var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");            
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 0, fundIdT, "qrs", 2022, 1,filePath);            
+            //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");
+            (var fundIdT, var filePath) = (183, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl");
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 1, fundIdT, "qrs", 2021, 0,filePath);            
                         
 
             Console.WriteLine("Finish");

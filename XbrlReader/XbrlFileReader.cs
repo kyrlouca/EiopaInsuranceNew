@@ -128,7 +128,7 @@ namespace XbrlReader
 
             var is_Test_debug = false;
 #if DEBUG
-            is_Test_debug = true;
+            is_Test_debug = false;
 #endif
 
             //****************************************************
