@@ -246,9 +246,13 @@ namespace ExcelCreatorV
 
             var S05 = MergeS05_02_01("S.05.02.01", "Premiums, claims and expenses by country");
 
-            var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-            IndexListSheet.RemoveSheets(S05SheetsToRemove);
-            IndexListSheet.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
+            if(S05.TabSheet is not null)
+            {
+                var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
+                IndexListSheet.RemoveSheets(S05SheetsToRemove);
+                IndexListSheet.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
+            }
+            
 
             //*******************************************
             IndexListSheet.Sort();
@@ -419,6 +423,12 @@ namespace ExcelCreatorV
                     and sheet.TableCode in ('S.05.02.01.01','S.05.02.01.03','S.05.02.01.02')
                     ";
             var dbSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheets, new { DocumentId }).ToList();
+            if (!dbSheets.Any())
+            {
+                return new MergedSheetRecord();
+            }
+
+
             var iUnsortedSheets = dbSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim())).ToList();
             var iSheets = new List<ISheet>();
 
