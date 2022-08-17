@@ -44,7 +44,7 @@ namespace XbrlReader
 
             //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");
             (var fundIdT, var filePath) = (183, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl");
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 1, fundIdT, "qrs", 2021, 0,filePath);            
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "qrs", 2020, 0,filePath);            
                         
 
             Console.WriteLine("Finish");

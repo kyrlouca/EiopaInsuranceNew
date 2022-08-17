@@ -174,15 +174,27 @@ namespace XbrlReader
             //****************************************************
             //* check if the document was submited after the validation date  
 
-            if (!is_Test_debug && reader.UserId > 0 )// no check for fund id when testing
+            if (!is_Test_debug && reader.UserId != 1 )// no check for fund id when testing
             {
                 var lastValidDate = GetLastSubmissionDate(reader.ConfigObject, fundCategory, reader.ApplicableQuarter, reader.ApplicableYear);
 
-                if (lastValidDate is null || DateTime.Today > lastValidDate )
+                var errorMessageG = string.Empty;
+                if (lastValidDate is null || DateTime.Today > lastValidDate)
                 {
-                    var message = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
-                    Log.Error(message);
-                    Console.WriteLine(message);
+                    errorMessageG = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
+                }
+
+                if (applicableYear < DateTime.Today.Year - 1)
+                {
+                    errorMessageG = $"Document Reference Year: {applicableYear} is in the past";
+
+                }
+
+
+                if (!string.IsNullOrEmpty(errorMessageG))
+                {                    
+                    Log.Error(errorMessageG);
+                    Console.WriteLine(errorMessageG);
                     reader.UpdateDocumentStatus("E");
                     reader.IsValidProcess = false;
 
@@ -193,7 +205,7 @@ namespace XbrlReader
                         ModuleCode = reader.ModuleCode,
                         ApplicableYear = reader.ApplicableYear,
                         ApplicableQuarter = reader.ApplicableQuarter,
-                        Message = message,
+                        Message = errorMessageG,
                         UserId = reader.UserId,
                         ProgramCode = ProgramCode.RX.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
@@ -205,6 +217,9 @@ namespace XbrlReader
                     return;
 
                 }
+
+
+                
             }
             
 
