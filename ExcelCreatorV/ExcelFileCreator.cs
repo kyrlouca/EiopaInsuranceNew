@@ -480,14 +480,14 @@ namespace ExcelCreatorV
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
             
 
-            for (int i = firstRow.FirstCellNum; i <25; i++)
+            for (int i = 0; i <25; i++)
             {
-                var cell = firstRow.GetCell(i)??firstRow.CreateCell(i);                
+                var cell = firstRow?.GetCell(i)??firstRow?.CreateCell(i);                
             }
 
             destSheet.SetColumnWidth(0, 12000);
             destSheet.SetColumnWidth(1, 2000);
-            for (var j = 2; j < firstRow.Cells.Count; j++)
+            for (var j = 2; j < firstRow?.Cells.Count; j++)
             {
                 destSheet.SetColumnWidth(j, 4000);
             }
