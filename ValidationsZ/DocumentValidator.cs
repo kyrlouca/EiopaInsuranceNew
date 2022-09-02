@@ -87,8 +87,8 @@ namespace Validations
 
             GetConfiguration();
 
-            var document = InsuranceData.GetDocumentById(documentId);
-            if (document is null)
+            var document = InsuranceData.GetDocumentById(documentId);//returns 
+            if (document.InstanceId ==0)
             {
                 IsValidDocument = false;
                 var messg = $"Validation: Document  NOT Found. Document Id: {DocumentId} ";
@@ -174,13 +174,14 @@ namespace Validations
             //**********************************************
             //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
             //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
-            Console.WriteLine($"Create Module Rules");
-            CreateModuleRules();
+            Console.WriteLine($"\nCreate Module Rules");
+            var countModuleRules=CreateModuleRules();
+            Console.WriteLine($"\nModule Rules Created : {countModuleRules}");
 
             //Create DocumentRules out of Module Rules
             Console.WriteLine("\nCreate Document Rules");
             CreateDocumentRulesFromModuleRules();
-
+            Console.WriteLine($"\nDocument Rules Created : {DocumentRules.Count}");
 
             UpdateRulesTermsWithValues();
         }
