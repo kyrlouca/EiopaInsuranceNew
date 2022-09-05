@@ -2,13 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+	<PublishSingleFile>true</PublishSingleFile>
    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.0.123" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.0.0" />
     <PackageReference Include="NPOI" Version="2.5.6" />
     <PackageReference Include="Serilog" Version="2.11.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
@@ -18,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
     <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
+    <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
+    <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
     <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
   </ItemGroup>

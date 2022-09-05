@@ -86,18 +86,31 @@ namespace HelperInsuranceFunctions
 
 
 
-        public static DocInstance GetDocumentById(int DocumentId)
+        public static DocInstance GetDocumentById( ConfigObject configObject,  int documentId)
         {
-            var configObject = Configuration.GetInstance("get the existing one");
-            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+            Console.WriteLine($"in GetDocId : {documentId},dbstring: {configObject.LocalDatabaseConnectionString}");
+            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
             var emptyDocument = new DocInstance();
-            var sqlPensionFund = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
-            var doc = connectionInsurance.QueryFirstOrDefault<DocInstance>(sqlPensionFund, new { DocumentId });
-            if (doc is null)
+            var sqlFund = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
+            DocInstance doc=null;
+            try
             {
+                doc = connectionInsurance.QueryFirstOrDefault<DocInstance>(sqlFund, new { documentId });
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine($"errrffor :{e.Message}");
                 return emptyDocument;
             }
+
+            if (doc is null)
+            {
+                Console.WriteLine($"documentId:{documentId} does not exist");
+                return emptyDocument;
+            }
+            Console.WriteLine($"documentId:{documentId} is valid");
             return doc;
+
         }
 
 

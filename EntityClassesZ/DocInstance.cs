@@ -19,6 +19,7 @@ namespace EntityClasses
         public bool IsSubmitted { get; set; } = false;
         public string FileName { get; set; } = "";
         public string EiopaVersion { get; set; } = "";
+        public int CurrencyBatchId { get; set; } = 0;
 
 
     }

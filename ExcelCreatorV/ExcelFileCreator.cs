@@ -3,6 +3,7 @@ using Dapper;
 using EiopaConstants;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
+using Dapper;
 using NPOI.SS.Formula;
 using NPOI.SS.UserModel;
 using NPOI.Util.ArrayExtensions;
@@ -80,9 +81,9 @@ namespace ExcelCreatorV
             DocumentIdInput = documentId;
             UserId = userId;
             IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
+
             ExcelOutputFile = excelOutputFile;
             ConfigObject = GetConfiguration();
-
 
             WorkbookStyles = new WorkbookStyles(DestExcelBook);
         }
@@ -91,22 +92,24 @@ namespace ExcelCreatorV
         private bool CreateExcelFile()
         {
             Console.WriteLine($"in Create Excel file");
-            if (!IsValidEiopaVersion)
+            if(ConfigObject is null)
             {
-                var errorMessage = $"Invalid Solvency Version :{SolvencyVersion} for Document Id:{DocumentIdInput}";
-                Log.Error(errorMessage);
-                Console.WriteLine(errorMessage);
-                Console.WriteLine("valide versions: IU250, IU260");
+                var errMessage = $"Cannot create ConfigObject";
+                Console.WriteLine(errMessage);
                 return false;
             }
 
+            Document = GetDocumentById2(DocumentIdInput);
+            Console.WriteLine("after getDocId");
 
-            Document = HelperInsuranceFunctions.InsuranceData.GetDocumentById(DocumentIdInput);
-            if (Document is null)
+            if (Document.InstanceId == 0)
             {
-                Log.Error($"Invalid Document Id:{DocumentIdInput}");
+                var errMessage = $"Invalid Document Id:{DocumentIdInput}";
+                Console.WriteLine(errMessage);
+                Log.Error(errMessage);
                 return false;
             }
+            Console.WriteLine("after getDocId:");
             var isLockedDocument = Document.Status.Trim() == "P";
             if (isLockedDocument)
             {
@@ -131,7 +134,7 @@ namespace ExcelCreatorV
             }
 
 
-
+            Console.WriteLine("after GetDocId");
 
             ModuleId = Document.ModuleId;
             ModuleCode = Document.ModuleCode;
@@ -246,13 +249,13 @@ namespace ExcelCreatorV
 
             var S05 = MergeS05_02_01("S.05.02.01", "Premiums, claims and expenses by country");
 
-            if(S05.TabSheet is not null)
+            if (S05.TabSheet is not null)
             {
                 var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                 IndexListSheet.RemoveSheets(S05SheetsToRemove);
                 IndexListSheet.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
             }
-            
+
 
             //*******************************************
             IndexListSheet.Sort();
@@ -488,11 +491,11 @@ namespace ExcelCreatorV
 
             //set columns width            
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
-            
 
-            for (int i = 0; i <25; i++)
+
+            for (int i = 0; i < 25; i++)
             {
-                var cell = firstRow?.GetCell(i)??firstRow?.CreateCell(i);                
+                var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
             }
 
             destSheet.SetColumnWidth(0, 12000);
@@ -527,8 +530,8 @@ namespace ExcelCreatorV
         private ConfigObject GetConfiguration()
         {
 
-            var ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
-            if (string.IsNullOrEmpty(ConfigObject.LoggerExcelWriterFile))
+            var configObject = Configuration.GetInstance(SolvencyVersion).Data;
+            if (string.IsNullOrEmpty(configObject.LoggerExcelWriterFile))
             {
                 var errorMessage = "LoggerExcelWriter is not defined in ConfigData.json";
                 Console.WriteLine(errorMessage);
@@ -537,7 +540,7 @@ namespace ExcelCreatorV
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
-                .WriteTo.File(ConfigObject.LoggerExcelWriterFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
+                .WriteTo.File(configObject.LoggerExcelWriterFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
                 .CreateLogger();
 
 
@@ -550,14 +553,14 @@ namespace ExcelCreatorV
             }
 
             //the connection strings depend on the Solvency Version
-            if (string.IsNullOrEmpty(ConfigObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(ConfigObject.LocalDatabaseConnectionString))
+            if (string.IsNullOrEmpty(configObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(configObject.LocalDatabaseConnectionString))
             {
                 var errorMessage = "Empty ConnectionStrings in ConfigData.json file";
                 Console.WriteLine(errorMessage);
                 throw new SystemException(errorMessage);
             }
 
-            return ConfigObject;
+            return configObject;
         }
 
         private void WriteProcessStarted()
@@ -653,6 +656,36 @@ namespace ExcelCreatorV
                 return false;
             }
             return true;
+        }
+
+
+        public DocInstance GetDocumentById2(int documentId)
+        {
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            Console.WriteLine($" a2 fuck in GetDocId : {documentId}, conf:{ConfigObject.LocalDatabaseConnectionString}");
+            var emptyDocument = new DocInstance();
+            //var sqlFundx = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
+
+            var sqlFund2 = @"
+                SELECT
+                  doc.InstanceId
+                 ,doc.ModuleId            
+                FROM dbo.DocInstance doc
+                WHERE doc.InstanceId = @documentId
+
+                ";
+
+
+            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlFund2, new { documentId });
+            if (doc is null)
+            {
+                Console.WriteLine($"documentId:{documentId} does not exist");
+                return emptyDocument;
+            }
+            Console.WriteLine($"documentId:{documentId} is valid");
+            return doc;
+
         }
 
 

@@ -87,7 +87,7 @@ namespace Validations
 
             GetConfiguration();
 
-            var document = InsuranceData.GetDocumentById(documentId);//returns 
+            var document = InsuranceData.GetDocumentById(ConfigObject,documentId);//returns 
             if (document.InstanceId ==0)
             {
                 IsValidDocument = false;

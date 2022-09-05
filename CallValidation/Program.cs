@@ -1,22 +1,15 @@
-﻿using System;
+﻿
+using System;
 using ConfigurationNs;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
-using Validations;
 using GeneralUtilsNs;
-using HelperInsuranceFunctions;
+//using HelperInsuranceFunctions;
+using Validations;
 
-namespace ValidationCall
-{
-    public class Program
-    {
-
-        public static int Main(string[] args)
-
-        {
 #if (DEBUG)
             if (1 == 1)
             {
@@ -97,6 +90,7 @@ namespace ValidationCall
 
                 //DocumentValidator.ValidateDocument("IU260", 11833, 6406);
                 //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
+                
                 DocumentValidator.ValidateDocument("IU260", 11882,0, 0);//4920 /56
 
                 return 1;
@@ -121,6 +115,3 @@ namespace ValidationCall
             }
 
             return 1;
-        }
-    }
-}
