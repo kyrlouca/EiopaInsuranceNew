@@ -12,33 +12,7 @@ namespace XbrlReader
 #if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");
 
-            //var hydraQ = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\HYDRA Q1 2021.xbrl";
-            //var CosmosQ=@"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\Cosmos Q1 2021.xbrl";
-            //var SMuaeAnnual = @"C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\ValidationFiles\SMUAE Annual 2020.xbrl";
-
-
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl
-            //(var fundIdT, var filePath) = (105, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\99-Altius Insurance - Annual 2020.xbrl");
-            //
-
-            //(var fundIdT, var filePath) = (301, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\Xbrl3\20220220 Q4 SII Reporting.xbrl");
-            //var err = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrl4\QESError.xbrl";
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Atlantic.xbrl
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl 
-
-            //(var fundIdT, var filePath) = (601, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\CNP Asfalistiki.xbrl");
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Minerva Annual 2021 v2.xbrl
-
-            //(var fundIdT, var filePath) = (540, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Minerva Annual 2021 v2.xbrl");
-
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\xbrlAnnual\Hydra.xbrl
-
-            //
-
-            //var configObject = Configuration.GetInstance("IU260").Data;
-            //FactsProcessor.UpdateCellsForeignRow(configObject, 11815);
-            //return 1;
-
+            
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl
             //
 

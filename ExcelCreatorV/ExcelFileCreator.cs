@@ -13,6 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using TransactionLoggerNs;
+using Org.BouncyCastle.Bcpg;
+using System.Collections;
 
 namespace ExcelCreatorV
 {
@@ -31,6 +33,21 @@ namespace ExcelCreatorV
             ChildrenSheetInstances = childrenSheetInstances;
         }
     }
+
+    internal readonly record struct TemplateTableBundle
+    {
+        public string TemplateTableCode { get; init; }
+        public string TemplateDescription { get; init; }
+        public List<String> TableCodes { get; init; }        
+        public TemplateTableBundle( string templateTableCode, string templateDescription, List<string> tableCodes)
+        {
+            TemplateTableCode = templateTableCode;
+            TemplateDescription = templateDescription;
+            TableCodes = tableCodes ;
+        }
+    }
+
+
 
     public class ExcelFileCreator
     {
@@ -92,7 +109,7 @@ namespace ExcelCreatorV
         private bool CreateExcelFile()
         {
             Console.WriteLine($"in Create Excel file");
-            if(ConfigObject is null)
+            if (ConfigObject is null)
             {
                 var errMessage = $"Cannot create ConfigObject";
                 Console.WriteLine(errMessage);
@@ -175,6 +192,8 @@ namespace ExcelCreatorV
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
+            var businessTables = CreateBusinessTableBundles(ConfigObject, ModuleId);
+            return;
 
 
             var sqlSheets = @"
@@ -358,8 +377,8 @@ namespace ExcelCreatorV
             var sheetCreated = CreateMergedSheet(blList, mergedSheetName);
             ExcelHelperFunctions.CreateHyperLink(sheetCreated, WorkbookStyles);
 
-            sheetCreated.SetColumnHidden(18, true);
-            sheetCreated.SetColumnHidden(19, true);
+            //sheetCreated.SetColumnHidden(18, true);
+            //sheetCreated.SetColumnHidden(19, true);
 
 
             return new MergedSheetRecord(sheetCreated, mergedDimValueDescription, blSheets);
@@ -485,7 +504,7 @@ namespace ExcelCreatorV
             var rowOffset = 0;
             foreach (var sheetList in sheetsToMerge)
             {
-                AppendHorizontalSheets(sheetList, destSheet, rowOffset, 0);
+                AppendHorizontalSheets(sheetList, destSheet, rowOffset, 1);
                 rowOffset = destSheet.LastRowNum + rowGap;
             }
 
@@ -688,7 +707,74 @@ namespace ExcelCreatorV
 
         }
 
+        private static List<TemplateTableBundle> CreateBusinessTableBundles(ConfigObject ConfObject,  int moduleId)
+        {
+            using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);
 
+            var templateTableBundles = new List<TemplateTableBundle>();
+
+            var sqlTables = @"
+                    SELECT va.TemplateOrTableCode,va.TemplateOrTableLabel
+                    FROM mModuleBusinessTemplate mbt
+                    LEFT OUTER JOIN mTemplateOrTable va ON va.TemplateOrTableID = mbt.BusinessTemplateID
+                    LEFT OUTER JOIN mModule mod ON mbt.ModuleID = mod.ModuleID
+                    WHERE 1 = 1
+						and TemplateOrTableCode like 'S.%'
+	                    AND mod.ModuleID = @moduleId
+                    ORDER BY mod.ModuleID
+                    ";
+            //todo make it empty list if null
+            var templates = connectionEiopa.Query<mTemplateOrTable>(sqlTables, new { moduleId });
+
+
+
+            foreach(var template in templates)
+            {
+                var sqlTableCodes = @"
+                        SELECT  tab.TableCode
+                        FROM mTemplateOrTable va
+                        LEFT OUTER JOIN mTemplateOrTable bu ON bu.ParentTemplateOrTableID = va.TemplateOrTableID
+                        LEFT OUTER JOIN mTemplateOrTable anno ON anno.ParentTemplateOrTableID = bu.TemplateOrTableID
+                        LEFT OUTER JOIN mTaxonomyTable taxo ON taxo.AnnotatedTableID = anno.TemplateOrTableID
+                        LEFT OUTER JOIN mTable tab ON tab.TableID = taxo.TableID
+                        WHERE 1 = 1
+	                        AND va.TemplateOrTableCode = @templateCode
+                        ORDER BY tab.TableCode
+
+                        ";
+                var tableCodes = connectionEiopa.Query<string>(sqlTableCodes, new { templateCode=template.TemplateOrTableCode })?.ToList()??new List<string>();
+                templateTableBundles.Add(new TemplateTableBundle(template.TemplateOrTableCode, template.TemplateOrTableLabel, tableCodes));
+                //var sqlSheets = @"
+                //    SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode
+                //    FROM TemplateSheetInstance sheet
+                //    WHERE sheet.InstanceId = @documentId
+	               //     AND sheet.TableCode LIKE @bCode";
+                //var bCode = $"{tableCode}%";
+                
+                //var sheets= connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId,bCode }).ToList()?? new List<TemplateSheetInstance>();
+                //TemplateCodes.Add(new BusinessTableBundle(tableCode, sheets));                
+
+
+
+            }
+            return templateTableBundles;
+
+        }
+        
+        public void MergeBusinessTables()
+        {
+            var btList = CreateBusinessTableBundles(ConfigObject, ModuleId);
+            foreach(var btBundle in btList)
+            {
+                //var mergedSheetName = $"{btBundle.TableCode}";
+                //var excelSheets = btBundle.SheetInstances.Select(sheet => DestExcelBook.GetSheet(sheet.SheetTabName.Trim()));                               
+                //var sheetCreated = CreateMergedSheet(excelSheets, mergedSheetName);
+            }
+            
+            
+
+        }
 
     }
 }
