@@ -798,17 +798,22 @@ namespace ExcelCreatorV
 
 
                 //var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet?.SheetTabName.Trim()))?.ToList()).ToList();
-                var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet?.SheetTabName.Trim()))?.ToList()?? new() )?.ToList()?? new();
+                var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
 
                 CreateMergedSheet(isheets, mergedTabName);
                 var xxx = 3;
 
-                ISheet? GetSheetFromBook(string? sheetName){
-                    if(sheetName is null)
+                ISheet GetSheetFromBook(TemplateSheetInstance dbSheet){
+                    if (dbSheet.TableID == -1)
                     {
-                        return null;
+                        var newSheet = DestExcelBook.CreateSheet(dbSheet.SheetTabName);
+                        var row = newSheet.CreateRow(0);
+                        var col = row.CreateCell(0);
+                        col.SetCellValue(dbSheet.SheetTabName);
+                        return newSheet;
                     }
-                    //dbSheet?.SheetTabName.Trim()
+                    var sheetName = dbSheet.SheetTabName;
+                    
                     var sheet = DestExcelBook.GetSheet(sheetName);
                     return sheet;                    
                 }
@@ -817,12 +822,30 @@ namespace ExcelCreatorV
 
             List<TemplateSheetInstance> getSheets(string sqlsheets, int documentId, string tableCode, string zetValue)
             {
-                var result = new List<TemplateSheetInstance>();
+                //change it so that sqlsheets is here
+                
 
-                result = string.IsNullOrEmpty(zetValue)
-                    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode })?.ToList() ?? new List<TemplateSheetInstance>()
-                    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue })?.ToList() ?? new List<TemplateSheetInstance>();
+                var result = string.IsNullOrEmpty(zetValue)
+                    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode }).ToList()
+                    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue }).ToList();
 
+                //var result = new List<TemplateSheetInstance>();
+                //result = string.IsNullOrEmpty(zetValue)
+                //    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode })?.ToList() ?? new List<TemplateSheetInstance>()
+                //    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue })?.ToList() ?? new List<TemplateSheetInstance>();
+
+                if (result.Count == 0)
+                {
+                    var new_sheetName = "new_" + tableCode.Trim() + "_" + zetValue;
+                    var sheetInstance = new TemplateSheetInstance()
+                    {
+                        TableCode = tableCode,
+                        SheetTabName = new_sheetName,
+                        TableID = -1
+                    };
+                    var newList= new List<TemplateSheetInstance>(){sheetInstance };
+                    return newList;
+                }
 
                 return result;
             }
