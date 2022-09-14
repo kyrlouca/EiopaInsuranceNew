@@ -15,6 +15,7 @@ using System.IO;
 using TransactionLoggerNs;
 using Org.BouncyCastle.Bcpg;
 using System.Collections;
+using NPOI.Util;
 
 namespace ExcelCreatorV
 {
@@ -38,12 +39,12 @@ namespace ExcelCreatorV
     {
         public string TemplateTableCode { get; init; }
         public string TemplateDescription { get; init; }
-        public List<String> TableCodes { get; init; }        
-        public TemplateTableBundle( string templateTableCode, string templateDescription, List<string> tableCodes)
+        public List<String> TableCodes { get; init; }
+        public TemplateTableBundle(string templateTableCode, string templateDescription, List<string> tableCodes)
         {
             TemplateTableCode = templateTableCode;
             TemplateDescription = templateDescription;
-            TableCodes = tableCodes ;
+            TableCodes = tableCodes;
         }
     }
 
@@ -192,8 +193,8 @@ namespace ExcelCreatorV
 
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
-            var businessTables = CreateBusinessTableBundles(ConfigObject, ModuleId);
-            return;
+
+
 
 
             var sqlSheets = @"
@@ -251,6 +252,10 @@ namespace ExcelCreatorV
             {
                 IndexListSheet.AddSheet(new IndexSheetListItem("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
             }
+
+
+            MergeTemplateSheetsUniversal();
+
 
             //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets            
             var bl19MergedSheets = MergeAllS1901("S.19.01.01", "BL");
@@ -707,7 +712,124 @@ namespace ExcelCreatorV
 
         }
 
-        private static List<TemplateTableBundle> CreateBusinessTableBundles(ConfigObject ConfObject,  int moduleId)
+
+        public void MergeTemplateSheetsUniversal()
+        {
+            //each bundle contains the template code and a list of tableCodes like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc}}
+            var templateTableBundles = CreateTemplateTableBundles(ConfigObject, ModuleId);
+            templateTableBundles = templateTableBundles.Where(bundle => bundle.TemplateTableCode == "S.05.02.01").ToList();
+
+            foreach (var templateTableBundle in templateTableBundles)
+            {
+                //take care of some exceptions like S.19, etc
+                MergeOneTemplate(templateTableBundle);
+            }
+        }
+
+
+        private void MergeOneTemplate(TemplateTableBundle templateTableBundle)
+        {
+            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            //currency is can be CD,CR,OC but for s.19 is oc
+
+            var sqlZet = @"
+                    SELECT zet.value
+                    FROM TemplateSheetInstance sheet
+                    JOIN SheetZetValue zet ON zet.TemplateSheetId = sheet.TemplateSheetId
+                    WHERE sheet.InstanceId = @documentId
+	                    AND sheet.TableCode LIKE @templateCode
+	                    AND zet.Dim IN ('BL','CU')
+                    GROUP BY zet.Value
+";
+            var templateCode = $"{templateTableBundle.TemplateTableCode}%";
+            var zetList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
+
+
+            if (!zetList.Any())
+            {
+                zetList.Add("empty");
+            }
+
+            foreach (var zetValue in zetList)
+            {
+                var templateOverallList = new List<List<ISheet>>();
+                var mergedTabName = "M_"+templateTableBundle.TemplateTableCode + "#" + zetValue;
+
+                //for each tableCode find the dbSheets for that zet (may have more than one table or none) 
+                var sqlSheetWithoutZet = @"
+                    SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode,sheet.SheetTabName
+                    FROM TemplateSheetInstance sheet
+                    WHERE sheet.InstanceId = @documentId
+                     AND sheet.TableCode= @tableCode                     
+                ";
+
+                var sqlSheetWithZet = @"
+                    SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode,sheet.SheetTabName
+                    FROM TemplateSheetInstance sheet
+                    left outer join   SheetZetValue zet on zet.TemplateSheetId= sheet.TemplateSheetId
+                    WHERE sheet.InstanceId = @documentId
+                     AND sheet.TableCode= @tableCode                     
+					 and zet.Dim in ('BL','CU')
+					 and zet.Value = @zetValue
+                ";
+
+                var sqlSheets = zetValue == "empty" ? sqlSheetWithoutZet : sqlSheetWithZet;
+
+                //for each tableCode (S.19.01.01.01, S.19.01.01.02, S.19.01.01.03) find the corresponding dbSheets(may have more than one dbsheet for each tableCode because of z dims other than BL)
+                //List of lists because of the above S.25.01.01.01 for example could theoretically have several TemplateInstanceSheets 
+                List<List<TemplateSheetInstance>> dbSheets = new();
+                var tableCodes = templateTableBundle.TableCodes;
+
+                if (templateTableBundle.TemplateTableCode == "S.05.02.01")
+                {
+                    var firstRowTableCodes = new List<string>() { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" };
+                    var secondRowTableCodes = new List<string>() { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" };
+                    //firstOrDefault because we assume there is only one table 
+                    var firstRowDbSheets = firstRowTableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList();
+                    dbSheets.Add(firstRowDbSheets);
+                    var secondRowDbSheets = secondRowTableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList().ToList();
+                    dbSheets.Add(secondRowDbSheets);
+                }
+                else
+                {
+                    dbSheets = tableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue)).ToList();
+                }
+
+
+                //var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet?.SheetTabName.Trim()))?.ToList()).ToList();
+                var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet?.SheetTabName.Trim()))?.ToList()?? new() )?.ToList()?? new();
+
+                CreateMergedSheet(isheets, mergedTabName);
+                var xxx = 3;
+
+                ISheet? GetSheetFromBook(string? sheetName){
+                    if(sheetName is null)
+                    {
+                        return null;
+                    }
+                    //dbSheet?.SheetTabName.Trim()
+                    var sheet = DestExcelBook.GetSheet(sheetName);
+                    return sheet;                    
+                }
+
+            }
+
+            List<TemplateSheetInstance> getSheets(string sqlsheets, int documentId, string tableCode, string zetValue)
+            {
+                var result = new List<TemplateSheetInstance>();
+
+                result = string.IsNullOrEmpty(zetValue)
+                    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode })?.ToList() ?? new List<TemplateSheetInstance>()
+                    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue })?.ToList() ?? new List<TemplateSheetInstance>();
+
+
+                return result;
+            }
+
+        }
+
+        private static List<TemplateTableBundle> CreateTemplateTableBundles(ConfigObject ConfObject, int moduleId)
         {
             using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
             using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);
@@ -729,7 +851,7 @@ namespace ExcelCreatorV
 
 
 
-            foreach(var template in templates)
+            foreach (var template in templates)
             {
                 var sqlTableCodes = @"
                         SELECT  tab.TableCode
@@ -743,15 +865,9 @@ namespace ExcelCreatorV
                         ORDER BY tab.TableCode
 
                         ";
-                var tableCodes = connectionEiopa.Query<string>(sqlTableCodes, new { templateCode=template.TemplateOrTableCode })?.ToList()??new List<string>();
+                var tableCodes = connectionEiopa.Query<string>(sqlTableCodes, new { templateCode = template.TemplateOrTableCode })?.ToList() ?? new List<string>();
                 templateTableBundles.Add(new TemplateTableBundle(template.TemplateOrTableCode, template.TemplateOrTableLabel, tableCodes));
-                //var sqlSheets = @"
-                //    SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode
-                //    FROM TemplateSheetInstance sheet
-                //    WHERE sheet.InstanceId = @documentId
-	               //     AND sheet.TableCode LIKE @bCode";
-                //var bCode = $"{tableCode}%";
-                
+
                 //var sheets= connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId,bCode }).ToList()?? new List<TemplateSheetInstance>();
                 //TemplateCodes.Add(new BusinessTableBundle(tableCode, sheets));                
 
@@ -759,20 +875,6 @@ namespace ExcelCreatorV
 
             }
             return templateTableBundles;
-
-        }
-        
-        public void MergeBusinessTables()
-        {
-            var btList = CreateBusinessTableBundles(ConfigObject, ModuleId);
-            foreach(var btBundle in btList)
-            {
-                //var mergedSheetName = $"{btBundle.TableCode}";
-                //var excelSheets = btBundle.SheetInstances.Select(sheet => DestExcelBook.GetSheet(sheet.SheetTabName.Trim()));                               
-                //var sheetCreated = CreateMergedSheet(excelSheets, mergedSheetName);
-            }
-            
-            
 
         }
 
