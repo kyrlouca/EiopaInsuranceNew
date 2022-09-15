@@ -739,7 +739,7 @@ namespace ExcelCreatorV
                     JOIN SheetZetValue zet ON zet.TemplateSheetId = sheet.TemplateSheetId
                     WHERE sheet.InstanceId = @documentId
 	                    AND sheet.TableCode LIKE @templateCode
-	                    AND zet.Dim IN ('BL','CU')
+	                    AND zet.Dim IN ('BL','OC','CR')
                     GROUP BY zet.Value
 ";
             var templateCode = $"{templateTableBundle.TemplateTableCode}%";
@@ -748,7 +748,7 @@ namespace ExcelCreatorV
 
             if (!zetList.Any())
             {
-                zetList.Add("empty");
+                zetList.Add("");
             }
 
             foreach (var zetValue in zetList)
@@ -757,6 +757,60 @@ namespace ExcelCreatorV
                 var mergedTabName = "M_"+templateTableBundle.TemplateTableCode + "#" + zetValue;
 
                 //for each tableCode find the dbSheets for that zet (may have more than one table or none) 
+                
+
+                //for each tableCode (S.19.01.01.01, S.19.01.01.02, S.19.01.01.03) find the corresponding dbSheets(may have more than one dbsheet for each tableCode because of z dims other than BL)
+                //List of lists because of the above S.25.01.01.01 for example could theoretically have several TemplateInstanceSheets 
+                List<List<TemplateSheetInstance>> dbSheets = new();
+                var tableCodes = templateTableBundle.TableCodes;
+
+                if (templateTableBundle.TemplateTableCode == "S.05.02.01")
+                {
+                    var firstRowTableCodes = new List<string>() { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" };
+                    var secondRowTableCodes = new List<string>() { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" };
+                    //firstOrDefault because we assume there is only one table 
+                    var firstRowDbSheets = firstRowTableCodes.Select(tableCode => getDbSheet(ConfigObject, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList();
+                    dbSheets.Add(firstRowDbSheets);
+                    var secondRowDbSheets = secondRowTableCodes.Select(tableCode => getDbSheet(ConfigObject, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList().ToList();
+                    dbSheets.Add(secondRowDbSheets);
+                }
+                else
+                {
+                    dbSheets = tableCodes.Select(tableCode => getDbSheet(ConfigObject, DocumentId, tableCode, zetValue)).ToList();
+                }
+
+
+
+                var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
+
+                CreateMergedSheet(isheets, mergedTabName);
+                var xxx = 3;
+
+                ISheet GetSheetFromBook(TemplateSheetInstance dbSheet){
+                    var sheetTabName = dbSheet.SheetTabName.Trim();
+                    if (dbSheet.TableID == -1)
+                    {
+                        
+                        var newSheet = DestExcelBook.CreateSheet(sheetTabName);
+                        var row = newSheet.CreateRow(0);
+                        var col = row.CreateCell(0);
+                        col.SetCellValue($"{dbSheet.TableCode} - Empty Table");
+                   
+                        return newSheet;
+                    }
+                    
+                    
+                    var sheet = DestExcelBook.GetSheet(sheetTabName);
+                    return sheet;                    
+                }
+
+            }
+
+            static List<TemplateSheetInstance> getDbSheet(ConfigObject confObj, int documentId, string tableCode, string zetValue)
+            {
+                using var connectionEiopa = new SqlConnection(confObj.EiopaDatabaseConnectionString);
+                using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
+
                 var sqlSheetWithoutZet = @"
                     SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode,sheet.SheetTabName
                     FROM TemplateSheetInstance sheet
@@ -770,70 +824,13 @@ namespace ExcelCreatorV
                     left outer join   SheetZetValue zet on zet.TemplateSheetId= sheet.TemplateSheetId
                     WHERE sheet.InstanceId = @documentId
                      AND sheet.TableCode= @tableCode                     
-					 and zet.Dim in ('BL','CU')
+					 and zet.Dim in ('BL','OC','CR')
 					 and zet.Value = @zetValue
                 ";
 
-                var sqlSheets = zetValue == "empty" ? sqlSheetWithoutZet : sqlSheetWithZet;
 
-                //for each tableCode (S.19.01.01.01, S.19.01.01.02, S.19.01.01.03) find the corresponding dbSheets(may have more than one dbsheet for each tableCode because of z dims other than BL)
-                //List of lists because of the above S.25.01.01.01 for example could theoretically have several TemplateInstanceSheets 
-                List<List<TemplateSheetInstance>> dbSheets = new();
-                var tableCodes = templateTableBundle.TableCodes;
-
-                if (templateTableBundle.TemplateTableCode == "S.05.02.01")
-                {
-                    var firstRowTableCodes = new List<string>() { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" };
-                    var secondRowTableCodes = new List<string>() { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" };
-                    //firstOrDefault because we assume there is only one table 
-                    var firstRowDbSheets = firstRowTableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList();
-                    dbSheets.Add(firstRowDbSheets);
-                    var secondRowDbSheets = secondRowTableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList().ToList();
-                    dbSheets.Add(secondRowDbSheets);
-                }
-                else
-                {
-                    dbSheets = tableCodes.Select(tableCode => getSheets(sqlSheets, DocumentId, tableCode, zetValue)).ToList();
-                }
-
-
-                //var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet?.SheetTabName.Trim()))?.ToList()).ToList();
-                var isheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
-
-                CreateMergedSheet(isheets, mergedTabName);
-                var xxx = 3;
-
-                ISheet GetSheetFromBook(TemplateSheetInstance dbSheet){
-                    if (dbSheet.TableID == -1)
-                    {
-                        var newSheet = DestExcelBook.CreateSheet(dbSheet.SheetTabName);
-                        var row = newSheet.CreateRow(0);
-                        var col = row.CreateCell(0);
-                        col.SetCellValue(dbSheet.SheetTabName);
-                        return newSheet;
-                    }
-                    var sheetName = dbSheet.SheetTabName;
-                    
-                    var sheet = DestExcelBook.GetSheet(sheetName);
-                    return sheet;                    
-                }
-
-            }
-
-            List<TemplateSheetInstance> getSheets(string sqlsheets, int documentId, string tableCode, string zetValue)
-            {
-                //change it so that sqlsheets is here
-                
-
-                var result = string.IsNullOrEmpty(zetValue)
-                    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode }).ToList()
-                    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue }).ToList();
-
-                //var result = new List<TemplateSheetInstance>();
-                //result = string.IsNullOrEmpty(zetValue)
-                //    ? connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode })?.ToList() ?? new List<TemplateSheetInstance>()
-                //    : connectionInsurance.Query<TemplateSheetInstance>(sqlsheets, new { DocumentId, tableCode, zetValue })?.ToList() ?? new List<TemplateSheetInstance>();
-
+                var sqlSheets =  string.IsNullOrEmpty(zetValue)? sqlSheetWithoutZet : sqlSheetWithZet;
+                var result = connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId, tableCode, zetValue }).ToList();
                 if (result.Count == 0)
                 {
                     var new_sheetName = "new_" + tableCode.Trim() + "_" + zetValue;
