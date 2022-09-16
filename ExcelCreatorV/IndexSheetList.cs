@@ -13,7 +13,7 @@ using Dapper;
 
 namespace ExcelCreatorV
 {
-    readonly record struct IndexSheetListItem
+    public record struct IndexSheetListItem
     {
         //public ISheet Sheet { get; init; }
         public string TabSheetName { get; init; }
@@ -33,7 +33,8 @@ namespace ExcelCreatorV
         public string SheetName { get; init; }
         public string SheetDescription { get; init; }
         List<IndexSheetListItem> SheetRecords { get; set; } = new List<IndexSheetListItem>();
-        public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets,string sheetName, string sheetDescription)
+        //public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets, string sheetName, string sheetDescription)
+            public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles,  string sheetName, string sheetDescription)
         {
             ConfObject = confObject;
             ExcelBook = excelBook;
@@ -41,13 +42,13 @@ namespace ExcelCreatorV
             SheetName= sheetName;
             SheetDescription= sheetDescription;
             IndexSheet = ExcelBook.CreateSheet(sheetName);
-            SheetRecords = CreateListOfSheets(dBsheets);
+            //SheetRecords = CreateListOfSheets(dBsheets);
             
         }
 
 
 
-        private List<IndexSheetListItem> CreateListOfSheets(List<TemplateSheetInstance> dbSheets)
+        public List<IndexSheetListItem> CreateSheetsFromDb(List<TemplateSheetInstance> dbSheets)
         {
 
             var list = new List<IndexSheetListItem>();
@@ -73,13 +74,9 @@ namespace ExcelCreatorV
         }
 
 
-        public ISheet PrepareIndexSheet()
+        public ISheet PopulateIndexSheet()
         {
-            //if (ExcelBook is null || WorkbookStyles is null)
-            //{
-            //    return null;
-            //}
-            
+
             var titleRow = IndexSheet.CreateRow(0);
             var title = titleRow.CreateCell(0);
             title.SetCellValue(SheetDescription);

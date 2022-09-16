@@ -23,8 +23,17 @@ namespace AdhocTesting
         static void Main(string[] args)
         {
 
+            var axx = new List<string>() { "ab", "bc" };
+            var sel = axx.FirstOrDefault(item => item == "bsc");
+            if(sel is null)
+            {
+                Console.WriteLine("b");
+            }
+
             var confObject = Configuration.GetInstance(SolvencyVersion).Data;
             var xx = GetSubmissionDate(confObject, 1, 1, 2022);
+
+
 
 
             if (args is null)
@@ -49,40 +58,7 @@ namespace AdhocTesting
 
 
         }
-        static bool OddTableCodeSelector(string tableCode)
-        {
-            //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
-            var match = RegexConstants.TableCodeRegExP.Match(tableCode);
-            if (match.Success)
-            {
-                // "S.19.01.01.05"=> "05"
-                var lastDigits = match.Groups[2].Captures
-                    .Select(cpt => cpt.Value.Substring(1))
-                    .ToArray()[3];
-
-                return int.Parse(lastDigits) % 2 != 0;
-
-            }
-            return false;
-        }
-
-
-        static string ModifyTableCode(string tableCode)
-        {
-            //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
-            var match = RegexConstants.TableCodeRegExP.Match(tableCode);
-            if (match.Success)
-            {
-                // "S.19.01.01.05"=> "05"
-                var lastDigits = match.Groups[2].Captures
-                    .Select(cpt => cpt.Value[1..])
-                    .ToArray();
-
-                var incDigit = int.Parse(lastDigits[3]) + 1;
-                var modCode = $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";
-            }
-            return tableCode;
-        }
+    
 
         static DateTime? GetSubmissionDate(ConfigObject confObject, int category, int quarter, int referenceYear)
         {
