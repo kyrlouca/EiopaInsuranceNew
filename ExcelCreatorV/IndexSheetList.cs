@@ -138,7 +138,7 @@ namespace ExcelCreatorV
             }            
         }
 
-        public void Sort()
+        public void SortSheetRecords()
         {
             SheetRecords.Sort((IndexSheetListItem a, IndexSheetListItem b) => string.Compare(a.TabSheetName, b.TabSheetName));            
             SheetRecords.ForEach(sr => ExcelBook.SetSheetOrder(sr.TabSheetName.Trim(), SheetRecords.IndexOf(sr)));

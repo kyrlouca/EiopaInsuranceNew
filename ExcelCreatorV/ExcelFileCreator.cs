@@ -24,10 +24,10 @@ namespace ExcelCreatorV
 
     internal readonly record struct MergedSheetRecord
     {
-        public ISheet TabSheet { get; init; }
+        public ISheet? TabSheet { get; init; }
         public List<TemplateSheetInstance> ChildrenSheetInstances { get; init; }
         public string SheetDescription { get; init; }
-        public MergedSheetRecord(ISheet tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances)
+        public MergedSheetRecord(ISheet? tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances)
         {
             TabSheet = tabSheet;
             SheetDescription = sheetDescription;
@@ -137,7 +137,7 @@ namespace ExcelCreatorV
                 return false;
             }
 
-            Document = GetDocumentById2(DocumentIdInput);
+            Document = GetDocumentById(DocumentIdInput);
             Console.WriteLine("after getDocId");
 
             if (Document.InstanceId == 0)
@@ -214,9 +214,6 @@ namespace ExcelCreatorV
             using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
 
-
-
-
             var sqlSheets = @"
                 SELECT
                   TemplateSheetInstance.TemplateSheetId
@@ -241,7 +238,10 @@ namespace ExcelCreatorV
                 Console.WriteLine($"**** Debugging-- Create ONLY the sheet: {debugTableCode} ");
             }
 
+            ///*************************************************************
+            ///*** One Sheet for each table. Later we can merge
             var singleExcelSheets = new List<SingleExcelSheet>();
+            ///*************************************************************
             foreach (var sheet in sheets)
             {
 
@@ -261,9 +261,7 @@ namespace ExcelCreatorV
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
 
-
             IndexSheetList.CreateSheetRecordsFromDb(sheets);
-
 
             //---------------------------------------------------------------
             //Create a sheet which combines S0.06.02.01.01 with S0.06.02.01.02
@@ -280,248 +278,16 @@ namespace ExcelCreatorV
             MergeTemplateSheetsUniversal();
 
 
-            if (1 == 2)
-            {
-
-                //for each value of the Bl dim in S.19.01.01, we create a merged Sheet which contains the associated s19.01.01.xx sheets            
-                var bl19MergedSheets = MergeAllS1901("S.19.01.01", "BL");
-
-                foreach (var bl19MergedSheet in bl19MergedSheets)
-                {
-                    var sheetNamesToDelete = bl19MergedSheet.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-                    var ss = sheetNamesToDelete
-                        .Select(name => DestExcelBook.GetSheet(name)).ToList();
-
-                    IndexSheetList.RemoveSheets(sheetNamesToDelete);
-                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
-                }
-            }
-            if (1 == 2)
-            {
-                var S05 = MergeS05_02_01("S.05.02.01", "Premiums, claims and expenses by country");
-
-                if (S05.TabSheet is not null)
-                {
-                    var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-                    IndexSheetList.RemoveSheets(S05SheetsToRemove);
-                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
-                }
-
-            }
-
-
             //*******************************************
-            IndexSheetList.Sort();
+            IndexSheetList.SortSheetRecords();
             IndexSheetList.PopulateIndexSheet();
             IndexSheetList.IndexSheet.SetZoom(80);
 
             DestExcelBook.SetSheetOrder("List", 0);
             DestExcelBook.SetActiveSheet(0);
 
-
         }
 
-        private List<MergedSheetRecord> MergeAllS1901(string tableCode, string dimPivot)
-        {
-
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var mergedSheets = new List<MergedSheetRecord>();
-
-            var tableCodeLike = $"{tableCode}%";
-
-
-            var sqlBlValues = @"
-        select 
-            sz.Value
-        from 
-            SheetZetValue sz 
-            join TemplateSheetInstance sheet on sheet.TemplateSheetId= sz.TemplateSheetId
-        where 1=1 
-            and sheet.InstanceId= @documentId
-            and sheet.TableCode like @tableCodeLike
-            and sz.Dim=@dimPivot
-        group by sz.Dim, sz.Value
-
-        ";
-            var dimBLValues = connectionLocalDb.Query<string>(sqlBlValues, new { DocumentId, tableCodeLike, dimPivot });
-            foreach (var dimBLValue in dimBLValues)
-            {
-                var mergedSheet = MergeOneBL_S1901010(tableCode, dimPivot, dimBLValue);
-                mergedSheet.TabSheet.SetZoom(80);
-                mergedSheets.Add(mergedSheet);
-            }
-
-            var affectedSheets = new List<TemplateSheetInstance>();
-
-            return mergedSheets;
-
-        }
-
-        private MergedSheetRecord MergeOneBL_S1901010(string tableCodeS19, string dimPivot, string blDimValue)
-        {
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var blList = new List<List<ISheet>>();
-            //create a sheet for each *BL* dim value 
-            //the merged sheet consist of pairs stacked 1st pair is 'S.19.01.01.01, S.19.01.01.02' second pair is 'S.19.01.01.03, S.19.01.01.04', etc.
-
-
-            var sqlSheetsWithBL = @"
-        select 
-            sheet.TableCode, sheet.SheetCode,SheetTabName, sheet.TemplateSheetId
-        from 
-            SheetZetValue sz 
-            join TemplateSheetInstance sheet on sheet.TemplateSheetId= sz.TemplateSheetId
-        where 1=1 
-            and sheet.InstanceId= @documentId
-            and sheet.TableCode like 'S.19.01.01.%'
-            and sz.Dim='BL'
-            and sz.Value=@blDimValue
-        ";
-            var blSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheetsWithBL, new { DocumentId, blDimValue }).ToList();
-
-
-            //find the  sheets  with odd table code
-            var blSheetsOdd = blSheets
-                .Where(sheet => OddTableCodeSelector(sheet.TableCode));
-
-            //will also get the corresponding sheets with the even tablecode
-            foreach (var blSheetOdd in blSheetsOdd)
-            {
-                //create pairs of sheets and add the pair to the blList
-                var oddSheet = DestExcelBook.GetSheet(blSheetOdd.SheetTabName.Trim());
-                var pairList = new List<ISheet>() { oddSheet };
-
-                var evenSheetTableCode = ModifyTableCode(blSheetOdd.TableCode.Trim());
-                var evenSheetDb = blSheets.FirstOrDefault(sheet => sheet.TableCode == evenSheetTableCode);
-                if (evenSheetDb != null)
-                {
-                    var evenSheet = DestExcelBook.GetSheet(evenSheetDb?.SheetTabName?.Trim());
-                    pairList.Add(evenSheet);
-                }
-
-                blList.Add(pairList);
-            }
-
-            //**********************************************
-            //Create the Merged Sheet  for table s.19.01.01          
-
-            var mergedSheetName = $"{tableCodeS19}#{blDimValue.Split(":")[1].Trim()}";
-            var mergedDimValueDescription = GetDimValueDescription(ConfigObject, blDimValue);
-
-            var sheetCreated = CreateMergedSheet(blList, mergedSheetName);
-            ExcelHelperFunctions.CreateHyperLink(sheetCreated, WorkbookStyles);
-
-            //sheetCreated.SetColumnHidden(18, true);
-            //sheetCreated.SetColumnHidden(19, true);
-
-
-            return new MergedSheetRecord(sheetCreated, mergedDimValueDescription, blSheets);
-            //**********************************************
-
-            static bool OddTableCodeSelector(string tableCode)
-            {
-                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
-                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
-                if (match.Success)
-                {
-                    // "S.19.01.01.05"=> "05"
-                    var lastDigits = match.Groups[2].Captures
-                        .Select(cpt => cpt.Value[1..])
-                        .ToArray()[3];
-
-                    return int.Parse(lastDigits) % 2 != 0;
-
-                }
-                return false;
-            }
-
-
-            static string ModifyTableCode(string tableCode)
-            {
-                //retruns true if last part of tablecode is odd // "S.19.01.01.05"=> true because "05" is odd
-                var match = RegexConstants.TableCodeRegExP.Match(tableCode);
-                if (match.Success)
-                {
-                    // "S.19.01.01.05"=> "05"
-                    var lastDigits = match.Groups[2].Captures
-                        .Select(cpt => cpt.Value[1..])
-                        .ToArray();
-
-                    var incDigit = int.Parse(lastDigits[3]) + 1;
-                    var modCode = $"{match.Groups[1].Value}.{lastDigits[0]}.{lastDigits[1]}.{lastDigits[2]}.{incDigit:D2}";
-                    return modCode;
-                }
-                return "";
-            }
-
-            static string GetDimValueDescription(ConfigObject confObject, string dimValue)
-            {
-                using var connectionEiopa = new SqlConnection(confObject.EiopaDatabaseConnectionString);
-                var sqlDimValue = "select MemberLabel from mMember mem where mem.MemberXBRLCode=@dimValue";
-                var res = connectionEiopa.QueryFirstOrDefault<MMember>(sqlDimValue, new { dimValue });
-                return res is null ? "" : res.MemberLabel;
-            }
-
-        }
-
-
-
-        private MergedSheetRecord MergeS05_02_01(string mergedSheetTabName, string mergedSheetDescription)
-        {
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            var blList = new List<List<ISheet>>();
-
-            //the merged sheet consist of sheets 'S.15.02.01.xx, where xx is 01,02,03
-
-            var sqlSheets = @"
-       select sheet.TableCode ,sheet.TemplateSheetId,sheet.SheetTabName  from TemplateSheetInstance sheet 
-        where sheet.InstanceId= @documentId
-        and sheet.TableCode in ('S.05.02.01.01','S.05.02.01.03','S.05.02.01.02')
-        ";
-            var dbSheets = connectionLocalDb.Query<TemplateSheetInstance>(sqlSheets, new { DocumentId }).ToList();
-            if (!dbSheets.Any())
-            {
-                return new MergedSheetRecord();
-            }
-
-
-            var iUnsortedSheets = dbSheets.Select(dbSheet => DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim())).ToList();
-            var iSheets = new List<ISheet>();
-
-            var s1 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.01");
-            if (s1 is not null) iSheets.Add(s1);
-
-            var s3 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.03");
-            if (s3 is not null) iSheets.Add(s3);
-
-            var s2 = iUnsortedSheets.FirstOrDefault(dbSheet => dbSheet.SheetName.Trim() == "S.05.02.01.02");
-            if (s2 is not null) iSheets.Add(s2);
-
-            blList.Add(iSheets);
-
-
-            //**********************************************
-            //Create the Merged Sheet             
-            var mergedSheetCreated = CreateMergedSheet(blList, mergedSheetTabName);
-
-            mergedSheetCreated.SetZoom(80);
-            if (s3 is not null)
-            {
-                mergedSheetCreated.SetColumnHidden(3, true);
-                mergedSheetCreated.SetColumnHidden(4, true);
-            }
-            if (s2 is not null && s3 is not null)
-            {
-                mergedSheetCreated.SetColumnHidden(6, true);
-                mergedSheetCreated.SetColumnHidden(7, true);
-            }
-
-
-
-             
-            return new MergedSheetRecord(mergedSheetCreated, mergedSheetDescription, dbSheets);
-
-        }
 
 
 
@@ -550,13 +316,17 @@ namespace ExcelCreatorV
             {
                 var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
             }
-
-            destSheet.SetColumnWidth(0, 12000);
-            destSheet.SetColumnWidth(1, 2000);
-            for (var j = 2; j < firstRow?.Cells.Count; j++)
+            //**Fucking a
+            if (1 == 2)
             {
-                destSheet.SetColumnWidth(j, 4000);
+                destSheet.SetColumnWidth(0, 12000);
+                destSheet.SetColumnWidth(1, 2000);
+                for (var j = 2; j < firstRow?.Cells.Count; j++)
+                {
+                    destSheet.SetColumnWidth(j, 5000);
+                }
             }
+            //*************
             return destSheet;
         }
 
@@ -712,7 +482,7 @@ namespace ExcelCreatorV
         }
 
 
-        public DocInstance GetDocumentById2(int documentId)
+        public DocInstance GetDocumentById(int documentId)
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
@@ -721,13 +491,13 @@ namespace ExcelCreatorV
             //var sqlFundx = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
 
             var sqlFund2 = @"
-    SELECT
-      doc.InstanceId
-     ,doc.ModuleId            
-    FROM dbo.DocInstance doc
-    WHERE doc.InstanceId = @documentId
+                SELECT
+                  doc.InstanceId
+                 ,doc.ModuleId            
+                FROM dbo.DocInstance doc
+                WHERE doc.InstanceId = @documentId
 
-    ";
+                ";
 
 
             var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlFund2, new { documentId });
@@ -748,7 +518,7 @@ namespace ExcelCreatorV
             //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
             //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
             var templates = CreateTemplateTableBundles(ConfigObject, ModuleId);
-            templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
+            //templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
 
             foreach (var template in templates)
             {
@@ -773,26 +543,30 @@ namespace ExcelCreatorV
                     GROUP BY zet.Value
             ";
             var templateCode = $"{templateTableBundle.TemplateCode}%";
-            var zetList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
+            var zetBLList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
 
 
-            if (!zetList.Any())
+            if (!zetBLList.Any())
             {
-                zetList.Add("");
+                zetBLList.Add("");
             }
-            foreach (var zetValue in zetList)
+            foreach (var zetBlValue in zetBLList)
             {
-                var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetValue);
-                if (mergedRecord.TabSheet is not null)
-                {                    
-                    mergedRecord.TabSheet.SetZoom(80);
-                    var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-                    IndexSheetList.RemoveSheets(sheetsToRemove);
-                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
+                var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetBlValue);
+                if (mergedRecord.TabSheet is null)
+                {
+                    continue;
                 }
+
+                mergedRecord.TabSheet.SetZoom(80);
+                ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
+                var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
+                IndexSheetList.RemoveSheets(sheetsToRemove);
+                IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
+
             }
         }
-        private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetValue)
+        private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetBLValue)
         {
             List<SpecialHorizontalTemplate> specials = new()
             {
@@ -807,14 +581,12 @@ namespace ExcelCreatorV
                 })
             };
 
-
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
 
-
-            var mergedTabName = string.IsNullOrEmpty(zetValue)
-                ?  templateBundle.TemplateCode
-                :  templateBundle.TemplateCode + "#" + zetValue;
+            var mergedTabName = string.IsNullOrEmpty(zetBLValue)
+                ? templateBundle.TemplateCode
+                : templateBundle.TemplateCode + "#" + zetBLValue;
             mergedTabName = mergedTabName.Replace(":", "_");
 
             // each tableCode may have several dbSheets because of Zets other than business line and currency            
@@ -831,26 +603,26 @@ namespace ExcelCreatorV
                 // "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06"                 
                 foreach (var horizontalDbList in specialTemplate.TableCodes)
                 {
-                    var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList();
+                    var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetBLValue).FirstOrDefault()).ToList();
                     dbSheets.Add(horizontalDbTables);
                 }
             }
-            else if (templateBundle.TemplateCode == "xxxS.05.02.01")
-            {
-
-
-                //for each tableCode (S.19.01.01.01, S.19.01.01.02, S.19.01.01.03) find the corresponding dbSheets(may have more than one dbsheet for each tableCode because of z dims other than BL)
-                var firstRowTableCodes = new List<string>() { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" };
-                var secondRowTableCodes = new List<string>() { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" };
-                //firstOrDefault because we assume there is only one table 
-                var firstRowDbSheets = firstRowTableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList();
-                dbSheets.Add(firstRowDbSheets);
-                var secondRowDbSheets = secondRowTableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetValue).FirstOrDefault()).ToList().ToList();
-                dbSheets.Add(secondRowDbSheets);
-            }
             else
             {
-                dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetValue)).ToList();
+                //We can have more than one sheet for the same Business line, Currency , if the table has dimensions
+                //Need to merge also
+                dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetBLValue)).ToList();
+            }
+
+            var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1);
+            var countReal = dbRealSheets.Count();
+            if (countReal == 0 || (countReal == 1 && string.IsNullOrEmpty(zetBLValue)))
+            {
+                //Do not create merge if
+                //All the sheets in this template where created artificially.
+                //Only One Sheet but without zet as businessLine
+                //if there is just one sheet or
+                return new MergedSheetRecord(null, mergedTabName, new List<TemplateSheetInstance>());
             }
 
             //iSheets is a list of lists. Each inner list has the sheets which lay horizontally
@@ -860,15 +632,15 @@ namespace ExcelCreatorV
 
             ExcelHelperFunctions.CreateHyperLink(mergedSheet, WorkbookStyles);
 
-            var flatSheets = dbSheets.SelectMany(sheet => sheet).AsList();
+            var dbSheetFlatList = dbSheets.SelectMany(sheet => sheet).AsList();
 
-            return new MergedSheetRecord(mergedSheet, mergedTabName, flatSheets);
+            return new MergedSheetRecord(mergedSheet, mergedTabName, dbSheetFlatList);
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
-            {                
+            {
                 //var xx = Enumerable.Range(0, DestExcelBook.NumberOfSheets - 1).Select(idx => DestExcelBook.GetSheetAt(idx).SheetName);
-                
+
 
                 var sheetTabName = dbSheet.SheetTabName.Trim();
                 if (dbSheet.TableID == -1)
@@ -878,10 +650,12 @@ namespace ExcelCreatorV
                     var row = newSheet.CreateRow(0);
                     var col = row.CreateCell(0);
                     col.SetCellValue($"{dbSheet.TableCode} - Empty Table");
+                    ExcelHelperFunctions.CreateHyperLink(newSheet, WorkbookStyles);
                     return newSheet;
                 }
 
                 var sheet = DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim());
+
                 return sheet;
             }
             static List<TemplateSheetInstance> getOrCreateDbSheet(ConfigObject confObj, int documentId, string? tableCode, string zetValue)
