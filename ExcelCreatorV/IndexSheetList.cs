@@ -48,7 +48,7 @@ namespace ExcelCreatorV
 
 
 
-        public List<IndexSheetListItem> CreateSheetsFromDb(List<TemplateSheetInstance> dbSheets)
+        public List<IndexSheetListItem> CreateSheetRecordsFromDb(List<TemplateSheetInstance> dbSheets)
         {
 
             var list = new List<IndexSheetListItem>();
@@ -70,6 +70,7 @@ namespace ExcelCreatorV
 
                 list.Add(new IndexSheetListItem(sheetName, desc));
             }
+            SheetRecords = list;
             return list;
         }
 
@@ -104,7 +105,7 @@ namespace ExcelCreatorV
             return IndexSheet;
 
         }
-        public void AddSheet(IndexSheetListItem sheetRecord)
+        public void AddSheetRecord(IndexSheetListItem sheetRecord)
         {
             SheetRecords.Add(sheetRecord);
         }

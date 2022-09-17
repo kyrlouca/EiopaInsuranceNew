@@ -262,7 +262,7 @@ namespace ExcelCreatorV
             }
 
 
-            IndexSheetList.CreateSheetsFromDb(sheets);
+            IndexSheetList.CreateSheetRecordsFromDb(sheets);
 
 
             //---------------------------------------------------------------
@@ -272,7 +272,7 @@ namespace ExcelCreatorV
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {
-                IndexSheetList.AddSheet(new IndexSheetListItem("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
+                IndexSheetList.AddSheetRecord(new IndexSheetListItem("S.06.02.01 Combined", "List of assets ## Information on positions held ##  Information on assets"));
             }
 
             //*****************************************************************
@@ -293,7 +293,7 @@ namespace ExcelCreatorV
                         .Select(name => DestExcelBook.GetSheet(name)).ToList();
 
                     IndexSheetList.RemoveSheets(sheetNamesToDelete);
-                    IndexSheetList.AddSheet(new IndexSheetListItem(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
+                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(bl19MergedSheet.TabSheet.SheetName, bl19MergedSheet.SheetDescription));
                 }
             }
             if (1 == 2)
@@ -304,7 +304,7 @@ namespace ExcelCreatorV
                 {
                     var S05SheetsToRemove = S05.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                     IndexSheetList.RemoveSheets(S05SheetsToRemove);
-                    IndexSheetList.AddSheet(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
+                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(S05.TabSheet.SheetName, S05.SheetDescription));
                 }
 
             }
@@ -787,7 +787,7 @@ namespace ExcelCreatorV
                 {
                     var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                     IndexSheetList.RemoveSheets(sheetsToRemove);
-                    IndexSheetList.AddSheet(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
+                    IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
                 }
             }
         }
@@ -865,10 +865,8 @@ namespace ExcelCreatorV
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
-            {
-                //var sheetTabName = dbSheet.SheetTabName.Replace(":", "_").Trim();
-                var nsheets = DestExcelBook.NumberOfSheets;
-                var xx = Enumerable.Range(0, nsheets - 1).Select(idx => DestExcelBook.GetSheetAt(idx).SheetName);
+            {                
+                //var xx = Enumerable.Range(0, DestExcelBook.NumberOfSheets - 1).Select(idx => DestExcelBook.GetSheetAt(idx).SheetName);
                 
 
                 var sheetTabName = dbSheet.SheetTabName.Trim();
