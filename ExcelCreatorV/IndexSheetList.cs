@@ -123,8 +123,17 @@ namespace ExcelCreatorV
                     continue;
                 }
                 ExcelBook.RemoveAt(shIdx);
-                var shrIdx = SheetRecords.First(r => r.TabSheetName == tabSheetName);
-                SheetRecords.Remove(shrIdx);                
+                var shrIdx = SheetRecords.FirstOrDefault(r => r.TabSheetName == tabSheetName);
+
+                if(shIdx > -1)
+                {
+                    SheetRecords.Remove(shrIdx);                
+                }
+                else
+                {
+                    Console.WriteLine($"sheet {tabSheetName} not found");
+                }
+
             }            
         }
 
