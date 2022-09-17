@@ -99,7 +99,7 @@ namespace ExcelCreatorV
 
                 var titleCell = row.CreateCell(1);
                 titleCell.SetCellValue(sheetRecord.Description);
-                IndexSheet.SetColumnWidth(0, 5000);               
+                IndexSheet.SetColumnWidth(0, 7000);               
 
             }
             return IndexSheet;

@@ -16,6 +16,7 @@ using TransactionLoggerNs;
 using Org.BouncyCastle.Bcpg;
 using System.Collections;
 using NPOI.Util;
+using NPOI.HSSF.Record;
 
 namespace ExcelCreatorV
 {
@@ -24,14 +25,17 @@ namespace ExcelCreatorV
 
     internal readonly record struct MergedSheetRecord
     {
+
+        public bool IsValid { get; init; }
         public ISheet? TabSheet { get; init; }
         public List<TemplateSheetInstance> ChildrenSheetInstances { get; init; }
         public string SheetDescription { get; init; }
-        public MergedSheetRecord(ISheet? tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances)
+        public MergedSheetRecord(ISheet? tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances,bool isMerged)
         {
             TabSheet = tabSheet;
             SheetDescription = sheetDescription;
             ChildrenSheetInstances = childrenSheetInstances;
+            IsValid = isMerged;
         }
     }
 
@@ -281,7 +285,7 @@ namespace ExcelCreatorV
             //*******************************************
             IndexSheetList.SortSheetRecords();
             IndexSheetList.PopulateIndexSheet();
-            IndexSheetList.IndexSheet.SetZoom(80);
+            IndexSheetList.IndexSheet.SetZoom(80);            
 
             DestExcelBook.SetSheetOrder("List", 0);
             DestExcelBook.SetActiveSheet(0);
@@ -553,12 +557,14 @@ namespace ExcelCreatorV
             foreach (var zetBlValue in zetBLList)
             {
                 var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetBlValue);
-                if (mergedRecord.TabSheet is null)
+                if (!mergedRecord.IsValid)
                 {
-                    continue;
+                    //null when there are no tables OR when there is just one
+                    continue;                                        
                 }
 
-                mergedRecord.TabSheet.SetZoom(80);
+                
+                mergedRecord.TabSheet?.SetZoom(80);
                 ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
                 var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                 IndexSheetList.RemoveSheets(sheetsToRemove);
@@ -586,8 +592,14 @@ namespace ExcelCreatorV
 
             var mergedTabName = string.IsNullOrEmpty(zetBLValue)
                 ? templateBundle.TemplateCode
-                : templateBundle.TemplateCode + "#" + zetBLValue;
+                : templateBundle.TemplateCode + " # " + zetBLValue;
             mergedTabName = mergedTabName.Replace(":", "_");
+
+            var sqlZet = @" SELECT mem.MemberLabel  FROM mMember mem where MemberXBRLCode= @zetValue";
+            var zetLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlZet, new { zetValue = zetBLValue });
+            var templateDesciption = string.IsNullOrEmpty(zetLabel)
+                ? $"{templateBundle.TemplateDescription.Trim()}"
+                : $"{templateBundle.TemplateDescription.Trim()}#{zetLabel}";
 
             // each tableCode may have several dbSheets because of Zets other than business line and currency            
             List<List<TemplateSheetInstance>> dbSheets = new();
@@ -614,27 +626,35 @@ namespace ExcelCreatorV
                 dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetBLValue)).ToList();
             }
 
-            var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1);
-            var countReal = dbRealSheets.Count();
-            if (countReal == 0 || (countReal == 1 && string.IsNullOrEmpty(zetBLValue)))
+            var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1).ToList();
+            var countReal = dbRealSheets.Count;            
+            if(countReal == 0)
             {
-                //Do not create merge if
-                //All the sheets in this template where created artificially.
-                //Only One Sheet but without zet as businessLine
-                //if there is just one sheet or
-                return new MergedSheetRecord(null, mergedTabName, new List<TemplateSheetInstance>());
+                //If All the sheets in this template where created artificially OR just one table 
+                return new MergedSheetRecord(null, mergedTabName, dbRealSheets, false);
+            }
+            else if (countReal ==1 )
+            {
+                //If just one sheet,  do not merge but copy the same sheet as merged
+                var realSheet = GetSheetFromBook(dbRealSheets[0]);
+                var newSheet = realSheet.CopySheet(mergedTabName);
+                var allSheets = dbSheets.SelectMany(dbSheet => dbSheet).ToList();
+                return new MergedSheetRecord(newSheet, templateDesciption, allSheets,true);
             }
 
             //iSheets is a list of lists. Each inner list has the sheets which lay horizontally
             var iSheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
 
+
+            ///**************************************************************************
+            ///**** Create the Merged Sheet 
             var mergedSheet = CreateMergedSheet(iSheets, mergedTabName);
 
             ExcelHelperFunctions.CreateHyperLink(mergedSheet, WorkbookStyles);
 
             var dbSheetFlatList = dbSheets.SelectMany(sheet => sheet).AsList();
 
-            return new MergedSheetRecord(mergedSheet, mergedTabName, dbSheetFlatList);
+            return new MergedSheetRecord(mergedSheet, templateDesciption, dbSheetFlatList,true);
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
