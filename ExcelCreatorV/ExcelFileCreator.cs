@@ -518,7 +518,7 @@ namespace ExcelCreatorV
 
 
 
-            ExcelHelperFunctions.CreateHyperLink(mergedSheetCreated, WorkbookStyles);
+             
             return new MergedSheetRecord(mergedSheetCreated, mergedSheetDescription, dbSheets);
 
         }
@@ -748,7 +748,7 @@ namespace ExcelCreatorV
             //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
             //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
             var templates = CreateTemplateTableBundles(ConfigObject, ModuleId);
-            templates = templates.Where(bundle => bundle.TemplateCode == "S.05.02.01").ToList();
+            templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
 
             foreach (var template in templates)
             {
@@ -764,14 +764,14 @@ namespace ExcelCreatorV
             //currency is can be CD,CR,OC but for s.19 is oc
 
             var sqlZet = @"
-        SELECT zet.value
-        FROM TemplateSheetInstance sheet
-        JOIN SheetZetValue zet ON zet.TemplateSheetId = sheet.TemplateSheetId
-        WHERE sheet.InstanceId = @documentId
-            AND sheet.TableCode LIKE @templateCode
-            AND zet.Dim IN ('BL','OC','CR')
-        GROUP BY zet.Value
-";
+                    SELECT zet.value
+                    FROM TemplateSheetInstance sheet
+                    JOIN SheetZetValue zet ON zet.TemplateSheetId = sheet.TemplateSheetId
+                    WHERE sheet.InstanceId = @documentId
+                        AND sheet.TableCode LIKE @templateCode
+                        AND zet.Dim IN ('BL','OC','CR')
+                    GROUP BY zet.Value
+            ";
             var templateCode = $"{templateTableBundle.TemplateCode}%";
             var zetList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
 
@@ -784,7 +784,8 @@ namespace ExcelCreatorV
             {
                 var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetValue);
                 if (mergedRecord.TabSheet is not null)
-                {
+                {                    
+                    mergedRecord.TabSheet.SetZoom(80);
                     var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
                     IndexSheetList.RemoveSheets(sheetsToRemove);
                     IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
@@ -812,8 +813,8 @@ namespace ExcelCreatorV
 
 
             var mergedTabName = string.IsNullOrEmpty(zetValue)
-                ? "M_" + templateBundle.TemplateCode
-                : "M_" + templateBundle.TemplateCode + "#" + zetValue;
+                ?  templateBundle.TemplateCode
+                :  templateBundle.TemplateCode + "#" + zetValue;
             mergedTabName = mergedTabName.Replace(":", "_");
 
             // each tableCode may have several dbSheets because of Zets other than business line and currency            
