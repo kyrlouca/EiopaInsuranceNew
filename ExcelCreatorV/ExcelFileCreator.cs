@@ -17,6 +17,7 @@ using Org.BouncyCastle.Bcpg;
 using System.Collections;
 using NPOI.Util;
 using NPOI.HSSF.Record;
+using System.Reflection.Emit;
 
 namespace ExcelCreatorV
 {
@@ -30,7 +31,7 @@ namespace ExcelCreatorV
         public ISheet? TabSheet { get; init; }
         public List<TemplateSheetInstance> ChildrenSheetInstances { get; init; }
         public string SheetDescription { get; init; }
-        public MergedSheetRecord(ISheet? tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances,bool isMerged)
+        public MergedSheetRecord(ISheet? tabSheet, string sheetDescription, List<TemplateSheetInstance> childrenSheetInstances, bool isMerged)
         {
             TabSheet = tabSheet;
             SheetDescription = sheetDescription;
@@ -52,17 +53,49 @@ namespace ExcelCreatorV
         }
     }
 
+    internal static class SpecialTemplates
+    {
+        
+        public static List<SpecialHorizontalTemplate> Records { get; }
+        static SpecialTemplates()
+        {
+            Records = new()
+            {
+                new SpecialHorizontalTemplate("S.02.02.01", "S.02.02.01", new[] { new string[] { "S.02.02.01.01", "S.02.02.01.02" } }),
+                new SpecialHorizontalTemplate("S.04.01.01", "S.04.01.01", new[] { new string[] { "S.04.01.01.01", "S.04.01.01.02", "S.04.01.01.03", "S.04.01.01.04" } }),
+                new SpecialHorizontalTemplate("S.05.02.01", "S.05.02.01", new[] { new string[] { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" }, new string[] { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" } }),
+                new SpecialHorizontalTemplate("S.19.01.01", "S.19.01.01", new[] {
+                    new string[] { "S.19.01.01.01", "S.19.01.01.02", "S.19.01.01.03", "S.19.01.01.04", "S.19.01.01.05" ,"S.19.01.01.06" },
+                    new string[] { "S.19.01.01.07", "S.19.01.01.08", "S.19.01.01.09", "S.19.01.01.10", "S.19.01.01.11" ,"S.19.01.01.12" },
+                    new string[] { "S.19.01.01.13", "S.19.01.01.14", "S.19.01.01.15", "S.19.01.01.16", "S.19.01.01.17" ,"S.19.01.01.18" },
+                    new string[] { "S.19.01.01.19" },
+                    new string[] { "S.19.01.01.20" },
+                    new string[] { "S.19.01.01.21" },
+                }),                                
+                new SpecialHorizontalTemplate("S.19.01.21", "S.19.01.21", new[] { new string[] { "S.19.01.21.01", "S.19.01.21.02" , "S.19.01.21.03" , "S.19.01.21.04" } }),
+                new SpecialHorizontalTemplate("S.22.06.01", "S.22.06.01", new[] 
+                    { 
+                        new string[] { "S.22.06.01.01", "S.22.06.01.01" }, 
+                        new string[] { "S.22.06.01.03", "S.22.06.01.04" } 
+                })
+            };
+        }
+    }
+    //S.02.02.01-S.02.02.01.01,S.02.02.01.02
+    //S.04.01.01-S.04.01.01.01,S.04.01.01.02,S.04.01.01.03,S.04.01.01.04
+    //S.19.01.21-S.19.01.21.01,S.19.01.21.02,S.19.01.21.03,S.19.01.21.04
+    //S.22.06.01-S.22.06.01.01,S.22.06.01.02 +S.22.06.01.03,S.22.06.01.04
 
     public class SpecialHorizontalTemplate
     {
         public string TemplateCode { get; init; }
-        public string TemplateName { get; init; }
+        public string TemplateSheetName { get; init; }
         public String[][] TableCodesArray { get; init; }
         public List<List<string>> TableCodes { get; init; }
-        public SpecialHorizontalTemplate(string templateCode, string templateName, String[][] tableCodes)
+        public SpecialHorizontalTemplate(string templateCode, string templateSheetName, string[][] tableCodes)
         {
             TemplateCode = templateCode;
-            TemplateName = templateName;
+            TemplateSheetName = templateSheetName;
             TableCodesArray = tableCodes;
             TableCodes = TableCodesArray.Select(tc => tc.ToList()).ToList();
         }
@@ -285,7 +318,7 @@ namespace ExcelCreatorV
             //*******************************************
             IndexSheetList.SortSheetRecords();
             IndexSheetList.PopulateIndexSheet();
-            IndexSheetList.IndexSheet.SetZoom(80);            
+            IndexSheetList.IndexSheet.SetZoom(80);
 
             DestExcelBook.SetSheetOrder("List", 0);
             DestExcelBook.SetActiveSheet(0);
@@ -316,12 +349,12 @@ namespace ExcelCreatorV
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
 
 
-            for (int i = 0; i < 25; i++)
+            for (int i = 0; i < 65; i++)
             {
                 var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
             }
             //**Fucking a
-            if (1 == 2)
+            if (1 == 1)
             {
                 destSheet.SetColumnWidth(0, 12000);
                 destSheet.SetColumnWidth(1, 2000);
@@ -521,7 +554,7 @@ namespace ExcelCreatorV
             //Merge sheets for each templeate Code (3 digit code) based on dimension .(line of business BL and currency OC)
             //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
             //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
-            var templates = CreateTemplateTableBundles(ConfigObject, ModuleId);
+            var templates = CreateTemplateTableBundlesForModule(ConfigObject, ModuleId);
             //templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
 
             foreach (var template in templates)
@@ -560,10 +593,10 @@ namespace ExcelCreatorV
                 if (!mergedRecord.IsValid)
                 {
                     //null when there are no tables OR when there is just one
-                    continue;                                        
+                    continue;
                 }
 
-                
+
                 mergedRecord.TabSheet?.SetZoom(80);
                 ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
                 var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
@@ -574,18 +607,7 @@ namespace ExcelCreatorV
         }
         private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetBLValue)
         {
-            List<SpecialHorizontalTemplate> specials = new()
-            {
-                new SpecialHorizontalTemplate("S.05.02.01", "S.05.02.01", new[] { new string[] { "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" }, new string[] { "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06" } }),
-                new SpecialHorizontalTemplate("S.19.01.01", "S.19.01.01", new[] {
-                    new string[] { "S.19.01.01.01", "S.19.01.01.02", "S.19.01.01.03", "S.19.01.01.04", "S.19.01.01.05" ,"S.19.01.01.06" },
-                    new string[] { "S.19.01.01.07", "S.19.01.01.08", "S.19.01.01.09", "S.19.01.01.10", "S.19.01.01.11" ,"S.19.01.01.12" },
-                    new string[] { "S.19.01.01.13", "S.19.01.01.14", "S.19.01.01.15", "S.19.01.01.16", "S.19.01.01.17" ,"S.19.01.01.18" },
-                    new string[] { "S.19.01.01.19" },
-                    new string[] { "S.19.01.01.20" },
-                    new string[] { "S.19.01.01.21" },
-                })
-            };
+            
 
             using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -599,14 +621,14 @@ namespace ExcelCreatorV
             var zetLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlZet, new { zetValue = zetBLValue });
             var templateDesciption = string.IsNullOrEmpty(zetLabel)
                 ? $"{templateBundle.TemplateDescription.Trim()}"
-                : $"{templateBundle.TemplateDescription.Trim()}#{zetLabel}";
+                : $"{templateBundle.TemplateDescription.Trim()} # {zetLabel}";
 
             // each tableCode may have several dbSheets because of Zets other than business line and currency            
             List<List<TemplateSheetInstance>> dbSheets = new();
             var tableCodes = templateBundle.TableCodes;
 
             //A specialTemplate has horizontal tables in the same sheet.
-            var specialTemplate = specials.FirstOrDefault(special => special.TemplateCode == templateBundle.TemplateCode);
+            var specialTemplate = SpecialTemplates.Records.FirstOrDefault(special => special.TemplateCode == templateBundle.TemplateCode);
 
             if (specialTemplate is not null)
             {
@@ -627,19 +649,19 @@ namespace ExcelCreatorV
             }
 
             var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1).ToList();
-            var countReal = dbRealSheets.Count;            
-            if(countReal == 0)
+            var countReal = dbRealSheets.Count;
+            if (countReal == 0)
             {
                 //If All the sheets in this template where created artificially OR just one table 
                 return new MergedSheetRecord(null, mergedTabName, dbRealSheets, false);
             }
-            else if (countReal ==1 )
+            else if (countReal == 1)
             {
                 //If just one sheet,  do not merge but copy the same sheet as merged
                 var realSheet = GetSheetFromBook(dbRealSheets[0]);
                 var newSheet = realSheet.CopySheet(mergedTabName);
                 var allSheets = dbSheets.SelectMany(dbSheet => dbSheet).ToList();
-                return new MergedSheetRecord(newSheet, templateDesciption, allSheets,true);
+                return new MergedSheetRecord(newSheet, templateDesciption, allSheets, true);
             }
 
             //iSheets is a list of lists. Each inner list has the sheets which lay horizontally
@@ -654,7 +676,7 @@ namespace ExcelCreatorV
 
             var dbSheetFlatList = dbSheets.SelectMany(sheet => sheet).AsList();
 
-            return new MergedSheetRecord(mergedSheet, templateDesciption, dbSheetFlatList,true);
+            return new MergedSheetRecord(mergedSheet, templateDesciption, dbSheetFlatList, true);
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
@@ -722,7 +744,7 @@ namespace ExcelCreatorV
 
         }
 
-        private static List<TemplateBundle> CreateTemplateTableBundles(ConfigObject ConfObject, int moduleId)
+        private static List<TemplateBundle> CreateTemplateTableBundlesForModule(ConfigObject ConfObject, int moduleId)
         {
             using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
             using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);
