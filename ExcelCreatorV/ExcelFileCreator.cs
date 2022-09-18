@@ -680,18 +680,19 @@ namespace ExcelCreatorV
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
-            {
-                //var xx = Enumerable.Range(0, DestExcelBook.NumberOfSheets - 1).Select(idx => DestExcelBook.GetSheetAt(idx).SheetName);
-
+            {                
 
                 var sheetTabName = dbSheet.SheetTabName.Trim();
                 if (dbSheet.TableID == -1)
                 {
 
-                    var newSheet = DestExcelBook.CreateSheet(sheetTabName);
-                    var row = newSheet.CreateRow(0);
-                    var col = row.CreateCell(0);
-                    col.SetCellValue($"{dbSheet.TableCode} - Empty Table");
+                    var sqlTbl = @"SELECT TemplateOrTableLabel FROM mTemplateOrTable tt where tt.TemplateOrTableCode= @tableCode and tt.TemplateOrTableType='BusinessTable'";
+                    var tableDescription = connectionEiopa.QueryFirstOrDefault<string>(sqlTbl, new { tableCode= dbSheet.TableCode } )??"";
+                    var newSheet = DestExcelBook.CreateSheet(sheetTabName);                    
+                    newSheet.CreateRow(0).CreateCell(0).SetCellValue($"{dbSheet.TableCode} - Empty Table");
+                    newSheet.CreateRow(1).CreateCell(0).SetCellValue(templateBundle.TemplateDescription);
+                    newSheet.CreateRow(2).CreateCell(0).SetCellValue(tableDescription);
+
                     ExcelHelperFunctions.CreateHyperLink(newSheet, WorkbookStyles);
                     return newSheet;
                 }
