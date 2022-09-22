@@ -349,7 +349,7 @@ namespace ExcelCreatorV
             var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
 
 
-            for (int i = 0; i < 65; i++)
+            for (int i = 0; i < 70; i++)
             {
                 var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
             }

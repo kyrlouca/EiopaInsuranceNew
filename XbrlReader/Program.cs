@@ -19,8 +19,8 @@ namespace XbrlReader
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\ALTIUS INSURANCE LTD Q1 2022.xbrl
             //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");
             //(var fundIdT, var filePath) = (99, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\crashEthnikiGeneralARS.xbrl");
-            (var fundIdT, var filePath) = (99, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\ALTIUS INSURANCE LTD Q1 2022.xbrl");
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "qrs", 2023, 1,filePath);            
+            (var fundIdT, var filePath) = (181, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\newVersion\Steamship.xbrl");
+            XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0,filePath);            
                         
 
             Console.WriteLine("Finish");

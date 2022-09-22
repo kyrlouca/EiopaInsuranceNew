@@ -17,7 +17,7 @@ namespace XbrlReader
 
     class FactsProcessor
     {        
-        public int TestingTableId { get; set; } = 0;
+        public int TestingTableId { get; set; } = 54;
         //65 S.05.02.01.02 ars error fin grawo
         //60 S.05.01.02.01  qrs simple zet
         //39 - S.02.02.01.01 ars  simple zet          
@@ -287,15 +287,9 @@ namespace XbrlReader
                 //** the fact signature has REAL values (From its context) and the cells may have wildcard values                        
                 //*****************************************************************
                 Console.Write($"!");
-
-
-                //var factsList = FindMatchingFactsV5(ConfigObject, DocumentId, cell.DatapointSignature);
+                
                 var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
-                //if (factsList.Count != testList.Count)
-                //{
-                //    var x = 3;
-                //}
-
+                
                 Console.Write($"$");
 
                 if (factsList.Count == 0)
@@ -833,6 +827,10 @@ namespace XbrlReader
             {
                 return factList;
             }
+
+            ///todo check with or without the optional
+
+
 
             //This is an extra filtering of facts when there is a cell which specified a dims hierarchy 
             if (cellSignature.Contains("*["))
