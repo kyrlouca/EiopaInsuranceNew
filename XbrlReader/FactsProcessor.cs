@@ -290,6 +290,11 @@ namespace XbrlReader
                 Console.Write($"!");
 
                 var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
+                var factListNew= FindFactsFromSignatureNew(ConfigObject, DocumentId, cell.DatapointSignature);
+                if (factsList.Count != factListNew.Count)
+                {
+                    Console.Write($"DIFFERENCE for cell: {cell.CellID}");
+                }
 
                 Console.Write($"$");
 
