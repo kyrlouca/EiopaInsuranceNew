@@ -11,6 +11,7 @@ using Microsoft.Data.SqlClient;
 using Dapper;
 using System.Reflection.Metadata;
 using EntityClassesZ;
+using XbrlReader;
 
 namespace AdhocTesting
 {
@@ -22,6 +23,11 @@ namespace AdhocTesting
         enum Fts { exp, count, empty, isfallback, min, max, sum, matches, ftdv, ExDimVal };
         static void Main(string[] args)
         {
+
+            var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)";
+            var bxb = FactsProcessor.SimplifyCellSignature(test,true);
+
+            var bxo = FactsProcessor.SimplifyCellSignature(test, false);
 
             var axx = new List<string>() { "ab", "bc" };
             var sel = axx.FirstOrDefault(item => item == "bsc");

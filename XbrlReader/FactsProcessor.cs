@@ -15,9 +15,10 @@ namespace XbrlReader
 {
 
 
-    class FactsProcessor
+    public class FactsProcessor
     {
-        public int TestingTableId { get; set; } = 54;
+        //public int TestingTableId { get; set; } = 54;
+        public int TestingTableId { get; set; } = 0;
         //65 S.05.02.01.02 ars error fin grawo
         //60 S.05.01.02.01  qrs simple zet
         //39 - S.02.02.01.01 ars  simple zet          
@@ -732,7 +733,7 @@ namespace XbrlReader
         }
 
 
-        private static string CleanCellSignatureWithoutOptional(string cellSignature)
+        private static string CleanCellSignatureWithoutOptionalxx(string cellSignature)
         {
             //var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)";
             //var test2 = @"MET(s2md_met:mi1104)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
@@ -749,13 +750,21 @@ namespace XbrlReader
             return cleanSig;
         }
 
-        private static string CleanCellSignatureWithOptional(string cellSignature)
+        public static string SimplifyCellSignature(string cellSignature, bool allowOptional)
         {
             //var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)";
             //var test2 = @"MET(s2md_met:mi1104)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
 
             //cellSignature = test2;
-            var dimList = cellSignature.Split("|")
+
+            var dimListBasic = cellSignature.Split("|").ToList();
+            if (!allowOptional)
+            {
+                dimListBasic = dimListBasic.Where(dim => !dim.Contains('?')).ToList();
+            }
+
+
+            var dimList = dimListBasic
             .Select(dim => dim.Replace("?", ""))
             .Select(dim => Regex.Replace(dim, @"\[.*\]", ""))
             .Select(dim => dim.Replace("*", "%")).ToList();
@@ -789,7 +798,7 @@ namespace XbrlReader
             using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
-            var cleanSignatureWithoutOptional = CleanCellSignatureWithoutOptional(cellSignature);
+            var cleanSignatureWithoutOptional = SimplifyCellSignature(cellSignature, false);
             var dimList = cleanSignatureWithoutOptional.Split("|").ToList();
 
             var xbrlMetric = dimList.FirstOrDefault();
@@ -841,7 +850,7 @@ namespace XbrlReader
 
             ///todo fuck check with the optional
             //***********************************************
-            var cleanSignatureWithOptional = CleanCellSignatureWithOptional(cellSignature);
+            var cleanSignatureWithOptional = SimplifyCellSignature(cellSignature, true);
             var dimListWithOptional = cleanSignatureWithOptional.Split("|").ToList();
             if (!dimList.Any())
             {
@@ -885,13 +894,16 @@ namespace XbrlReader
             //the check looks for valid hierarchy members[323;3;3] 
             var factDims = factSignature.Split("|").ToList();
             var cellDimsFull = cellSignature.Split("|");
-            var cellDims = cellDimsFull.Where(dim => !dim.Contains("?[")); // the dims with "?" are default and do NOT appear in the xbrl context
+
+            //var cellDims = cellDimsFull.Where(dim => !dim.Contains("?[")); // the dims with "?" are default and do NOT appear in the xbrl context
+            var cellDims = cellDimsFull;
 
             foreach (var cellDim in cellDims)
             {
 
                 var factDimFound = factDims.FirstOrDefault(factDim => IsFactDimMatchingCellExpensive(config, cellDim, factDim));
-                if (factDimFound is null)
+                //if (factDimFound is null)
+                if (factDimFound is null && !cellDim.Contains("?"))
                 {
                     return false;
                 }
