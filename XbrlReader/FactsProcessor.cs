@@ -16,7 +16,7 @@ namespace XbrlReader
 
 
     class FactsProcessor
-    {        
+    {
         public int TestingTableId { get; set; } = 54;
         //65 S.05.02.01.02 ars error fin grawo
         //60 S.05.01.02.01  qrs simple zet
@@ -44,9 +44,9 @@ namespace XbrlReader
         public List<string> Filings { get; private set; }
         public string DefaultCurrency { get; set; } = "EUR";
         public int ModuleId { get; private set; }
-        public string ModuleCode { get; private set; }        
+        public string ModuleCode { get; private set; }
         public List<MTable> ModuleTablesFiled { get; private set; } = new List<MTable>();
-        
+
 
         public string SolvencyVersion { get; private set; }
         public ConfigObject ConfigObject { get; }
@@ -112,8 +112,8 @@ namespace XbrlReader
 
             Filings = filings;
 
-            DocumentId = documentId;            
-            Document= GetDocument(documentId);
+            DocumentId = documentId;
+            Document = GetDocument(documentId);
             if (Document is null)
             {
                 var message = $"Document:{DocumentId} not Found. Abort";
@@ -122,7 +122,7 @@ namespace XbrlReader
                 return;
             }
 
-            ModuleCode = Document.ModuleCode.Trim();            
+            ModuleCode = Document.ModuleCode.Trim();
             ModuleTablesFiled = GetFiledModuleTables();
 
         }
@@ -132,7 +132,7 @@ namespace XbrlReader
         {
             using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
-            var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId,status });
+            var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
 
         private DocInstance GetDocument(int documentId)
@@ -287,9 +287,9 @@ namespace XbrlReader
                 //** the fact signature has REAL values (From its context) and the cells may have wildcard values                        
                 //*****************************************************************
                 Console.Write($"!");
-                
+
                 var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
-                
+
                 Console.Write($"$");
 
                 if (factsList.Count == 0)
@@ -323,7 +323,7 @@ namespace XbrlReader
 
                         var factId = connectionInsurance.QueryFirst<int>(sqlInsertAnotherFact, fact);
                         fact.FactId = factId;
-                        
+
                         XbrlFileReader.CreateFactDimsDb(ConfigObject, fact.FactId, fact.DataPointSignature);
 
 
@@ -376,7 +376,7 @@ namespace XbrlReader
 
             var yMappings = GetTableYDims(table);
             if (yMappings.Count > 0)
-            {             
+            {
             }
 
 
@@ -724,7 +724,7 @@ namespace XbrlReader
                   where mbt.ModuleID = @moduleId";
             var moduleTables = connectionEiopa.Query<MTable>(sqlTables, new { ModuleId }).ToList();
 
-            
+
             var validModuleTables = moduleTables.Where(mtable => Filings.Any(filing => mtable.TableCode.Contains(filing))).ToList();
 
 
@@ -732,25 +732,43 @@ namespace XbrlReader
         }
 
 
-        private  static (string xbrl, string signature) CleanCellSignature(string cellSignature)
+        private static string CleanCellSignatureWithoutOptional(string cellSignature)
         {
             //var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)";
             //var test2 = @"MET(s2md_met:mi1104)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
-            
+
             //cellSignature = test2;
             var dimList = cellSignature.Split("|")
-            .Where(dim => !dim.Contains("?"))
+            .Where(dim => !dim.Contains('?'))
             .Select(dim => Regex.Replace(dim, @"\[.*\]", ""))
             .Select(dim => dim.Replace("*", "%")).ToList();
             var cleanSig = string.Join("|", dimList);
 
             var xbrlMetric = dimList.First();
-            var xbrlCode = GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
-            return (xbrlCode, cleanSig);
+            //var xbrlCode = GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
+            return cleanSig;
         }
 
+        private static string CleanCellSignatureWithOptional(string cellSignature)
+        {
+            //var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)";
+            //var test2 = @"MET(s2md_met:mi1104)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)";
+
+            //cellSignature = test2;
+            var dimList = cellSignature.Split("|")
+            .Select(dim => dim.Replace("?", ""))
+            .Select(dim => Regex.Replace(dim, @"\[.*\]", ""))
+            .Select(dim => dim.Replace("*", "%")).ToList();
+            var cleanSig = string.Join("|", dimList);
+
+            var xbrlMetric = dimList.First();
+            //var xbrlCode = GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
+            return cleanSig;
+        }
+
+
         public static List<TemplateSheetFact> FindMatchingFactsRegex(ConfigObject config, int documentId, string cellSignature)
-        {            
+        {
             //MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)
             //find the list of facts that match the dimensions of the cell
             //the cells may have open dimensions * but the facts have the real dimdom values from the context
@@ -769,17 +787,13 @@ namespace XbrlReader
             //MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)
 
             using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
-            (var xbrlCode2, var cleanSignature2) = CleanCellSignature(cellSignature);
-            var dimList = cleanSignature2.Split("|").ToList();
-                        
-            if (dimList.Count < 1)
-            {
-                return new List<TemplateSheetFact>();
-            }
+            var factList = new List<TemplateSheetFact>();
 
-            var xbrlMetric = dimList.First();
-            var xbrlCode = GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
+            var cleanSignatureWithoutOptional = CleanCellSignatureWithoutOptional(cellSignature);
+            var dimList = cleanSignatureWithoutOptional.Split("|").ToList();
 
+            var xbrlMetric = dimList.FirstOrDefault();
+            var xbrlCode = string.IsNullOrEmpty(xbrlMetric) ? "EmptyXbrlCode" : GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
 
             var sqlSelectFacts = @"
               SELECT  
@@ -822,14 +836,24 @@ namespace XbrlReader
                 AND fact.XBRLCode = @xbrlCode
                 AND fact.DataPointSignatureFilled like @sig;
              ";
-            var factList = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode,sig=cleanSignature2 }).ToList();
-            if (factList.Count == 0)
+            var factListWithout = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithoutOptional }).ToList();
+            factList.AddRange(factListWithout);
+
+            ///todo fuck check with the optional
+            //***********************************************
+            var cleanSignatureWithOptional = CleanCellSignatureWithOptional(cellSignature);
+            var dimListWithOptional = cleanSignatureWithOptional.Split("|").ToList();
+            if (!dimList.Any())
             {
-                return factList;
+                return new List<TemplateSheetFact>();
             }
-
-            ///todo check with or without the optional
-
+            var factListWithOptional = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithOptional }).ToList();
+            factList.AddRange(factListWithOptional);
+            if (factListWithOptional.Any())
+            {
+                Console.WriteLine($"*%!**&%^* - A fact with optional was found: Signature: {cellSignature}");
+            }
+            //***********************************************
 
 
             //This is an extra filtering of facts when there is a cell which specified a dims hierarchy 
@@ -840,7 +864,7 @@ namespace XbrlReader
 
             //some facts may exist in many tables (we only need one)
             var distinctList = new List<TemplateSheetFact>();
-            foreach(var fact in factList)
+            foreach (var fact in factList)
             {
                 var found = distinctList.Exists(dfact => dfact.DataPointSignatureFilled == fact.DataPointSignatureFilled);
                 if (!found)
@@ -850,7 +874,7 @@ namespace XbrlReader
             }
 
             return distinctList;
-            
+
         }
 
 
@@ -880,7 +904,7 @@ namespace XbrlReader
 
 
         private static bool IsFactDimMatchingCellExpensive(ConfigObject config, string cellDim, string factDim)
-        {            
+        {
             //            
             //*  "*" allows for any value but brackets constrain the values to the hierechy members
             ////MET(s2md_met:mi686)|s2c_dim:AO(*?[16])|s2c_dim:EA(s2c_VM:x23)|s2c_dim:RT(s2c_RT:x97)|s2c_dim:VG(s2c_AM:x80)
@@ -920,8 +944,8 @@ namespace XbrlReader
 
                 var hierarchyId = hierarchyParts[0];
                 var sqlSelectMem = @"select MemberID from mMember mem where mem.MemberXBRLCode=@MemberXBRLCode";
-                var memberId = connectionEiopa.QueryFirstOrDefault<int>(sqlSelectMem, new { MemberXBRLCode=factDimDom.DomAndValRaw });
-                if(memberId ==0)
+                var memberId = connectionEiopa.QueryFirstOrDefault<int>(sqlSelectMem, new { MemberXBRLCode = factDimDom.DomAndValRaw });
+                if (memberId == 0)
                 {
                     return false;
                 }
@@ -963,7 +987,7 @@ namespace XbrlReader
         }
 
 
-        private static  string GetTablePivotZet(ConfigObject confg, MTable table)
+        private static string GetTablePivotZet(ConfigObject confg, MTable table)
         {
             //find the in table zet dim which is not in the table zet dims but exists in the mappings as Is_in_table=1
             //for example in table 40, we have multiple facts in the same cell
@@ -982,7 +1006,7 @@ namespace XbrlReader
             {
                 return "";
             }
-            
+
             var zdims = table.ZDimVal?.Split("|")
                 ?.Select(dim => DimDom.GetParts(dim).Dim)
                 ?.ToList() ?? new List<string>();
@@ -1031,7 +1055,7 @@ namespace XbrlReader
             foreach (var factWithRowSignature in factsWithRowSignature)
             {
 
-                var factYdims = factWithRowSignature?.OpenRowSignature?.Split("|",StringSplitOptions.RemoveEmptyEntries).ToList();
+                var factYdims = factWithRowSignature?.OpenRowSignature?.Split("|", StringSplitOptions.RemoveEmptyEntries).ToList();
                 if (factYdims is null)
                 {
                     return 0;
@@ -1041,13 +1065,13 @@ namespace XbrlReader
                 //var sqlTable = @"s2c_dim:BL(*[350;1512;0])|s2c_dim:LP(*)|s2c_dim:OD(*)|s2c_dim:RE(*)|s2c_dim:ST(*)";                
                 var sqlTable = @"select YDimVal from  mTable tab where tab.TableID= @tableId";
                 var yTableDimStr = connectionEiopa.QuerySingleOrDefault<string>(sqlTable, new { sheet.TableID });
-                if(yTableDimStr is null)
+                if (yTableDimStr is null)
                 {
                     return 0;
                 }
-                var tableYdims = yTableDimStr.Split("|",StringSplitOptions.RemoveEmptyEntries);
-                
-                foreach(var tableYdim in tableYdims)
+                var tableYdims = yTableDimStr.Split("|", StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var tableYdim in tableYdims)
                 {
                     var yTableDimDom = DimDom.GetParts(tableYdim);
                     var sqlFindMapping = @"
@@ -1068,27 +1092,27 @@ namespace XbrlReader
 				            and map.DIM_CODE like @dimCode
 				
                     ";
-                    var yDimMapping = connectionEiopa.QueryFirstOrDefault<MAPPING>(sqlFindMapping, new { tableId = sheet.TableID, dimCode = $"s2c_dim:{yTableDimDom.Dim }%" });
-                    if(yDimMapping is null)
+                    var yDimMapping = connectionEiopa.QueryFirstOrDefault<MAPPING>(sqlFindMapping, new { tableId = sheet.TableID, dimCode = $"s2c_dim:{yTableDimDom.Dim}%" });
+                    if (yDimMapping is null)
                     {
                         continue;
                     }
-                    
-                    var factYdim = factYdims.FirstOrDefault(dim => DimDom.GetParts(dim).Dim== yTableDimDom.Dim);
-                    if(factYdim is null)
+
+                    var factYdim = factYdims.FirstOrDefault(dim => DimDom.GetParts(dim).Dim == yTableDimDom.Dim);
+                    if (factYdim is null)
                     {
                         continue;
                     }
-                    
+
                     var factDimDomValue = DimDom.GetParts(factYdim);
-                    var signatureFilled = $"YR|{DimDom.GetParts( factYdim).Dim}|{factWithRowSignature.OpenRowSignature}";
+                    var signatureFilled = $"YR|{DimDom.GetParts(factYdim).Dim}|{factWithRowSignature.OpenRowSignature}";
                     var newFact = new TemplateSheetFact()
                     {
                         InstanceId = DocumentId,
                         TemplateSheetId = sheet.TemplateSheetId,
                         TableID = sheet.TableID,
-                        Unit = "",                        
-                        DataType="",
+                        Unit = "",
+                        DataType = "",
                         DataTypeUse = tableYdim.Contains("[") ? "E" : "S",
                         XBRLCode = "RowKey",
                         DataPointSignatureFilled = signatureFilled,
@@ -1100,7 +1124,7 @@ namespace XbrlReader
                         Zet = factWithRowSignature.Zet,
                         InternalRow = factWithRowSignature.InternalRow,
                         InternalCol = 0,
-                        TextValue = tableYdim.Contains("[") ? factDimDomValue.DomAndValRaw :  factDimDomValue.DomValue,
+                        TextValue = tableYdim.Contains("[") ? factDimDomValue.DomAndValRaw : factDimDomValue.DomValue,
                         FieldOrigin = "KYR",
                         CurrencyDim = "VV",
                         ZetValues = factWithRowSignature.ZetValues
@@ -1277,19 +1301,19 @@ namespace XbrlReader
         public static void UpdateCellsForeignRow(ConfigObject configObject, int documentId)
         {
             using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
-            
+
             var sqlSelectSheets = @"select sheet.TemplateSheetId,sheet.TableCode from TemplateSheetInstance sheet where sheet.IsOpenTable=1 and  sheet.InstanceId = @documentId";
             var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { documentId })?.ToList() ?? new();
             foreach (var sheet in sheets)
             {
-                
+
                 Console.WriteLine($"Update Foreign Keys");
                 UpdateSheetFactsWithMasterRow(configObject, sheet.TemplateSheetId);
-            }            
+            }
 
         }
 
-        static void UpdateSheetFactsWithMasterRow(ConfigObject configObject,int sheetId)
+        static void UpdateSheetFactsWithMasterRow(ConfigObject configObject, int sheetId)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
@@ -1309,11 +1333,11 @@ namespace XbrlReader
 
             foreach (var fact in facts)
             {
-                UpdateFactWithMasterRow(configObject,fact, kyrRecord);
+                UpdateFactWithMasterRow(configObject, fact, kyrRecord);
             }
         }
 
-        static int UpdateFactWithMasterRow(ConfigObject configObject,TemplateSheetFact fact, MTableKyrKeys kyrRecord)
+        static int UpdateFactWithMasterRow(ConfigObject configObject, TemplateSheetFact fact, MTableKyrKeys kyrRecord)
         {
             //update the RowForeign of the main table with the row of a related table.
             //For example, S.06.02.01.01 has links with S.06.02.01.02 on the "UI" dim. (SEVERAL rows of S.06.02.01.01 may correspond to a row of S.06.02.01.02 ** checked and true)       
