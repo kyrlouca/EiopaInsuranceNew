@@ -776,7 +776,7 @@ namespace XbrlReader
         }
 
 
-        public static List<TemplateSheetFact> FindMatchingFactsRegex(ConfigObject config, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindMatchingFactsRegex(ConfigObject confObj, int documentId, string cellSignature)
         {
             //MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)
             //find the list of facts that match the dimensions of the cell
@@ -795,7 +795,7 @@ namespace XbrlReader
             //MET(s2md_met:mi686)|s2c_dim:EA(s2c_VM:x23)|s2c_dim:RT(s2c_RT:x97)|s2c_dim:VG(s2c_AM:x80)|s2c_dim:BB(s2c_AM:x80)
             //MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)
 
-            using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
             var cleanSignatureWithoutOptional = SimplifyCellSignature(cellSignature, false);
@@ -848,27 +848,32 @@ namespace XbrlReader
             var factListWithout = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithoutOptional }).ToList();
             factList.AddRange(factListWithout);
 
-            ///todo fuck check with the optional
+
             //***********************************************
+            ///get the facts using the optional dims
             var cleanSignatureWithOptional = SimplifyCellSignature(cellSignature, true);
             var dimListWithOptional = cleanSignatureWithOptional.Split("|").ToList();
-            if (!dimList.Any())
+            if (!dimListWithOptional.Any())
             {
                 return new List<TemplateSheetFact>();
             }
-            var factListWithOptional = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithOptional }).ToList();
-            factList.AddRange(factListWithOptional);
-            if (factListWithOptional.Any())
+            if (dimList.Count == dimListWithOptional.Count)
             {
-                Console.WriteLine($"*%!**&%^* - A fact with optional was found: Signature: {cellSignature}");
+                var factListWithOptional = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithOptional }).ToList();
+                factList.AddRange(factListWithOptional);
+                if (factListWithOptional.Any())
+                {
+                    Console.WriteLine($"*%!**&%^* - A fact with optional was found: Signature: {cellSignature}");
+                }
             }
+
             //***********************************************
 
 
             //This is an extra filtering of facts when there is a cell which specified a dims hierarchy 
             if (cellSignature.Contains("*["))
             {
-                factList = factList.Where(fact => IsFactSignatureMatchingExpensive(config, cellSignature, fact.DataPointSignatureFilled)).ToList();
+                factList = factList.Where(fact => IsFactSignatureMatchingExpensive(confObj, cellSignature, fact.DataPointSignatureFilled)).ToList();
             }
 
             //some facts may exist in many tables (we only need one)
@@ -882,6 +887,8 @@ namespace XbrlReader
                 }
             }
 
+            var nnn = FindFactsFromSignatureNew(confObj, documentId, cellSignature);
+
             return distinctList;
 
         }
@@ -891,24 +898,21 @@ namespace XbrlReader
         public static bool IsFactSignatureMatchingExpensive(ConfigObject config, string cellSignature, string factSignature)
         {
             //check all fact dims against cell dims the expenive way
-            //the check looks for valid hierarchy members[323;3;3] 
+            //check optional dims for 
+            //check for valid hierarchy members[323;3;3] 
             var factDims = factSignature.Split("|").ToList();
-            var cellDimsFull = cellSignature.Split("|");
-
-            //var cellDims = cellDimsFull.Where(dim => !dim.Contains("?[")); // the dims with "?" are default and do NOT appear in the xbrl context
-            var cellDims = cellDimsFull;
+            var cellDims = cellSignature.Split("|");
 
             foreach (var cellDim in cellDims)
             {
-
                 var factDimFound = factDims.FirstOrDefault(factDim => IsFactDimMatchingCellExpensive(config, cellDim, factDim));
                 //if (factDimFound is null)
-                if (factDimFound is null && !cellDim.Contains("?"))
+                //if the cell dim is optional 
+                if (factDimFound is null && !cellDim.Contains('?'))
                 {
                     return false;
                 }
                 factDims.Remove(factDimFound);
-
             }
             return factDims.Count == 0;
 
@@ -923,7 +927,7 @@ namespace XbrlReader
             //MET(s2md_met:mi1157)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)
             //MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)
 
-            var isExact = !cellDim.Contains("*");
+            var isExact = !cellDim.Contains('*');
             if (isExact)
             {
                 return factDim == cellDim;
@@ -997,6 +1001,105 @@ namespace XbrlReader
             return zetStr;
 
         }
+
+
+        ///************************
+
+        public static bool IsNewSignatureMatch(ConfigObject confObj, string cellSignature, string factSignature)
+        {
+
+            //check for valid hierarchy members[323;3;3] 
+            var factDims = factSignature.Split("|");
+            var cellDims = cellSignature.Split("|");
+
+            //it does not have even an xbrl code
+            if (!factDims.Any())
+            {
+                return false;
+            }
+
+            var factDimDoms = factDims.Select(fd => DimDom.GetParts(fd)).Skip(1).ToList();
+            var cellDimDoms = cellDims.Select(cd => DimDom.GetParts(cd)).Skip(1).ToList();
+            foreach (var cellDimDom in cellDimDoms)
+            {
+
+                //var factDimDom = factDimDoms.FirstOrDefault(fd => fd.Dim == cellDimDoms.FirstOrDefault(cd => cd.Dim == fd.Dim).Dim);
+                var factDimDom = factDimDoms.FirstOrDefault(fd => cellDimDoms.Exists(cd => cd.Dim == fd.Dim));
+                if (factDimDom is null && !cellDimDom.IsOptional)
+                {
+                    return false;
+                }
+                if (!IsNewDimMatch(confObj, cellDimDom, factDimDom))
+                {
+                    return false;
+                }
+                if (factDimDom is not null)//to avoid removing null when dim is optional
+                {
+                    factDimDoms.Remove(factDimDom);
+                }
+            }
+
+            return factDimDoms.Count == 0;
+
+        }
+
+
+        private static bool IsNewDimMatch(ConfigObject config, DimDom cellDimDom, DimDom factDimDom)
+        {
+            //            
+            // "*" allows for any value but brackets constrain the values to the hierechy members
+            ////MET(s2md_met:mi686)|s2c_dim:AO(*?[16])|s2c_dim:EA(s2c_VM:x23)|s2c_dim:RT(s2c_RT:x97)|s2c_dim:VG(s2c_AM:x80)
+            //MET(s2md_met:mi1157)|s2c_dim:BL(*[334;1512;0])|s2c_dim:CC(s2c_TB:x12)|s2c_dim:FC(*)|s2c_dim:RD(*)|s2c_dim:RE(*)
+            //MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)
+
+            //*** should not happen but check anyway
+            if(cellDimDom.Dim!= factDimDom.Dim)
+            {
+                return false;
+            }
+
+            //***  Completely open, anything goes as dom value
+            if (cellDimDom.DomAndValRaw == "*")
+            {
+                return true;
+            }
+
+            //If no * then check whole value
+            if (!cellDimDom.IsWild)
+            {
+                return cellDimDom.DomAndValRaw == factDimDom.DomAndValRaw;
+            }
+            
+
+            //check if the fact's dom value belongs in the hierarchy
+            using var connectionEiopa = new SqlConnection(config.EiopaDatabaseConnectionString);
+
+            var hierarchyParts = GeneralUtils.GetRegexSingleMatch(@"\[(.*)\]", cellDimDom.DomAndValRaw).Split(";");
+            if (hierarchyParts.Length < 1)
+            {
+                return false;
+            }
+
+            var hierarchyId = hierarchyParts[0];
+            var sqlSelectMem = @"select MemberID from mMember mem where mem.MemberXBRLCode=@MemberXBRLCode";
+            var memberId = connectionEiopa.QueryFirstOrDefault<int>(sqlSelectMem, new { MemberXBRLCode = factDimDom.DomAndValRaw });
+            if (memberId == 0)
+            {
+                return false;
+            }
+
+            var sqlSelectHiMembers = @"select nod.HierarchyID from mHierarchyNode nod where nod.HierarchyID= @HierarchyID and nod.MemberID = @MemberID";
+            var hierarchyNode = connectionEiopa.QueryFirstOrDefault<int>(sqlSelectHiMembers, new { hierarchyId, memberId });
+            return hierarchyNode > 0;
+
+
+        }
+
+
+        ///*******************
+
+
+
 
 
         private static string GetTablePivotZet(ConfigObject confg, MTable table)
@@ -1386,7 +1489,66 @@ namespace XbrlReader
         }
         //*******************************
 
+        public static List<TemplateSheetFact> FindFactsFromSignatureNew(ConfigObject confObj, int documentId, string cellSignature)
+        {
+            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
+            var factList = new List<TemplateSheetFact>();
 
+            var cleanSignatureMandatory = SimplifyCellSignature(cellSignature, false);
+            var dimsMandatoryAndXbrl = cleanSignatureMandatory.Split("|").ToList();
+            var xbrlMetric = dimsMandatoryAndXbrl.FirstOrDefault();
+            var xbrlCode = string.IsNullOrEmpty(xbrlMetric) ? "" : GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
+            if (string.IsNullOrEmpty(xbrlCode))
+            {
+                return factList;
+            }
+
+            var sqlWithDims = @"
+                SELECT fact.FactId
+                FROM dbo.TemplateSheetFact fact
+                JOIN TemplateSheetFactDim fd ON fd.FactId = fact.FactId
+                WHERE fact.InstanceId = @DocumentId
+	                AND fact.XBRLCode = @XbrlCode                
+                ";
+
+            string sqlSelectPossibleFacts;
+            var dimsMandatory = dimsMandatoryAndXbrl.Skip(1).ToList();
+            if (dimsMandatory.Any())
+            {
+                var mandatoryDims = dimsMandatory
+                    .Select(dm => DimDom.GetParts(dm).Dim)
+                    .Select(dm => $"'{dm}'");
+
+                var dimsSql = $" and fd.dim in({string.Join(",", mandatoryDims)}) Group by fact.factId";
+                sqlSelectPossibleFacts = sqlWithDims + dimsSql;
+            }
+            else
+            {
+                sqlSelectPossibleFacts = @"
+                SELECT fact.FactId
+                FROM dbo.TemplateSheetFact fact
+                WHERE fact.InstanceId = @DocumentId
+	                AND fact.XBRLCode = @XbrlCode
+                GROUP BY fact.FactId
+                ";
+            }
+
+            var possibleFacts = connectionInsurance.Query<TemplateSheetFact>(sqlSelectPossibleFacts, new { documentId, xbrlCode }).ToList();
+
+            
+            foreach (var possibleFact in possibleFacts)
+            {
+                var sqlFact = "select fact.FactId, fact.DataPointSignature from TemplateSheetFact fact where fact.FactId= @factId";
+                var fact=connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, possibleFact.FactId });
+                var isOk = IsNewSignatureMatch(confObj, cellSignature, fact.DataPointSignature);
+                if (isOk)
+                {
+                    factList.Add(possibleFact);
+                }
+            }
+
+            return factList;
+        }
 
 
 

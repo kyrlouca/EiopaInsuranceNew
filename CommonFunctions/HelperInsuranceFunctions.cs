@@ -23,6 +23,7 @@ namespace HelperInsuranceFunctions
         public string DomAndValRaw { get; internal set; } = "";// s2c_CU:USD
         public string Signature { get; internal set; } //"s2c_dim:OC(s2c_CU:GBP)"
         public bool IsWild { get; internal set; } = false;
+        public bool IsOptional { get; internal set; } = false;
         private DimDom() { }
         private void GetTheParts()
         {
@@ -48,6 +49,8 @@ namespace HelperInsuranceFunctions
                 DomValue = domParts[1];
             }
 
+            IsWild = Signature.Contains('*');
+            IsOptional = Signature.Contains('?');
         }
         private DimDom(string signature)
         {
@@ -56,7 +59,7 @@ namespace HelperInsuranceFunctions
         public static DimDom GetParts(string signature)
         {
             var dimDom = new DimDom(signature);
-            dimDom.GetTheParts();
+            dimDom.GetTheParts();            
             return dimDom;
         }
 
