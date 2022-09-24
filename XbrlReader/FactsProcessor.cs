@@ -1029,7 +1029,7 @@ namespace XbrlReader
             {
 
                 //var factDimDom = factDimDoms.FirstOrDefault(fd => fd.Dim == cellDimDoms.FirstOrDefault(cd => cd.Dim == fd.Dim).Dim);
-                var factDimDom = factDimDoms.FirstOrDefault(fd => cellDimDoms.Exists(cd => cd.Dim == fd.Dim));
+                 var factDimDom = factDimDoms.FirstOrDefault(fd => cellDimDoms.Exists(cd => cd.Dim == fd.Dim));
                 if (factDimDom is null && !cellDimDom.IsOptional)
                 {
                     return false;
@@ -1508,24 +1508,48 @@ namespace XbrlReader
                 return factList;
             }
 
-            var sqlWithDims = @"
-                SELECT fact.FactId
-                FROM dbo.TemplateSheetFact fact
-                JOIN TemplateSheetFactDim fd ON fd.FactId = fact.FactId
-                WHERE fact.InstanceId = @DocumentId
-	                AND fact.XBRLCode = @XbrlCode                
+
+            //in this example, use the non-optional dimensions of the cell as the left table
+            var sqlExample = @"
+                SELECT mn.FactId  FROM (VALUES ('BL'),('DI'),('IZ'),('LR'),('TZ'),('VG')) t1 (cellDim) 
+                left outer join 
+                (
+                    select fact.FactId, td.Dim 
+                    from TemplateSheetFact fact 
+                    join TemplateSheetFactDim td on td.FactId= fact.FactId
+                    where 
+                        InstanceId = @documentId
+                        and XBRLCode = @xbrlCode
+                ) as mn on  cellDim= mn.Dim
+                group by mn.FactId 
+                having count(*)= 6
                 ";
+
+            var sqlDimsMiddlePart = @"                
+                left outer join 
+                (
+                    select fact.FactId, td.Dim 
+                    from TemplateSheetFact fact 
+                    join TemplateSheetFactDim td on td.FactId= fact.FactId
+                    where 
+                        InstanceId = @documentId
+                        and XBRLCode = @xbrlCode
+                ) as mn on  cellDim= mn.Dim
+                group by mn.FactId                 
+                ";
+
 
             string sqlSelectPossibleFacts;
             var dimsMandatory = dimsMandatoryAndXbrl.Skip(1).ToList();
             if (dimsMandatory.Any())
             {
-                var mandatoryDims = dimsMandatory
+                var mandatoryDimsFormatted = dimsMandatory
                     .Select(dm => DimDom.GetParts(dm).Dim)
-                    .Select(dm => $"'{dm}'");
+                    .Select(dm => $"('{dm}')");
 
-                var dimsSql = $" and fd.dim in({string.Join(",", mandatoryDims)}) Group by fact.factId";
-                sqlSelectPossibleFacts = sqlWithDims + dimsSql;
+                var sqlDimPart = $" SELECT mn.FactId  FROM (VALUES {string.Join(",", mandatoryDimsFormatted)}) t1 (cellDim) ";
+                var sqlGroupPart = $" having count(*) = {dimsMandatory.Count}";
+                sqlSelectPossibleFacts =  sqlDimPart+ sqlDimsMiddlePart + sqlGroupPart;
             }
             else
             {
@@ -1545,6 +1569,10 @@ namespace XbrlReader
             {
                 var sqlFact = "select fact.FactId, fact.DataPointSignature from TemplateSheetFact fact where fact.FactId= @factId";
                 var fact=connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, possibleFact.FactId });
+                if(fact is null)
+                {
+                    var x = 3;
+                }
                 var isOk = IsNewSignatureMatch(confObj, cellSignature, fact.DataPointSignature);
                 if (isOk)
                 {
