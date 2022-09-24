@@ -290,10 +290,10 @@ namespace XbrlReader
                 Console.Write($"!");
 
                 var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
-                var factListNew= FindFactsFromSignatureNew(ConfigObject, DocumentId, cell.DatapointSignature);
+                var factListNew = FindFactsFromSignatureNew(ConfigObject, DocumentId, cell.DatapointSignature);
                 if (factsList.Count != factListNew.Count)
                 {
-                    Console.Write($"DIFFERENCE for cell: {cell.CellID}");
+                    Console.Write($"@*@*@*@@ DIFFERENCE for cell: {cell.CellID}");
                 }
 
                 Console.Write($"$");
@@ -804,9 +804,9 @@ namespace XbrlReader
             var factList = new List<TemplateSheetFact>();
 
             var cleanSignatureWithoutOptional = SimplifyCellSignature(cellSignature, false);
-            var dimList = cleanSignatureWithoutOptional.Split("|").ToList();
+            var dimListWithoutOptional = cleanSignatureWithoutOptional.Split("|").ToList();
 
-            var xbrlMetric = dimList.FirstOrDefault();
+            var xbrlMetric = dimListWithoutOptional.FirstOrDefault();
             var xbrlCode = string.IsNullOrEmpty(xbrlMetric) ? "EmptyXbrlCode" : GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
 
             var sqlSelectFacts = @"
@@ -862,8 +862,9 @@ namespace XbrlReader
             {
                 return new List<TemplateSheetFact>();
             }
-            if (dimList.Count == dimListWithOptional.Count)
-            {
+            //to avoid using twice
+            if (dimListWithoutOptional.Count != dimListWithOptional.Count)                
+            {                
                 var factListWithOptional = connectionInsurance.Query<TemplateSheetFact>(sqlSelectFacts, new { documentId, xbrlCode, sig = cleanSignatureWithOptional }).ToList();
                 factList.AddRange(factListWithOptional);
                 if (factListWithOptional.Any())
@@ -1029,7 +1030,7 @@ namespace XbrlReader
             {
 
                 //var factDimDom = factDimDoms.FirstOrDefault(fd => fd.Dim == cellDimDoms.FirstOrDefault(cd => cd.Dim == fd.Dim).Dim);
-                 var factDimDom = factDimDoms.FirstOrDefault(fd => cellDimDoms.Exists(cd => cd.Dim == fd.Dim));
+                var factDimDom = factDimDoms.FirstOrDefault(fd => cellDimDoms.Exists(cd => cd.Dim == fd.Dim));
                 if (factDimDom is null && !cellDimDom.IsOptional)
                 {
                     return false;
@@ -1058,7 +1059,7 @@ namespace XbrlReader
             //MET(s2md_met:mi289)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[332;1512;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[237])|s2c_dim:RM(s2c_TI:x49)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)
 
             //*** should not happen but check anyway
-            if(cellDimDom.Dim!= factDimDom.Dim)
+            if (cellDimDom.Dim != factDimDom.Dim)
             {
                 return false;
             }
@@ -1074,7 +1075,7 @@ namespace XbrlReader
             {
                 return cellDimDom.DomAndValRaw == factDimDom.DomAndValRaw;
             }
-            
+
 
             //check if the fact's dom value belongs in the hierarchy
             using var connectionEiopa = new SqlConnection(config.EiopaDatabaseConnectionString);
@@ -1549,7 +1550,7 @@ namespace XbrlReader
 
                 var sqlDimPart = $" SELECT mn.FactId  FROM (VALUES {string.Join(",", mandatoryDimsFormatted)}) t1 (cellDim) ";
                 var sqlGroupPart = $" having count(*) = {dimsMandatory.Count}";
-                sqlSelectPossibleFacts =  sqlDimPart+ sqlDimsMiddlePart + sqlGroupPart;
+                sqlSelectPossibleFacts = sqlDimPart + sqlDimsMiddlePart + sqlGroupPart;
             }
             else
             {
@@ -1562,21 +1563,24 @@ namespace XbrlReader
                 ";
             }
 
-            var possibleFacts = connectionInsurance.Query<TemplateSheetFact>(sqlSelectPossibleFacts, new { documentId, xbrlCode }).ToList();
+            var possibleFacts = connectionInsurance.Query<int>(sqlSelectPossibleFacts, new { documentId, xbrlCode })
+                .Where(factId=>factId>0)
+                .ToList();
 
-            
+
             foreach (var possibleFact in possibleFacts)
             {
                 var sqlFact = "select fact.FactId, fact.DataPointSignature from TemplateSheetFact fact where fact.FactId= @factId";
-                var fact=connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, possibleFact.FactId });
-                if(fact is null)
+                var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, possibleFact });
+                if (fact is null)
                 {
-                    var x = 3;
+                    Console.WriteLine($"imposssible fact Id :{possibleFact}");
+                    continue;
                 }
-                var isOk = IsNewSignatureMatch(confObj, cellSignature, fact.DataPointSignature);
+                var isOk = IsNewSignatureMatch(confObj, cellSignature, fact?.DataPointSignature??"");
                 if (isOk)
                 {
-                    factList.Add(possibleFact);
+                    factList.Add(fact);
                 }
             }
 
