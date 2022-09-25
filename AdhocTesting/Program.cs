@@ -27,13 +27,16 @@ namespace AdhocTesting
             var confObject = Configuration.GetInstance(SolvencyVersion).Data;
             
             var sig0 = @"MET(s2md_met:mi503)|s2c_dim:BI(s2c_GA:x6)|s2c_dim:BL(s2c_LB:x79|s2c_dim:DI(s2c_DI:x5)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LG(*[290;882;0])|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x84)";
-            var sig = @"MET(s2md_met:mi503)|s2c_dim:BL(*[364;1521;0])|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LA(*?[307])|s2c_dim:LR(s2c_GA:x14)|s2c_dim:TZ(s2c_LB:x163)|s2c_dim:VG(s2c_AM:x84)";
-            
+            var sig1 = @"MET(s2md_met:mi503)|s2c_dim:BL(*[364;1521;0])|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LA(*?[307])|s2c_dim:LR(s2c_GA:x14)|s2c_dim:TZ(s2c_LB:x163)|s2c_dim:VG(s2c_AM:x84)";
+            var sig = @"MET(s2md_met:mi289)|s2c_dim:AF(*?[61])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[343;1521;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[242])|s2c_dim:RM(s2c_TI:x42)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
+            var sig2 = @"MET(s2md_met:mi503)|s2c_dim:BL(s2c_LB:x140)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LA(s2c_GA:x24)|s2c_dim:TZ(s2c_LB:x175)|s2c_dim:VG(s2c_AM:x84)";
+            var sig5 = @"[1] = FactId = 4527981";
+
             long t0 = DateTime.Now.Ticks;
             var vvv = FactsProcessor.FindFactsFromSignatureNew(confObject, 12905, sig);
             long t1 = DateTime.Now.Ticks;
 
-            var mmm = FactsProcessor.FindMatchingFactsRegex(confObject, 12905, sig);
+            //var mmm = FactsProcessor.FindMatchingFactsRegex(confObject, 12910, sig0);
             long t2 = DateTime.Now.Ticks;
 
             double d1 = t1 - t0; // / 1000
