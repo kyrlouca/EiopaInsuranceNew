@@ -1512,10 +1512,10 @@ namespace XbrlReader
 
             //in this example, use the non-optional dimensions of the cell as the left table
             var sqlExample = @"
-                SELECT mn.FactId  FROM (VALUES ('BL'),('DI'),('IZ'),('LR'),('TZ'),('VG')) t1 (cellDim) 
+                SELECT COALESCE(mn.FactId,0)  FROM (VALUES ('BL'),('DI'),('IZ'),('LR'),('TZ'),('VG')) t1 (cellDim) 
                 left outer join 
                 (
-                    select fact.FactId, td.Dim 
+                    select COALESCE(mn.FactId,0) as FactId
                     from TemplateSheetFact fact 
                     join TemplateSheetFactDim td on td.FactId= fact.FactId
                     where 
@@ -1529,7 +1529,7 @@ namespace XbrlReader
             var sqlDimsMiddlePart = @"                
                 left outer join 
                 (
-                    select fact.FactId, td.Dim 
+                    select COALESCE(mn.FactId,0) as FactId 
                     from TemplateSheetFact fact 
                     join TemplateSheetFactDim td on td.FactId= fact.FactId
                     where 
@@ -1571,7 +1571,7 @@ namespace XbrlReader
             foreach (var possibleFact in possibleFacts)
             {
                 var sqlFact = "select fact.FactId, fact.DataPointSignature from TemplateSheetFact fact where fact.FactId= @factId";
-                var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, possibleFact });
+                var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, factId= possibleFact });
                 if (fact is null)
                 {
                     Console.WriteLine($"imposssible fact Id :{possibleFact}");
