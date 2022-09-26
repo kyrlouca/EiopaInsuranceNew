@@ -24,11 +24,11 @@ namespace TestingValidationsZ
             //it has a max and a nested min => we create another term for the nested min
             formula = @"{S.23.01.01.01,r0540,c0050}=max(0,min(0.5*{S.23.01.01.01,r0580,c0010}-3*{S.23.01.01.01,r0540,c0040})) ";
             var resmm = new RuleStructure(formula);
-            resmm.SymbolFormula.Should().Be("X0=max(0,min(0.5*X1-3*X2))");
-            resmm.SymbolFinalFormula.Should().Be("X0=Z0");
+            resmm.SymbolFormula.Should().Be("X00=max(0,min(0.5*X01-3*X02))");
+            resmm.SymbolFinalFormula.Should().Be("X00=Z00");
             resmm.RuleTerms.Count.Should().Be(5);
-            resmm.RuleTerms[3].TermText.Should().Be("max(0,T00)");
-            resmm.RuleTerms[4].TermText.Should().Be("min(0.5*X1-3*X2)");
+            resmm.RuleTerms[3].TermText.Should().Be("max(0,T000)");
+            resmm.RuleTerms[4].TermText.Should().Be("min(0.5*X01-3*X02)");
 
 
             //2681 plain
