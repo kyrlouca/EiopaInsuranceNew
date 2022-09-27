@@ -290,22 +290,18 @@ namespace XbrlReader
                 //*****************************************************************
                 Console.Write($"!");
 
-                var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
+                //var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
 
                 var factListNew = FindFactsFromSignatureWild(ConfigObject, DocumentId, cell.DatapointSignature);
-                if (factsList.Count != factListNew.Count)
-                {
-                    Console.Write($"@*@*@*@@ DIFFERENCE for cell: {cell.CellID}");
-                }
-
+                
                 Console.Write($"$");
 
-                if (factsList.Count == 0)
+                if (factListNew.Count == 0)
                 {
                     continue;
                 }
 
-                foreach (var foundFact in factsList)
+                foreach (var foundFact in factListNew)
                 {
                     var fact = foundFact;
                     //update the fact open Zet dims (rowcol,currency, country,etc)
@@ -784,7 +780,7 @@ namespace XbrlReader
         }
 
 
-        public static List<TemplateSheetFact> FindMatchingFactsRegex(ConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindMatchingFactsRegexOld(ConfigObject confObj, int documentId, string cellSignature)
         {
             //MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)
             //find the list of facts that match the dimensions of the cell

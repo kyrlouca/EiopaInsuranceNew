@@ -41,16 +41,9 @@ namespace AdhocTesting
             long t0 = DateTime.Now.Ticks;
             var newProc = FactsProcessor.FindFactsFromSignatureWild(confObject, 12905, sig8);
             long t1 = DateTime.Now.Ticks;
-
-            var oldProc = FactsProcessor.FindMatchingFactsRegex(confObject, 12905, sig8);
-            long t2 = DateTime.Now.Ticks;
-            if(newProc.Count != oldProc.Count)
-            {
-                var axxc = Console.ReadLine();
-            }
+            
 
             double d1 = t1 - t0; // / 1000
-            double d2 = t2 - t1; // / 1000
 
 
             return;
