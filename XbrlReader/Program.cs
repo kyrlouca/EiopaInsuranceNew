@@ -20,8 +20,8 @@ namespace XbrlReader
             //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");
             //(var fundIdT, var filePath) = (99, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\crashEthnikiGeneralARS.xbrl");
             (var fundIdT, var filePath) = (181, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\newVersion\Steamship.xbrl");
-            XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0,filePath);            
-                        
+            //XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0,filePath);
+            XbrlGenerator.GenerateXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0, filePath);
 
             Console.WriteLine("Finish");
             return 1;
@@ -45,8 +45,8 @@ namespace XbrlReader
                 var xbrlFile = args[7];
                 Console.WriteLine($"XbrlReader v1.001: xbrlfile:{xbrlFile}");
                                 
-                XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);                          
-
+                //XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
+                XbrlGenerator.GenerateXbrlFile(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicationYear, applicationQuarter, xbrlFile);
                 return 0;
             }
             else

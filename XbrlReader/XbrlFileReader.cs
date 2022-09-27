@@ -16,6 +16,8 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using TransactionLoggerNs;
+using System.Reflection.PortableExecutable;
+using System.Xml;
 
 namespace XbrlReader
 {
@@ -62,111 +64,82 @@ namespace XbrlReader
         //readonly XNamespace typedDimNs = "http://eiopa.europa.eu/xbrl/s2c/dict/typ";
         readonly XNamespace findNs = "http://www.eurofiling.info/xbrl/ext/filing-indicators";
 
-        public static void ProcessXbrlFile(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+
+        public static XbrlFileReader ProcessXbrlFileNew(int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
-            var reader = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
-
-
-            var existingDocs = reader.GetExistingDocuments();
-
-            var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
-            if (isLockedDocument)
+            var reader = new XbrlFileReader(documentId, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            if (reader is null)
             {
-                var existingDoc = existingDocs.First();
-                var existingDocId = existingDoc.InstanceId;
-                var status = existingDoc.Status.Trim();
-
-                var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document has already been Submitted";
-                if (status == "P")
-                {
-                    message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is currently being processed with status :{existingDoc.Status}";
-                }
-                Log.Error(message);
-                Console.WriteLine(message);
-
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = reader.FundId,
-                    ModuleCode = reader.ModuleCode,
-                    ApplicableYear = reader.ApplicableYear,
-                    ApplicableQuarter = reader.ApplicableQuarter,
-                    Message = message,
-                    UserId = reader.UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = existingDoc.InstanceId,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-
-                TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
-                reader.IsValidProcess = false;
-                return;
+                Console.WriteLine("Reader did not start");
+                return null;
             }
+            var isValidXbrl = reader.CreateXbrlDataInDb();
+            if (!isValidXbrl)
+            {
+                Console.WriteLine("Reader has an invalid file");
+                return null;
+            }
+            return reader;
+
+        }
 
 
-            //delete older versions (except from locked or submitted)
-            existingDocs.Where(doc => doc.Status.Trim() != "P" && !doc.IsSubmitted)
-                .ToList()
-                .ForEach(doc => reader.DeleteDocument(doc.InstanceId));
-
-            reader.WriteProcessStarted();
-
-            //*************************************************
-            //create the document anyway so we can attach log errors
-            //*************************************************
-            reader.CreateDocInstanceInDb();
+        private bool CreateXbrlDataInDb()
+        {
+            WriteProcessStarted();
 
 
             //*************************************************
             //Parse the Xbrl File as XML
             //*************************************************
-            (var isValidXml, var parseMessage) = reader.ParseXmlFile();
+            XmlDoc = ParseXmlFile();
 
-            if (!isValidXml)
+            if (XmlDoc is null)
             {
-                return;
+                return false;
             }
+
 
             var is_Test_debug = false;
 #if DEBUG
             is_Test_debug = true;
-#endif
+#endif            
 
             //****************************************************
             //* check if the fund in xbrl is the same as fund submited by user  
 
-            var fundLei = GetXmlElementFromXbrl(reader.XmlDoc, "si1899");
-            var fundFromXml = GetFundByLei(reader.ConfigObject, fundLei);
+            var fundLei = GetXmlElementFromXbrl(XmlDoc, "si1899");
+            var fundFromXml = GetFundByLei(ConfigObject, fundLei);
 
 
             if (!is_Test_debug)
             {
                 var fundIdNew = fundFromXml?.FundId ?? -1;
-                if (fundIdNew != reader.FundId)
+                if (fundIdNew != FundId)
                 {
                     //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
-                    var message = $"The license number used:{reader?.FundId} is incorrect.";
+                    var message = $"The license number used:{FundId} is incorrect.";
                     Log.Error(message);
                     Console.WriteLine(message);
-                    reader.UpdateDocumentStatus("E");
-                    reader.IsValidProcess = false;
+                    UpdateDocumentStatus("E");
+                    IsValidProcess = false;
 
 
                     var trans = new TransactionLog()
                     {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
+                        PensionFundId = FundId,
+                        ModuleCode = ModuleCode,
+                        ApplicableYear = ApplicableYear,
+                        ApplicableQuarter = ApplicableQuarter,
                         Message = message,
-                        UserId = reader.UserId,
+                        UserId = UserId,
                         ProgramCode = ProgramCode.RX.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = reader.DocumentId,
+                        InstanceId = DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(solvencyVersion, trans);
-                    return;
+                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    return false;
                 }
             }
 
@@ -175,9 +148,9 @@ namespace XbrlReader
             //****************************************************
             //* check if the document was submited after the validation date  
 
-            if (!is_Test_debug && reader.UserId != 1 )// no check for fund id when testing
+            if (!is_Test_debug && UserId != 1)// no check for fund id when testing
             {
-                var lastValidDate = GetLastSubmissionDate(reader.ConfigObject, fundCategory, reader.ApplicableQuarter, reader.ApplicableYear);
+                var lastValidDate = GetLastSubmissionDate(ConfigObject, fundCategory, ApplicableQuarter, ApplicableYear);
 
                 var errorMessageG = string.Empty;
                 if (lastValidDate is null || DateTime.Today > lastValidDate)
@@ -185,83 +158,120 @@ namespace XbrlReader
                     errorMessageG = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
                 }
 
-                if (applicableYear < DateTime.Today.Year - 1)
+                if (ApplicableYear < DateTime.Today.Year - 1)
                 {
-                    errorMessageG = $"Document Reference Year: {applicableYear} is in the past";
+                    errorMessageG = $"Document Reference Year: {ApplicableYear} is in the past";
 
                 }
 
 
                 if (!string.IsNullOrEmpty(errorMessageG))
-                {                    
+                {
                     Log.Error(errorMessageG);
                     Console.WriteLine(errorMessageG);
-                    reader.UpdateDocumentStatus("E");
-                    reader.IsValidProcess = false;
+                    UpdateDocumentStatus("E");
+                    IsValidProcess = false;
 
 
                     var trans = new TransactionLog()
                     {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
+                        PensionFundId = FundId,
+                        ModuleCode = ModuleCode,
+                        ApplicableYear = ApplicableYear,
+                        ApplicableQuarter = ApplicableQuarter,
                         Message = errorMessageG,
-                        UserId = reader.UserId,
+                        UserId = UserId,
                         ProgramCode = ProgramCode.RX.ToString(),
                         ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = reader.DocumentId,
+                        InstanceId = DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(solvencyVersion, trans);
-
-                    return;
-
+                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    return false;
                 }
-
-
-                
             }
-            
+
 
             //*************************************************
             //***Create loose facts not assigned to sheets
             //*************************************************
-            var (isValidFacts, errorMessage) = reader.CreateLooseFacts();
+            var (isValidFacts, errorMessage) = CreateLooseFacts();
             if (!isValidFacts)
             {
                 var message = errorMessage;
                 Log.Error(message);
                 Console.WriteLine(message);
                 //Update status
-                reader.UpdateDocumentStatus("E");
-                reader.IsValidProcess = false;
+                UpdateDocumentStatus("E");
+                IsValidProcess = false;
 
                 var trans = new TransactionLog()
                 {
-                    PensionFundId = reader.FundId,
-                    ModuleCode = reader.ModuleCode,
-                    ApplicableYear = reader.ApplicableYear,
-                    ApplicableQuarter = reader.ApplicableQuarter,
+                    PensionFundId = FundId,
+                    ModuleCode = ModuleCode,
+                    ApplicableYear = ApplicableYear,
+                    ApplicableQuarter = ApplicableQuarter,
                     Message = message,
-                    UserId = reader.UserId,
+                    UserId = UserId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = reader.DocumentId,
+                    InstanceId = DocumentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(solvencyVersion, trans);
+                TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
-                return;
+                return false;
             }
-            
-            FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
 
-            var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
+            FactsProcessor.ProcessFactsAndAssignToSheets(SolvencyVersion, DocumentId, FilingsSubmitted);
+
+            var diffminutes = DateTime.Now.Subtract(StartTime).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
 
 
+
+            return true;
+
         }
+
+
+        //delete this
+
+        private XbrlFileReader(int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        {
+            //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
+            //Then store document, sheets, and facts in database
+            DocumentId = documentId;
+            SolvencyVersion = solvencyVersion;
+            CurrencyBatchId = currencyBatchId;
+            UserId = userId;
+            FundId = fundId;
+            ModuleCode = moduleCode;
+            ApplicableYear = applicableYear;
+            ApplicableQuarter = applicableQuarter;
+            FileName = fileName;
+
+
+            ConfigObject = GetConfiguration();
+            if (ConfigObject is null)
+            {
+                return;
+            }
+
+            IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
+
+            Module = GetModule(ModuleCode);
+            if (Module.ModuleID == 0)
+            {
+                var message = $"Invalid Module code {ModuleCode}";
+                Log.Error(message);
+                Console.WriteLine(message);
+                return;
+            }
+            ///
+
+        }
+
 
         private static TemplateSheetFact GetFactByXbrl(ConfigObject configObject, int documentId, string xbrlCode)
         {
@@ -288,55 +298,6 @@ namespace XbrlReader
         {
             Console.WriteLine("ONLY for testing XbrlData");
             return;
-        }
-
-        internal XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
-        {
-            //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
-            //Then store document, sheets, and facts in database
-            SolvencyVersion = solvencyVersion;
-            CurrencyBatchId = currencyBatchId;
-            UserId = userId;
-            FundId = fundId;
-            ModuleCode = moduleCode;
-            ApplicableYear = applicableYear;
-            ApplicableQuarter = applicableQuarter;
-            FileName = fileName;
-
-
-            ConfigObject = GetConfiguration();
-            if (ConfigObject is null)
-            {
-                return;
-            }
-
-            IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
-
-            Module = GetModule(ModuleCode);
-            if (Module is null)
-            {
-                var message = $"Invalid Module code {ModuleCode}";
-                Log.Error(message);
-                Console.WriteLine(message);
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = FundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = message,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = 0,
-                    MessageType = MessageType.INFO.ToString(),
-                };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
-
-                return;
-            }
-            ///
-
         }
 
         private ConfigObject GetConfiguration()
@@ -376,8 +337,9 @@ namespace XbrlReader
         }
 
 
-        private (bool, string) ParseXmlFile()
+        private XDocument ParseXmlFile()
         {
+            XDocument xmlDoc;
             if (!File.Exists(FileName))
             {
                 var message = $"XBRL CreateXbrlDocument ERROR: Document not Found : {FileName}";
@@ -404,16 +366,14 @@ namespace XbrlReader
                 TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
 
-                return (false, message);
+                return null;
             }
 
             using (TextReader sr = File.OpenText(FileName))  //utf-8 stream
 
-
                 try
                 {
-                    XmlDoc = XDocument.Load(sr);
-                    //XmlDoc = XDocument.Load(FileName);
+                    xmlDoc = XDocument.Load(sr);                    
                 }
                 catch (Exception e)
                 {
@@ -440,9 +400,9 @@ namespace XbrlReader
                     };
                     TransactionLogger.LogTransaction(SolvencyVersion, trans);
 
-                    return (false, message);
+                    return null;
                 }
-            return (true, "");
+            return xmlDoc;
 
         }
 

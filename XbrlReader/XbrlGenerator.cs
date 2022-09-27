@@ -20,14 +20,31 @@ namespace XbrlReader
 
 
 
-        public static void GenerateXbrlFile(ConfigObject configObject, string solvencyVersion, int currencyBatchId, int userId, int fundId,int moduleId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
-        {
-            var isValidProcess = true;
+        public static bool GenerateXbrlFile( string solvencyVersion, int currencyBatchId, int userId, int fundId,string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        {            
             var isValidEiopaVersion = Configuration.IsValidVersion(solvencyVersion);
-            var reader = new XbrlFileReader(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            if (!isValidEiopaVersion)
+            {
+                var message = $"Invalid Solvency:{solvencyVersion}";
+                Console.WriteLine(message);
+                    return false;
+            }
+            var configObject = GetConfiguration(solvencyVersion);
+
+            //we need the module to delete the document
+            var module = GetModule(configObject, moduleCode);
+
+            if (module.ModuleID == 0)
+            {
+                //cannot create transactionLog because document does not exist
+                var message = $"Invalid module code : {moduleCode}";
+                Console.WriteLine(message);
+                Log.Error(message);
+                return false;
+            }
 
 
-            var existingDocs = GetExistingDocuments(configObject,fundId,moduleId,applicableYear,applicableQuarter);
+            var existingDocs = GetExistingDocuments(configObject,fundId,module.ModuleID,applicableYear,applicableQuarter);
 
             var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
             if (isLockedDocument)
@@ -46,21 +63,20 @@ namespace XbrlReader
 
                 var trans = new TransactionLog()
                 {
-                    PensionFundId = reader.FundId,
-                    ModuleCode = reader.ModuleCode,
-                    ApplicableYear = reader.ApplicableYear,
-                    ApplicableQuarter = reader.ApplicableQuarter,
+                    PensionFundId = fundId,
+                    ModuleCode = moduleCode,
+                    ApplicableYear = applicableYear,
+                    ApplicableQuarter = applicableQuarter,
                     Message = message,
-                    UserId = reader.UserId,
+                    UserId = userId,
                     ProgramCode = ProgramCode.RX.ToString(),
                     ProgramAction = ProgramAction.INS.ToString(),
                     InstanceId = existingDoc.InstanceId,
                     MessageType = MessageType.ERROR.ToString()
                 };
 
-                TransactionLogger.LogTransaction(reader.SolvencyVersion, trans);
-                isValidProcess = false;
-                return;
+                TransactionLogger.LogTransaction(solvencyVersion, trans);                
+                return false;
             }
 
 
@@ -69,157 +85,32 @@ namespace XbrlReader
                 .ToList()
                 .ForEach(doc => DeleteDocument(configObject, doc.InstanceId));
 
-            
 
             //*************************************************
             //create the document anyway so we can attach log errors
             //*************************************************
-            reader.CreateDocInstanceInDb();
-
-
-            //*************************************************
-            //Parse the Xbrl File as XML
-            //*************************************************
-            (var isValidXml, var parseMessage) = reader.ParseXmlFile();
-
-            if (!isValidXml)
+            var documentId = CreateDocInstanceInDb(configObject,currencyBatchId,userId,fundId,moduleCode,applicableYear,applicableQuarter,fileName,solvencyVersion);
+            if (documentId == 0)
             {
-                return;
-            }
-
-            var is_Test_debug = false;
-#if DEBUG
-            is_Test_debug = true;
-#endif
-
-            //****************************************************
-            //* check if the fund in xbrl is the same as fund submited by user  
-
-            var fundLei = GetXmlElementFromXbrl(reader.XmlDoc, "si1899");
-            var fundFromXml = GetFundByLei(reader.ConfigObject, fundLei);
-
-
-            if (!is_Test_debug)
-            {
-                var fundIdNew = fundFromXml?.FundId ?? -1;
-                if (fundIdNew != reader.FundId)
-                {
-                    //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
-                    var message = $"The license number used:{reader?.FundId} is incorrect.";
-                    Log.Error(message);
-                    Console.WriteLine(message);
-                    reader.UpdateDocumentStatus("E");
-                    isValidProcess = false;
-
-
-                    var trans = new TransactionLog()
-                    {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
-                        Message = message,
-                        UserId = reader.UserId,
-                        ProgramCode = ProgramCode.RX.ToString(),
-                        ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = reader.DocumentId,
-                        MessageType = MessageType.ERROR.ToString()
-                    };
-                    TransactionLogger.LogTransaction(solvencyVersion, trans);
-                    return;
-                }
-            }
-
-
-            var fundCategory = fundFromXml.Wave;
-            //****************************************************
-            //* check if the document was submited after the validation date  
-
-            if (!is_Test_debug && reader.UserId != 1)// no check for fund id when testing
-            {
-                var lastValidDate = GetLastSubmissionDate(reader.ConfigObject, fundCategory, reader.ApplicableQuarter, reader.ApplicableYear);
-
-                var errorMessageG = string.Empty;
-                if (lastValidDate is null || DateTime.Today > lastValidDate)
-                {
-                    errorMessageG = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
-                }
-
-                if (applicableYear < DateTime.Today.Year - 1)
-                {
-                    errorMessageG = $"Document Reference Year: {applicableYear} is in the past";
-
-                }
-
-
-                if (!string.IsNullOrEmpty(errorMessageG))
-                {
-                    Log.Error(errorMessageG);
-                    Console.WriteLine(errorMessageG);
-                    reader.UpdateDocumentStatus("E");
-                    reader.IsValidProcess = false;
-
-
-                    var trans = new TransactionLog()
-                    {
-                        PensionFundId = reader.FundId,
-                        ModuleCode = reader.ModuleCode,
-                        ApplicableYear = reader.ApplicableYear,
-                        ApplicableQuarter = reader.ApplicableQuarter,
-                        Message = errorMessageG,
-                        UserId = reader.UserId,
-                        ProgramCode = ProgramCode.RX.ToString(),
-                        ProgramAction = ProgramAction.INS.ToString(),
-                        InstanceId = reader.DocumentId,
-                        MessageType = MessageType.ERROR.ToString()
-                    };
-                    TransactionLogger.LogTransaction(solvencyVersion, trans);
-
-                    return;
-
-                }
-
-
-
-            }
-
-
-            //*************************************************
-            //***Create loose facts not assigned to sheets
-            //*************************************************
-            var (isValidFacts, errorMessage) = reader.CreateLooseFacts();
-            if (!isValidFacts)
-            {
-                var message = errorMessage;
-                Log.Error(message);
+                var message = $"Cannot Create DocInstance for companyId: {fundId} year:{applicableYear} quarter:{applicableQuarter} ";
                 Console.WriteLine(message);
-                //Update status
-                reader.UpdateDocumentStatus("E");
-                reader.IsValidProcess = false;
+                Log.Error(message);
+                return false;
 
-                var trans = new TransactionLog()
-                {
-                    PensionFundId = reader.FundId,
-                    ModuleCode = reader.ModuleCode,
-                    ApplicableYear = reader.ApplicableYear,
-                    ApplicableQuarter = reader.ApplicableQuarter,
-                    Message = message,
-                    UserId = reader.UserId,
-                    ProgramCode = ProgramCode.RX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = reader.DocumentId,
-                    MessageType = MessageType.ERROR.ToString()
-                };
-                TransactionLogger.LogTransaction(solvencyVersion, trans);
-
-                return;
             }
 
+
+
+            var reader = XbrlFileReader.ProcessXbrlFileNew(documentId, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            if (reader is null)
+            {
+                return false;
+            }
             FactsProcessor.ProcessFactsAndAssignToSheets(reader.SolvencyVersion, reader.DocumentId, reader.FilingsSubmitted);
 
             var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
-
+            return true;
 
         }
 
@@ -286,6 +177,84 @@ namespace XbrlReader
             connectionInsurance.Execute(sqlErrorDocDelete, new { documentId });
 
             return rows;
+        }
+
+
+        static private MModule GetModule(ConfigObject configObject, string moduleCode)
+        {
+            using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
+
+            //module code : {ari, qri, ara, ...}
+            var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
+            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode = moduleCode.ToLower().Trim() });
+            if (module is null)
+            {
+                return new MModule();
+            }
+            return module;
+
+        }
+
+
+        static private int CreateDocInstanceInDb(ConfigObject configObject,int currencyBatchId, int userId, int fundId, string  moduleCode, int applicableYear, int applicableQuarter, string fileName, string solvencyVersion)
+        {
+            using var connection = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
+
+
+            var module = GetModule(configObject, moduleCode);
+
+            var sqlInsertDoc = @"
+               INSERT INTO DocInstance
+                   (                                            
+                    [PensionFundId]                   
+                   ,[UserId]                   
+                   ,[ModuleCode]           
+                   ,[ApplicableYear]
+                   ,[ApplicableQuarter]                   
+                   ,[ModuleId]      
+                   ,[FileName]
+                   ,[CurrencyBatchId]
+                   ,[Status]
+                   ,[EiopaVersion]
+                    )
+                VALUES
+                   (                                
+                    @PensionFundId
+                   ,@UserId
+                   ,@ModuleCode                   
+                   ,@ApplicableYear
+                   ,@ApplicableQuarter                   
+                   ,@ModuleId
+                   ,@FileName
+                   ,@CurrencyBatchId
+                   ,@Status
+                   ,@EiopaVersion
+                    ); 
+                SELECT CAST(SCOPE_IDENTITY() as int);
+                ";
+
+
+
+
+            var doc = new
+            {
+                PensionFundId = fundId,
+                userId,
+                moduleCode,
+                applicableYear,
+                applicableQuarter,
+                ModuleId = module.ModuleID,
+                fileName,
+                currencyBatchId,
+                Status = "P",
+                EiopaVersion = solvencyVersion,
+            };
+
+
+            var result = connection.QuerySingleOrDefault<int>(sqlInsertDoc, doc);            
+            return result;
         }
 
 
