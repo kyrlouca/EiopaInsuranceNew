@@ -83,7 +83,6 @@ namespace XbrlReader
 
         }
 
-
         private bool CreateXbrlDataInDb()
         {
             WriteProcessStarted();
@@ -145,6 +144,63 @@ namespace XbrlReader
 
 
             var fundCategory = fundFromXml.Wave;
+
+            //*******************************************************
+            //* Check if the validation date is the same as the xbrl reference date
+            if (!is_Test_debug || 1==2)
+            {
+                var errorMessageDate = "";
+                DateTime xbrlDate = DateTime.Now;
+                var validationDate = GetLastSubmissionDate(ConfigObject, fundCategory, ApplicableQuarter, ApplicableYear );
+                if(validationDate is null)
+                {
+                    errorMessageDate = $"No Record in Submission dates from categery {fundCategory}, year:{ApplicableYear}, quarter:{ApplicableQuarter}";
+
+                }
+                var xbrlDateStr = GetXmlElementFromXbrl(XmlDoc, "di1043");
+                try
+                {
+                    xbrlDate = DateTime.Parse(xbrlDateStr);
+                }
+                catch
+                {
+                    errorMessageDate = $"Xbrl file does not have a valid Reference Date :{xbrlDateStr}";
+                }
+
+                if (xbrlDate != validationDate)
+                {
+                    errorMessageDate = $"Xbrl date : {xbrlDate} different than validation Date :{validationDate:dd:MM:yyyy}";
+                }
+                
+                
+
+                if (!string.IsNullOrEmpty(errorMessageDate))
+                {
+                    Log.Error(errorMessageDate);
+                    Console.WriteLine(errorMessageDate);
+                    UpdateDocumentStatus("E");
+                    IsValidProcess = false;
+
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = FundId,
+                        ModuleCode = ModuleCode,
+                        ApplicableYear = ApplicableYear,
+                        ApplicableQuarter = ApplicableQuarter,
+                        Message = errorMessageDate,
+                        UserId = UserId,
+                        ProgramCode = ProgramCode.RX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = DocumentId,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    return false;
+                }
+
+
+            }
+
             //****************************************************
             //* check if the document was submited after the validation date  
 
@@ -163,7 +219,6 @@ namespace XbrlReader
                     errorMessageG = $"Document Reference Year: {ApplicableYear} is in the past";
 
                 }
-
 
                 if (!string.IsNullOrEmpty(errorMessageG))
                 {
@@ -196,7 +251,7 @@ namespace XbrlReader
             //***Create loose facts not assigned to sheets
             //*************************************************
             var (isValidFacts, errorMessage) = CreateLooseFacts();
-            if (!isValidFacts)
+             if (!isValidFacts)
             {
                 var message = errorMessage;
                 Log.Error(message);
@@ -234,9 +289,6 @@ namespace XbrlReader
 
         }
 
-
-        //delete this
-
         private XbrlFileReader(int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
@@ -271,7 +323,6 @@ namespace XbrlReader
             ///
 
         }
-
 
         private static TemplateSheetFact GetFactByXbrl(ConfigObject configObject, int documentId, string xbrlCode)
         {
@@ -335,7 +386,6 @@ namespace XbrlReader
 
             return configObject;
         }
-
 
         private XDocument ParseXmlFile()
         {
@@ -470,66 +520,6 @@ namespace XbrlReader
                 }
                 FilingsSubmitted.Add(fi.Value);
             }
-        }
-
-        private int CreateDocInstanceInDb()
-        {
-            using var connection = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-
-            var sqlInsertDoc = @"
-               INSERT INTO DocInstance
-                   (                                            
-                    [PensionFundId]                   
-                   ,[UserId]                   
-                   ,[ModuleCode]           
-                   ,[ApplicableYear]
-                   ,[ApplicableQuarter]                   
-                   ,[ModuleId]      
-                   ,[FileName]
-                   ,[CurrencyBatchId]
-                   ,[Status]
-                   ,[EiopaVersion]
-                    )
-                VALUES
-                   (                                
-                    @PensionFundId
-                   ,@UserId
-                   ,@ModuleCode                   
-                   ,@ApplicableYear
-                   ,@ApplicableQuarter                   
-                   ,@ModuleId
-                   ,@FileName
-                   ,@CurrencyBatchId
-                   ,@Status
-                   ,@EiopaVersion
-                    ); 
-                SELECT CAST(SCOPE_IDENTITY() as int);
-                ";
-
-
-
-            var sqlModule = @"select mod.ModuleID from mModule mod where mod.ModuleCode = @moduleCode";
-            var moduleId = connectionEiopa.QuerySingleOrDefault<int>(sqlModule, new { ModuleCode });
-
-            var doc = new
-            {
-                PensionFundId = FundId,
-                UserId,
-                ModuleCode,
-                ApplicableYear,
-                ApplicableQuarter,
-                ModuleId = moduleId,
-                FileName,
-                CurrencyBatchId,
-                Status = "P",
-                EiopaVersion = SolvencyVersion,
-            };
-
-
-            var result = connection.QuerySingleOrDefault<int>(sqlInsertDoc, doc);
-            DocumentId = result;
-            return result;
         }
 
         private void AddUnits()
@@ -865,7 +855,6 @@ VALUES (
             return rows;
         }
 
-
         private MModule GetModule(string moduleCode)
         {
             using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
@@ -898,13 +887,15 @@ VALUES (
         }
 
 
-        private DateTime GetReferenceDate()
+        private DateTime GetReferenceDate(ConfigObject confObject,int category,int applicableYear,int applicableQuarter)
         {
+            //select fact.DateTimeValue from TemplateSheetFact fact where fact.InstanceId= 11850 and fact.XBRLCode= 's2md_met:di1043'
+            var refDate = GetXmlElementFromXbrl(XmlDoc, "s2md_met:di1043");
+            var sqlSubDate = GetLastSubmissionDate(confObject, category, applicableYear, applicableQuarter);    
+            
             return DateTime.Now;
         }
-        //select fact.DateTimeValue from TemplateSheetFact fact where fact.InstanceId= 11850 and fact.XBRLCode= 's2md_met:di1043'
-
-
+     
 
         static DateTime? GetLastSubmissionDate(ConfigObject confObject, int category, int quarter, int referenceYear)
         {
