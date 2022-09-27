@@ -33,16 +33,16 @@ namespace AdhocTesting
             
             var sig5 = @"MET(s2md_met:mi414)|s2c_dim:TK(s2c_TF:x4)|s2c_dim:TX(s2c_EL:x28)|s2c_dim:VG(s2c_AM:x80)";
             var sig6 = @"MET(s2md_met:si1589)|s2c_dim:SU(s2c_MC:x171)|s2c_dim:UI(*)|s2c_dim:XG(*)";
-            //var sig7 = @"MET(s2md_met:mi503)|s2c_dim:BL(*[364;1521;0])|s2c_dim:DI(s2c_DI:x5)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LA(*?[307])|s2c_dim:LR(s2c_GA:x14)|s2c_dim:TZ(s2c_LB:x163)|s2c_dim:VG(s2c_AM:x84)";
-
+            var sig7 = @"MET(s2md_met:mi289)|s2c_dim:AF(*?[61])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(*[343;1521;0])|s2c_dim:DY(s2c_TI:x1)|s2c_dim:OC(*?[242])|s2c_dim:RM(s2c_TI:x42)|s2c_dim:TA(s2c_AM:x57)|s2c_dim:VG(s2c_AM:x80)";
+            var sig8 = @"MET(s2md_met:mi294)|s2c_dim:VG(s2c_AM:x80)";
 
             //var oldProcx = FactsProcessor.FindMatchingFactsRegex(confObject, 12905, sig1);
 
             long t0 = DateTime.Now.Ticks;
-            var newProc = FactsProcessor.FindFactsFromSignatureNew(confObject, 12905, sig1);
+            var newProc = FactsProcessor.FindFactsFromSignatureWild(confObject, 12905, sig8);
             long t1 = DateTime.Now.Ticks;
 
-            var oldProc = FactsProcessor.FindMatchingFactsRegex(confObject, 12905, sig1);
+            var oldProc = FactsProcessor.FindMatchingFactsRegex(confObject, 12905, sig8);
             long t2 = DateTime.Now.Ticks;
             if(newProc.Count != oldProc.Count)
             {

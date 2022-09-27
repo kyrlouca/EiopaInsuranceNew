@@ -291,7 +291,8 @@ namespace XbrlReader
                 Console.Write($"!");
 
                 var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
-                var factListNew = FindFactsFromSignatureNew(ConfigObject, DocumentId, cell.DatapointSignature);
+
+                var factListNew = FindFactsFromSignatureWild(ConfigObject, DocumentId, cell.DatapointSignature);
                 if (factsList.Count != factListNew.Count)
                 {
                     Console.Write($"@*@*@*@@ DIFFERENCE for cell: {cell.CellID}");
@@ -778,7 +779,7 @@ namespace XbrlReader
             .Select(dim => Regex.Replace(dim, @"\[.*\]", ""))
             .Select(dim => dim.Replace("*", "%")).ToList();
             var cleanSig = string.Join("|", dimList);
-            
+
             return cleanSig;
         }
 
@@ -896,10 +897,10 @@ namespace XbrlReader
             }
 
             ////////////////////////////////////////
-            var nnn = FindFactsFromSignatureNew(confObj, documentId, cellSignature);
+            var nnn = FindFactsFromSignatureWild(confObj, documentId, cellSignature);
             if (nnn.Count != distinctList.Count)
             {
-                throw (new Exception($"different number of facts found{cellSignature}"));
+                 throw (new Exception($"different number of facts found{cellSignature}"));
             }
 
             return distinctList;
@@ -1033,10 +1034,10 @@ namespace XbrlReader
 
             var factDimDoms = factDims.Select(fd => DimDom.GetParts(fd)).Skip(1).ToList();
             var cellDimDoms = cellDims.Select(cd => DimDom.GetParts(cd)).Skip(1).ToList();
-            
+
 
             //List<DimDom> xx = cellDimDoms.Sort((DimDom a, DimDom b) => string.Compare(a.DomValue, b.DomValue)).ToList<DimDom>;
-             cellDimDoms.Sort((DimDom a, DimDom b) => string.Compare(b.DomValue, a.DomValue));
+            cellDimDoms.Sort((DimDom a, DimDom b) => string.Compare(b.DomValue, a.DomValue));
 
             var countFactDimDoms = factDimDoms.Count();
             foreach (var cellDimDom in cellDimDoms)
@@ -1053,14 +1054,14 @@ namespace XbrlReader
                 if (!cellDimDom.IsOptional && factDimDom is null)
                 {
                     return false;
-                }                
-                
+                }
+
                 if (!IsNewDimMatch(confObj, cellDimDom, factDimDom))
                 {
                     return false;
                 }
-                
-                countFactDimDoms -=1;
+
+                countFactDimDoms -= 1;
             }
             if (countFactDimDoms != factDimDoms.Count)
             {
@@ -1517,7 +1518,7 @@ namespace XbrlReader
         }
         //*******************************
 
-        public static List<TemplateSheetFact> FindFactsFromSignatureNew(ConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindFactsFromSignatureNewxx(ConfigObject confObj, int documentId, string cellSignature)
         {
             //Select the facts that match the cell signature using two methods
             //if the fact signature has no selections, then use sql with direct signature matching
@@ -1527,10 +1528,10 @@ namespace XbrlReader
 
             using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
-            
+
 
             var mandatoryWildSignature = SimplifyCellSignature(cellSignature, false);
-            var dimsMandatoryAndXbrl = mandatoryWildSignature.Split("|").ToList();            
+            var dimsMandatoryAndXbrl = mandatoryWildSignature.Split("|").ToList();
             var dimsMandatory = dimsMandatoryAndXbrl.Skip(1).ToList();
             var xbrlMetric = dimsMandatoryAndXbrl.FirstOrDefault();
             var xbrlCode = string.IsNullOrEmpty(xbrlMetric) ? "" : GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
@@ -1538,9 +1539,9 @@ namespace XbrlReader
             {
                 return factList;
             }
-            
+
             var fuzzyRegex = new Regex(@"[\*\?\[]", RegexOptions.Compiled);
-            var isfuzzySignature = fuzzyRegex.IsMatch(cellSignature);            
+            var isfuzzySignature = fuzzyRegex.IsMatch(cellSignature);
 
             //************ signature is simple 
             //no optinal dims, no wildcar dims 
@@ -1587,13 +1588,13 @@ namespace XbrlReader
                 WHERE fact.InstanceId = @documentId
                 AND fact.XBRLCode = @xbrlCode
                 AND fact.DataPointSignature = @sig;
-             ";                
+             ";
                 var factListSimple = connectionInsurance.Query<TemplateSheetFact>(sqlFullSignature, new { documentId, xbrlCode, sig = cellSignature }).ToList();
                 return factListSimple;
             }
 
 
-            
+
             var countOptionalDims = cellSignature.Split("|").Where(part => part.Contains('?')).Count();
             var sqlWildSelect = @"            
               SELECT  
@@ -1638,10 +1639,11 @@ namespace XbrlReader
              ";
             var wildFacts = new List<TemplateSheetFact>();
             if (countOptionalDims == 0)
-            {                
+            {
                 //No OPTIONAL dims - but use wildcards
                 wildFacts = connectionInsurance.Query<TemplateSheetFact>(sqlWildSelect, new { documentId, xbrlCode, sig = mandatoryWildSignature }).ToList();
-            }else if (countOptionalDims == 1)
+            }
+            else if (countOptionalDims == 1)
             {
                 //there is one optional Dim. search without the optional and WITH the optinal dim
                 wildFacts = connectionInsurance.Query<TemplateSheetFact>(sqlWildSelect, new { documentId, xbrlCode, sig = mandatoryWildSignature }).ToList();
@@ -1685,7 +1687,7 @@ namespace XbrlReader
                     .Where(fact => fact?.FactId is not null)
                     .ToList();
             }
-            
+
 
             foreach (var wildFact in wildFacts)
             {
@@ -1700,7 +1702,193 @@ namespace XbrlReader
 
             return factList;
 
-                        
+
+        }
+
+
+        public static List<TemplateSheetFact> FindFactsFromSignatureWild(ConfigObject confObj, int documentId, string cellSignature)
+        {
+            //Select the facts that match the cell signature using two methods
+            //if the fact signature has no selections, then use sql with direct signature matching
+            //otherwise, use the xbrl and ONLY the dims without selections to find the facts matching
+            //.... then conduct further filtering for each fact, checking the fact  dims agains the cell dims one by one
+            ////var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])||s2c_dim:FC(*)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])";
+
+            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
+            var factList = new List<TemplateSheetFact>();
+
+
+            var mandatoryWildSignature = SimplifyCellSignature(cellSignature, false);
+            var dimsMandatoryAndXbrl = mandatoryWildSignature.Split("|").ToList();
+            var dimsMandatory = dimsMandatoryAndXbrl.Skip(1).ToList();
+            var xbrlMetric = dimsMandatoryAndXbrl.FirstOrDefault();
+            var xbrlCode = string.IsNullOrEmpty(xbrlMetric) ? "" : GeneralUtils.GetRegexSingleMatch(@"MET\((.*?)\)", xbrlMetric);
+            if (string.IsNullOrEmpty(xbrlCode))
+            {
+                return factList;
+            }
+
+            //if there is no optional or selection then the  uses equality instead of like
+            var fuzzyRegex = new Regex(@"[\*\?\[]", RegexOptions.Compiled);
+            var isfuzzySignature = fuzzyRegex.IsMatch(cellSignature);
+
+            //************ signature is simple 
+            //no optinal dims, no wildcard dims 
+            //Select the facts directly using the signature in sql expression without any wildcards
+            if (!isfuzzySignature)
+            {
+                var sqlFullSignature = @"            
+              SELECT  
+                  fact.FactId
+                 ,fact.TemplateSheetId
+                 ,fact.Row
+                 ,fact.Col
+                 ,fact.Zet
+                 ,fact.CellID
+                 ,fact.FieldOrigin
+                 ,fact.TableID
+                 ,fact.DataPointSignature
+                 ,fact.Unit
+                 ,fact.Decimals
+                 ,fact.NumericValue
+                 ,fact.BooleanValue
+                 ,fact.DateTimeValue
+                 ,fact.TextValue
+                 ,fact.DPS
+                 ,fact.IsRowKey
+                 ,fact.IsShaded
+                 ,fact.XBRLCode
+                 ,fact.DataType
+                 ,fact.DataPointSignatureFilled                 
+                 ,fact.InternalRow
+                 ,fact.internalCol
+                 ,fact.DataTypeUse
+                 ,fact.IsEmpty
+                 ,fact.IsConversionError
+                 ,fact.ZetValues
+                 ,fact.OpenRowSignature
+                 ,fact.CurrencyDim                 
+                 ,fact.contextId                 
+                 ,fact.Signature
+                 ,fact.RowSignature                 
+                 ,fact.InstanceId                  
+
+                FROM dbo.TemplateSheetFact fact
+                WHERE fact.InstanceId = @documentId
+                AND fact.XBRLCode = @xbrlCode
+                AND fact.DataPointSignature = @sig;
+             ";
+                var factListSimple = connectionInsurance.Query<TemplateSheetFact>(sqlFullSignature, new { documentId, xbrlCode, sig = cellSignature }).ToList();
+
+                //some facts may exist in many tables (we only need one)
+                var distinctSimpleList = factListSimple.DistinctBy(fact => fact.DataPointSignature).ToList();
+
+                return distinctSimpleList;
+            }
+
+            //Select the facts directl using the signature without any wildcards
+            //replace optional dims with % and replace dims with value checking with sc2_dim/w/w:(%)
+            var wildSignature = MakeCellSignatureWild(cellSignature);
+            var sqlWildSelect = @"            
+              SELECT  
+                  fact.FactId
+                 ,fact.TemplateSheetId
+                 ,fact.Row
+                 ,fact.Col
+                 ,fact.Zet
+                 ,fact.CellID
+                 ,fact.FieldOrigin
+                 ,fact.TableID
+                 ,fact.DataPointSignature
+                 ,fact.Unit
+                 ,fact.Decimals
+                 ,fact.NumericValue
+                 ,fact.BooleanValue
+                 ,fact.DateTimeValue
+                 ,fact.TextValue
+                 ,fact.DPS
+                 ,fact.IsRowKey
+                 ,fact.IsShaded
+                 ,fact.XBRLCode
+                 ,fact.DataType
+                 ,fact.DataPointSignatureFilled                 
+                 ,fact.InternalRow
+                 ,fact.internalCol
+                 ,fact.DataTypeUse
+                 ,fact.IsEmpty
+                 ,fact.IsConversionError
+                 ,fact.ZetValues
+                 ,fact.OpenRowSignature
+                 ,fact.CurrencyDim                 
+                 ,fact.contextId                 
+                 ,fact.Signature
+                 ,fact.RowSignature                 
+                 ,fact.InstanceId                  
+
+                FROM dbo.TemplateSheetFact fact
+                WHERE fact.InstanceId = @documentId
+                AND fact.XBRLCode = @xbrlCode
+                AND fact.DataPointSignatureFilled like @sig ESCAPE '#';
+             ";
+            var wildFacts = connectionInsurance.Query<TemplateSheetFact>(sqlWildSelect, new { documentId, xbrlCode, sig =wildSignature }).ToList();
+            foreach (var wildFact in wildFacts)
+            {
+                //var sqlFact = "select fact.FactId, fact.DataPointSignature from TemplateSheetFact fact where fact.FactId= @factId";
+                //var fact = connectionInsurance.QuerySingleOrDefault<TemplateSheetFact>(sqlFact, new { documentId, factId = possibleFact.FactId });
+                var isMatch = IsNewSignatureMatch(confObj, cellSignature, wildFact?.DataPointSignature ?? "");
+                if (isMatch)
+                {
+                    factList.Add(wildFact);
+                }
+            }
+
+            //some facts may exist in many tables (we only need one)
+            var distinctList = factList.DistinctBy(fact => fact.DataPointSignature).ToList();            
+            return distinctList;
+                      
+
+        }
+
+
+
+        public static string MakeCellSignatureWild(string cellSignature)
+        {
+            //replace selections with sql wildcard s2c_dim:AX(*[8;1;0])=>s2c_dim:AX(%). 
+            //replace optional dims with %
+            //delete wildcard if at the end of line |%$
+
+
+            //@"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)";
+            //allow optional =>@"MET(s2md_met:mi87)|s2c_dim:AF(%)|s2c_dim:AX(%)|s2c_dim:BL(s2c_LB:x9)"
+            //not allow optional=>@"MET(s2md_met:mi87)|s2c_dim:AX(%)|s2c_dim:BL(s2c_LB:x9)");
+
+
+            var dimListBasic = cellSignature.Split("|").ToList();
+
+            var rgx = new Regex( @"s2c_dim:\w\w\((.*?)\)",RegexOptions.Compiled);
+            var evaluator = new MatchEvaluator(MatchReplacer);
+
+            var dimList = dimListBasic
+                .Select(dim => dim.Contains('?')? dim.Replace(dim, "%"):dim)           
+                .Select(dim => dim.Contains('*') ?  rgx.Replace(dim,evaluator ):dim);
+            
+
+            var wildSig = string.Join("|", dimList);
+
+            var regExOptional = new Regex(@"\|%", RegexOptions.Compiled);
+            wildSig = regExOptional.Replace(wildSig, "%");
+
+            return wildSig;
+
+            static string MatchReplacer(Match match)
+            {
+                if (!match.Success)
+                {
+                    return match.Value;
+                }                
+                var newVal = match.Value.Replace(match.Groups[1].Value, "%");
+                return newVal;
+            }
         }
 
 
