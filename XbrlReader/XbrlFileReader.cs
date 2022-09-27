@@ -1,11 +1,12 @@
 ﻿using ConfigurationNs;
-using Dapper;
+
 using EiopaConstants;
 using EntityClasses;
 using EntityClassesZ;
 using GeneralUtilsNs;
 using HelperInsuranceFunctions;
 using Microsoft.Data.SqlClient;
+using Dapper;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -289,7 +290,7 @@ namespace XbrlReader
             return;
         }
 
-        private XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        internal XbrlFileReader(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
             //Then store document, sheets, and facts in database
