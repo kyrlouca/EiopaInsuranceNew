@@ -18,6 +18,8 @@ using System.Xml.Schema;
 using TransactionLoggerNs;
 using System.Reflection.PortableExecutable;
 using System.Xml;
+using System.Globalization;
+using System.Security.Policy;
 
 namespace XbrlReader
 {
@@ -103,18 +105,19 @@ namespace XbrlReader
 #if DEBUG
             is_Test_debug = true;
 #endif            
+            //is_Test_debug = false;
 
             //****************************************************
             //* check if the fund in xbrl is the same as fund submited by user  
 
             var fundLei = GetXmlElementFromXbrl(XmlDoc, "si1899");
-            var fundFromXml = GetFundByLei(ConfigObject, fundLei);
+            var fundFromDb = GetDbFundByLei(ConfigObject, fundLei);
 
 
             if (!is_Test_debug)
             {
-                var fundIdNew = fundFromXml?.FundId ?? -1;
-                if (fundIdNew != FundId)
+                var fundIdDb = fundFromDb?.FundId ?? -1;
+                if (fundIdDb != FundId)
                 {
                     //var message = $"Fund Specified by User fundId:{reader?.FundId} Different than Fund in Xbrl lei: {factWithLei?.XBRLCode} ";
                     var message = $"The license number used:{FundId} is incorrect.";
@@ -143,36 +146,30 @@ namespace XbrlReader
             }
 
 
-            var fundCategory = fundFromXml.Wave;
+            var fundCategory = fundFromDb?.Wave ?? -1;
 
             //*******************************************************
-            //* Check if the validation date is the same as the xbrl reference date
-            if (!is_Test_debug || 1==2)
+            //* Check if the reference date is the same as the xbrl reference date
+            if (!is_Test_debug || 1 == 1)
             {
                 var errorMessageDate = "";
-                DateTime xbrlDate = DateTime.Now;
-                var validationDate = GetLastSubmissionDate(ConfigObject, fundCategory, ApplicableQuarter, ApplicableYear );
-                if(validationDate is null)
-                {
-                    errorMessageDate = $"No Record in Submission dates from categery {fundCategory}, year:{ApplicableYear}, quarter:{ApplicableQuarter}";
-
-                }
+                DateTime xbrlDate;
+                var referenceDateObject = GetSubmissionReferenceDate(ConfigObject, fundCategory, ApplicableYear, ApplicableQuarter);
                 var xbrlDateStr = GetXmlElementFromXbrl(XmlDoc, "di1043");
-                try
-                {
-                    xbrlDate = DateTime.Parse(xbrlDateStr);
-                }
-                catch
-                {
+
+                if (!DateTime.TryParseExact(xbrlDateStr, "yyyy-MM-dd", null, DateTimeStyles.None, out xbrlDate))
+                {                 
                     errorMessageDate = $"Xbrl file does not have a valid Reference Date :{xbrlDateStr}";
                 }
-
-                if (xbrlDate != validationDate)
+                else if (referenceDateObject is null)
                 {
-                    errorMessageDate = $"Xbrl date : {xbrlDate} different than validation Date :{validationDate:dd:MM:yyyy}";
+                    errorMessageDate = $"Reference date Record does NOT exist in Database for categery: {fundCategory}, year:{ApplicableYear}, quarter:{ApplicableQuarter}";
                 }
-                
-                
+                else if (xbrlDate != referenceDateObject.ReferenceDate)
+                {
+                    errorMessageDate = $"Xbrl date : {xbrlDate} different than validation Date :{referenceDateObject.ReferenceDate:dd:MM:yyyy}";
+                }
+
 
                 if (!string.IsNullOrEmpty(errorMessageDate))
                 {
@@ -206,19 +203,18 @@ namespace XbrlReader
 
             if (!is_Test_debug && UserId != 1)// no check for fund id when testing
             {
-                var lastValidDate = GetLastSubmissionDate(ConfigObject, fundCategory, ApplicableQuarter, ApplicableYear);
+                var SubmissionDateObject = GetSubmissionReferenceDate(ConfigObject, fundCategory, ApplicableYear, ApplicableQuarter);
 
                 var errorMessageG = string.Empty;
-                if (lastValidDate is null || DateTime.Today > lastValidDate)
+                if (SubmissionDateObject is null)
                 {
-                    errorMessageG = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {lastValidDate?.ToString("dd/MM/yyyy")}";
+                    errorMessageG = $"Reference date Record does NOT exist in Database for categery: {fundCategory}, year:{ApplicableYear}, quarter:{ApplicableQuarter}";
+                }
+                else if (DateTime.Today > SubmissionDateObject.SubmissionDate)
+                {
+                    errorMessageG = $"Document was submitted on {DateTime.Today:dd/MM/yyyy} which is after Last Valid Date {SubmissionDateObject.SubmissionDate:dd/MM/yyyy}";
                 }
 
-                if (ApplicableYear < DateTime.Today.Year - 1)
-                {
-                    errorMessageG = $"Document Reference Year: {ApplicableYear} is in the past";
-
-                }
 
                 if (!string.IsNullOrEmpty(errorMessageG))
                 {
@@ -251,7 +247,7 @@ namespace XbrlReader
             //***Create loose facts not assigned to sheets
             //*************************************************
             var (isValidFacts, errorMessage) = CreateLooseFacts();
-             if (!isValidFacts)
+            if (!isValidFacts)
             {
                 var message = errorMessage;
                 Log.Error(message);
@@ -333,7 +329,7 @@ namespace XbrlReader
             return factWithLei;
         }
 
-        private static Fund GetFundByLei(ConfigObject configObject, string lei)
+        private static Fund GetDbFundByLei(ConfigObject configObject, string lei)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
 
@@ -423,7 +419,7 @@ namespace XbrlReader
 
                 try
                 {
-                    xmlDoc = XDocument.Load(sr);                    
+                    xmlDoc = XDocument.Load(sr);
                 }
                 catch (Exception e)
                 {
@@ -887,59 +883,32 @@ VALUES (
         }
 
 
-        private DateTime GetReferenceDate(ConfigObject confObject,int category,int applicableYear,int applicableQuarter)
-        {
-            //select fact.DateTimeValue from TemplateSheetFact fact where fact.InstanceId= 11850 and fact.XBRLCode= 's2md_met:di1043'
-            var refDate = GetXmlElementFromXbrl(XmlDoc, "s2md_met:di1043");
-            var sqlSubDate = GetLastSubmissionDate(confObject, category, applicableYear, applicableQuarter);    
-            
-            return DateTime.Now;
-        }
-     
 
-        static DateTime? GetLastSubmissionDate(ConfigObject confObject, int category, int quarter, int referenceYear)
+        static SubmissionReferenceDate GetSubmissionReferenceDate(ConfigObject confObject, int category,  int referenceYear, int quarter)
         {
             using var connectionInsurance = new SqlConnection(confObject.LocalDatabaseConnectionString);
-            var date2000 = new DateTime(2000, 1, 1);
-
-            var rgQuarter = new Regex(@"[0-4]");
-            if (!rgQuarter.IsMatch(quarter.ToString()))
-            {
-                return null;
-
-            }
-
-
+            
             var sqlSubDate = @"
-            SELECT            
-              sdate.Q1             
-             ,sdate.Q2
-             ,sdate.Q3
-             ,sdate.Q4
-             ,sdate.A
-             ,sdate.ReferenceYear
-             ,sdate.SubmissionDateId
-            FROM dbo.SubmissionDate sdate
-            WHERE sdate.ReferenceYear = @referenceYear
-            AND sdate.Category = @category";
-            var sRecord = connectionInsurance.QueryFirstOrDefault<SubmissionDate>(sqlSubDate, new { referenceYear, category });
-            if (sRecord is null)
-            {
-                return null;
-            }
-            var sDate = quarter switch
-            {
-                0 => sRecord.A,
-                1 => sRecord.Q1,
-                2 => sRecord.Q1,
-                3 => sRecord.Q1,
-                4 => sRecord.Q1,
-                _ => date2000
-            };
+                SELECT
+                  srd.SubmissionReferenceDateId
+                 ,srd.Category
+                 ,srd.ReferenceYear
+                 ,srd.ReferenceDate
+                 ,srd.SubmissionDate
+                 ,srd.Quarter
+                FROM dbo.SubmissionReferenceDate srd
+                WHERE srd.Category = @category
+                AND srd.ReferenceYear = @referenceYear
+                AND srd.Quarter = @quarter
+
+                ";
+            var sRecord = connectionInsurance.QueryFirstOrDefault<SubmissionReferenceDate>(sqlSubDate, new { referenceYear, category, quarter });
+
+            return sRecord;
 
 
-            return sDate == date2000 ? null : sDate;
         }
+
 
         static string GetXmlElementFromXbrl(XDocument xDoc, string xbrlCode)
         {
