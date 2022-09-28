@@ -150,7 +150,7 @@ namespace XbrlReader
 
             //*******************************************************
             //* Check if the reference date is the same as the xbrl reference date
-            if (!is_Test_debug || 1 == 1)
+            if (!is_Test_debug || 1 == 2)
             {
                 var errorMessageDate = "";
                 DateTime xbrlDate;
@@ -273,8 +273,7 @@ namespace XbrlReader
 
                 return false;
             }
-
-            FactsProcessor.ProcessFactsAndAssignToSheets(SolvencyVersion, DocumentId, FilingsSubmitted);
+            
 
             var diffminutes = DateTime.Now.Subtract(StartTime).TotalMinutes;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
