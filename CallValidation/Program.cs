@@ -84,14 +84,21 @@ using Validations;
                 docId = 11833;
 
                 Console.WriteLine($"{docId}");
-                //var validatorDg = new DocumentValidator   
-                //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
-                //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
+    //var validatorDg = new DocumentValidator   
+    //DocumentValidator.ValidateDocument("IU260", 9800, 4342);
+    //DocumentValidator.ValidateDocument("IU260", 10820, 0);                
 
-                //DocumentValidator.ValidateDocument("IU260", 11833, 6406);
-                //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
-                
-                DocumentValidator.ValidateDocument("IU260", 11882,0, 0);//4920 /56
+    //DocumentValidator.ValidateDocument("IU260", 11833, 6406);
+    //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
+
+    string licenseErrorMessage;
+    if (!Z.Expressions.EvalManager.ValidateLicense(out licenseErrorMessage))
+    {
+        throw new Exception(licenseErrorMessage);
+    }
+
+
+    DocumentValidator.ValidateDocument("IU260", 12905,0, 0);//4920 /56
 
                 return 1;
             }

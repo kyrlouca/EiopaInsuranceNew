@@ -192,7 +192,7 @@ namespace ExcelCreatorV
                 return errorMessage;
             }
 
-            void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum)
+            void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum,bool copyStyle =false)
             {
                 var destRow = DestSheet.CreateRow(destRowNum);
                 var debugdest=ExcelHelperFunctions.ShowRowContents(originRow);                
@@ -205,11 +205,13 @@ namespace ExcelCreatorV
                         var destColNum = x - OffsetCol;
                         var destCell = destRow.CreateCell(destColNum);
 
-                        var originStyle = originCell.CellStyle;
-                        var destStyle = DestExcelBook.CreateCellStyle();
-                        destStyle.CloneStyleFrom(originStyle);
-                        destCell.CellStyle = destStyle;
-
+                        if (copyStyle)
+                        {
+                            var originStyle = originCell.CellStyle;
+                            var destStyle = DestExcelBook.CreateCellStyle();
+                            destStyle.CloneStyleFrom(originStyle);
+                            destCell.CellStyle = destStyle;
+                        }
                         CopyCellTypedValue(originCell, destCell);
                     }
                 }
@@ -299,7 +301,9 @@ namespace ExcelCreatorV
                     var destRowNum = y - OffsetRow;
                     if (y < OrgDataRange.FirstRow) // the area above data, copy style for bold, etc for NOT NULL                
                     {
-                        CopyUpperRow(originRow, y, destRowNum);
+                        var xx = ExcelHelperFunctions.ShowRowContents(originRow);
+                        var isCopyStyle = destRowNum > 4;
+                        CopyUpperRow(originRow, y, destRowNum,isCopyStyle);
                     }
                     else
                     {

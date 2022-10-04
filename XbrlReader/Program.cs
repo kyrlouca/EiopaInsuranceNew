@@ -12,7 +12,8 @@ namespace XbrlReader
 #if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");
 
-            
+       
+
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl
             //
 
