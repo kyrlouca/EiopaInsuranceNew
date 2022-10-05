@@ -19,7 +19,7 @@
 			"version": "IU270",
 			"SystemDatabaseString": "Data Source = KYR-RYZEN\\SQLEXPRESS ; Initial Catalog =InsuranceDatabase; Integrated Security = true; TrustServerCertificate=True;",
 			"EiopaConnectionString": "Data Source = KYR-RYZEN\\SQLEXPRESS; Initial Catalog =EIOPA_Unified_DPM_Database_270; Integrated Security = true;TrustServerCertificate=True;",
-			"ExcelTemplateFile": "C:\Users\kyrlo\soft\dotnet\insurance-project\Eiopa-files-270\EIOPA_SolvencyII_DPM_Annotated_Templates_2.7.0 - Mod.xlsx"
+			"ExcelTemplateFile": "C:\\Users\\kyrlo\\soft\\dotnet\\insurance-project\\Eiopa-files-270\\EIOPA_SolvencyII_DPM_Annotated_Templates_2.7.0 - Mod.xlsx"
 		},
 		{
 			"version": "PU250",

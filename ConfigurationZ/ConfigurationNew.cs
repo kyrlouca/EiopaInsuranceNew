@@ -71,10 +71,10 @@ namespace ConfigurationNs
             }
             catch (Exception e)
             {
-                var message = $"Error  getting ConfigData.json from current directory ";
+                var message = $"Error reading ConfigData.json from current directory ";
                 Console.WriteLine(message);
                 Console.WriteLine(e);
-                throw;
+                throw new Exception(message);
             }
 #endif
 
@@ -87,7 +87,7 @@ namespace ConfigurationNs
             {
                 var message = $"Error Reading file:{Filename}-exception {e.Message} ";
                 Console.WriteLine(message);
-                throw;
+                throw new Exception( message);
             }
 
             JsonDataClass jsonData;
@@ -97,9 +97,10 @@ namespace ConfigurationNs
             }
             catch (Exception e)
             {
-                var message = $"Error Deseriliazing Json in  file:{Filename} \n--{e.Message} ";
+                var justFileName = Path.GetFileName(Filename);
+                var message = $" Cannot read Json file:{justFileName} /n--{e.Message} ";
                 Console.WriteLine(message);
-                throw;
+                throw new Exception(message);
             }
 
 
