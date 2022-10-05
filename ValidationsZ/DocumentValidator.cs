@@ -15,8 +15,6 @@ using Z.Expressions;
 using HelperInsuranceFunctions;
 using TransactionLoggerNs;
 
-
-
 namespace Validations
 {
 
@@ -1315,6 +1313,8 @@ namespace Validations
         {
 
             ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
+           
+
             if (string.IsNullOrEmpty(ConfigObject.LoggerValidatorFile))
             {
                 var errorMessage = "LoggerValidatorFile is not defined in ConfigData.json";

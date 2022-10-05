@@ -14,6 +14,7 @@ using EntityClassesZ;
 using XbrlReader;
 using System.Reflection.Metadata.Ecma335;
 
+
 namespace AdhocTesting
 {
     internal enum ValidStatus { A, Q1, Q2, Q3, Q4 };
@@ -24,6 +25,7 @@ namespace AdhocTesting
         enum Fts { exp, count, empty, isfallback, min, max, sum, matches, ftdv, ExDimVal };
         static void Main(string[] args)
         {
+            var cc = Configuration.GetInstance("IU260");
             var confObject = Configuration.GetInstance(SolvencyVersion).Data;
             
             var sig0 = @"MET(s2md_met:mi503)|s2c_dim:BI(s2c_GA:x6)|s2c_dim:BL(s2c_LB:x79|s2c_dim:DI(s2c_DI:x5)|s2c_dim:EE(s2c_GA:x74)|s2c_dim:IZ(s2c_RT:x1)|s2c_dim:LG(*[290;882;0])|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x84)";

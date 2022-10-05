@@ -154,7 +154,7 @@ namespace ExcelCreatorV
             SolvencyVersion = solvencyVersion;
             DocumentIdInput = documentId;
             UserId = userId;
-            IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
+            //IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
 
             ExcelOutputFile = excelOutputFile;
             ConfigObject = GetConfiguration();

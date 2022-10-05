@@ -9,7 +9,7 @@ using System.Text.Json;
 namespace ConfigurationNs
 {
 
-    public class ConfigObject
+    public class ConfigObjectOld
     {
 
         //somehow I could not manage to use the internal modifier properly. It does not work for internal set from serializer
@@ -41,7 +41,7 @@ namespace ConfigurationNs
     }
 
 
-    public class Configuration
+    public class ConfigurationOld
     {
 
         //Create a Singleton -- Cannot use a static Class because I need to pass solvency version as a  parameter in the constructor 
@@ -51,18 +51,18 @@ namespace ConfigurationNs
         //all the attributes are under the Data object.
         //by passing a the solvency version as a param, the user can select which database version is selected as LocalDatabaseConnection
 
-        public static Configuration Instance { get; private set; }
-        public ConfigObject Data { get; private set; }
+        public static ConfigurationOld Instance { get; private set; }
+        public ConfigObjectOld Data { get; private set; }
         public string Version { get; }
         public string Filename { get; private set; }
         public static bool IsValidVersion(string version)
         {
 
-            var validValues = new List<string>() { "PP250", "PU250", "IU250", "IU260", "TEST250" };
+            var validValues = new List<string>() { "PP250", "PU250", "IU250", "IU260","IU270", "TEST250"  };
             var isValid = validValues.Contains(version);
             return isValid;
         }
-        private Configuration(string version)
+        private ConfigurationOld(string version)
         {
             Version = version;
 
@@ -100,7 +100,7 @@ namespace ConfigurationNs
 
             try
             {
-                Data = JsonSerializer.Deserialize<ConfigObject>(jsonDataString);
+                Data = JsonSerializer.Deserialize<ConfigObjectOld>(jsonDataString);
             }
             catch (Exception e)
             {
@@ -132,6 +132,11 @@ namespace ConfigurationNs
                     Data.EiopaDatabaseConnectionString = Data.EiopaUnified260ConnectionString;
                     Data.ExcelTemplateFileGeneral = Data.ExcelTemplateFile260;
                     break;
+                case "IU270"://Insurance Database using Eiopa Unified 260
+                    Data.LocalDatabaseConnectionString = Data.InsuranceDatabaseConnectionString;
+                    Data.EiopaDatabaseConnectionString = Data.EiopaUnified260ConnectionString;
+                    Data.ExcelTemplateFileGeneral = Data.ExcelTemplateFile260;
+                    break;
                 case "TEST250"://Insurance Database but for PENSION EXCEL 
                     Data.LocalDatabaseConnectionString = Data.InsuranceDatabaseConnectionString;
                     Data.EiopaDatabaseConnectionString = Data.EiopaUnified250ConnectionString;
@@ -147,9 +152,9 @@ namespace ConfigurationNs
 
 
         }
-        public static Configuration GetInstance(string version)
+        public static ConfigurationOld GetInstance(string version)
         {
-            Instance ??= new Configuration(version);
+            Instance ??= new ConfigurationOld(version);
             return Instance;
         }
     }

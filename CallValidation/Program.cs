@@ -98,7 +98,7 @@ using Validations;
     }
 
 
-    DocumentValidator.ValidateDocument("IU260", 12905,0, 0);//4920 /56
+    DocumentValidator.ValidateDocument("IU260", 12955,0, 0);//4920 /56
 
                 return 1;
             }
