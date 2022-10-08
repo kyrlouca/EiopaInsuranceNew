@@ -57,8 +57,8 @@ namespace ExcelCreatorV
 
     public class ExcelFileCreator
     {
-        public string DebugTableCode { get; set; } = "S.04.01.01.03";
-        //public string DebugTableCode { get; set; } = "";
+        //public string DebugTableCode { get; set; } = "S.04.01.01.03";
+        public string DebugTableCode { get; set; } = "";
 
         public ConfigObject ConfigObject { get; private set; }
 
@@ -504,9 +504,7 @@ namespace ExcelCreatorV
             //Merge sheets for each templeate Code (3 digit code) based on dimension .(line of business BL and currency OC)
             //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
             //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
-            var templates = CreateTemplateTableBundlesForModule(ConfigObject, ModuleId);
-            //debug1
-
+            var templates = CreateTemplateTableBundlesForModule(ConfigObject, ModuleId);            
             if (!string.IsNullOrEmpty(DebugTableCode))
             {
                 var tableCodeParts = DebugTableCode.Split(".").Take(4);
@@ -558,9 +556,8 @@ namespace ExcelCreatorV
 
                 mergedRecord.TabSheet?.SetZoom(80);
                 ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
-                var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-                //debug1
-                //IndexSheetList.RemoveSheets(sheetsToRemove);
+                var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();                
+                IndexSheetList.RemoveSheets(sheetsToRemove);
                 IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
 
             }
