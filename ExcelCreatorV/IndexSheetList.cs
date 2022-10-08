@@ -21,29 +21,29 @@ namespace ExcelCreatorV
         public IndexSheetListItem(string tabSheetName, string description)
         {
             TabSheetName = tabSheetName;
-            Description = description;            
+            Description = description;
         }
     }
     internal class IndexSheetList
     {
         ConfigObject? ConfObject { get; set; }
         XSSFWorkbook ExcelBook { get; set; }
-        WorkbookStyles WorkbookStyles { get; set; } 
+        WorkbookStyles WorkbookStyles { get; set; }
         public ISheet IndexSheet { get; internal set; }
         public string SheetName { get; init; }
         public string SheetDescription { get; init; }
         List<IndexSheetListItem> SheetRecords { get; set; } = new List<IndexSheetListItem>();
         //public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets, string sheetName, string sheetDescription)
-            public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles,  string sheetName, string sheetDescription)
+        public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, string sheetName, string sheetDescription)
         {
             ConfObject = confObject;
             ExcelBook = excelBook;
             WorkbookStyles = workbookStyles;
-            SheetName= sheetName;
-            SheetDescription= sheetDescription;
+            SheetName = sheetName;
+            SheetDescription = sheetDescription;
             IndexSheet = ExcelBook.CreateSheet(sheetName);
             //SheetRecords = CreateListOfSheets(dBsheets);
-            
+
         }
 
 
@@ -99,7 +99,7 @@ namespace ExcelCreatorV
 
                 var titleCell = row.CreateCell(1);
                 titleCell.SetCellValue(sheetRecord.Description);
-                IndexSheet.SetColumnWidth(0, 7000);               
+                IndexSheet.SetColumnWidth(0, 7000);
 
             }
             return IndexSheet;
@@ -114,33 +114,33 @@ namespace ExcelCreatorV
         {
             SheetRecords = SheetRecords.Where(r => r.TabSheetName != tabSheetName).ToList();
         }
-        public void RemoveSheets( List<string> tabSheetNames)
+        public void RemoveSheets(List<string> tabSheetNames)
         {
             foreach (var tabSheetName in tabSheetNames)
             {
-                var shIdx= ExcelBook.GetSheetIndex(tabSheetName);
-                if(shIdx == -1)
+                var shIdx = ExcelBook.GetSheetIndex(tabSheetName);
+                if (shIdx == -1)
                 {
                     continue;
                 }
                 ExcelBook.RemoveAt(shIdx);
                 var shrIdx = SheetRecords.FirstOrDefault(r => r.TabSheetName == tabSheetName);
 
-                if(shIdx > -1)
+                if (shIdx > -1)
                 {
-                    SheetRecords.Remove(shrIdx);                
+                    SheetRecords.Remove(shrIdx);
                 }
                 else
                 {
                     Console.WriteLine($"sheet {tabSheetName} not found");
                 }
 
-            }            
+            }
         }
 
         public void SortSheetRecords()
         {
-            SheetRecords.Sort((IndexSheetListItem a, IndexSheetListItem b) => string.Compare(a.TabSheetName, b.TabSheetName));            
+            SheetRecords.Sort((IndexSheetListItem a, IndexSheetListItem b) => string.Compare(a.TabSheetName, b.TabSheetName));
             SheetRecords.ForEach(sr => ExcelBook.SetSheetOrder(sr.TabSheetName.Trim(), SheetRecords.IndexOf(sr)));
         }
     }
