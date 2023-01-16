@@ -37,8 +37,8 @@ namespace XbrlReader
             {
                 //user =1 does not check for validation dates
 
-                //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl
-                //.\XbrlReader.exe "IU260" 1 1 1 "qrs" 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"                
+                //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl                
+                //.\XbrlReader.exe "IU260" 1 1 71 "qrs" 2022 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl"
                 var solvencyVersion = args[0].Trim();
                 var currencyBatchId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
                 var userId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
