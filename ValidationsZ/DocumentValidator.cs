@@ -15,8 +15,8 @@ using Z.Expressions;
 using HelperInsuranceFunctions;
 using TransactionLoggerNs;
 using Shared.Services;
-
-
+using System.Reflection.Metadata;
+using System.Reflection;
 
 namespace Validations;
 
@@ -39,6 +39,7 @@ internal class FactDim
 
 
 }
+
 public class DocumentValidator
 {
     //create the structure which contains lists DocumentRules Derived from Validation Rules
@@ -50,6 +51,7 @@ public class DocumentValidator
 
     public int DocumentId { get; private set; }
     public int ModuleId { get; private set; }
+    public MModule Module { get; private set; }
     public DocInstance DocumentInstance { get; private set; }
     public bool IsValidDocument { get; private set; } = true;
 
@@ -59,24 +61,51 @@ public class DocumentValidator
     public List<RuleStructure> DocumentRules { get; private set; } = new List<RuleStructure>();
     public int TestingRuleId { get; set; } = 0;
     public int TestingTechnicalRuleId { get; set; } = 0;
-    
 
 
 
-    public static void ValidateDocument(IConfigObject configObject,  int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
+
+    public static void ValidateDocument(IConfigObject configObject, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
     {
         var validatorDg = new DocumentValidator(configObject, documentId, testingRuleId, testingTechnicalRuleId);
+        validatorDg.DocumentInstance = GetDocumentFromDb(configObject, documentId);
         if (!validatorDg.IsValidDocument)
         {
             return;
         }
 
-        validatorDg.CreateAllRules();
+        var module = GetModuleId(configObject, validatorDg.ModuleId);
 
-        validatorDg.ValidateRules();
+        if (module is null)
+        {
+            var message = $"Validator: Module NOT Valid. Module: {moduleId} ";
+            Log.Error(message);
+            var trans = new TransactionLog()
+            {
+                //PensionFundId = DocumentInstance.PensionFundId,
+                //ModuleCode = DocumentInstance.ModuleCode,
+                //ApplicableYear = DocumentInstance.ApplicableYear,
+                //ApplicableQuarter = DocumentInstance.ApplicableQuarter,
+                //Message = message,
+                //UserId = 0,
+                //ProgramCode = ProgramCode.VA.ToString(),
+                //ProgramAction = ProgramAction.INS.ToString(),
+                //InstanceId = documentId,
+                //MessageType = MessageType.ERROR.ToString()
+            };
+            TransactionLogger.LogTransaction("xxx", trans);
+
+
+            validatorDg.ModuleId = validatorDg.Module.ModuleID;
+
+            validatorDg.UpdateDocumentStatus("P");
+
+            validatorDg.CreateAllRules();
+
+            validatorDg.ValidateRules();
+        }
+
     }
-
-
     private DocumentValidator(IConfigObject configObject, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 0)
     {
         //Normally, a constructor should only create the bear minimum
@@ -90,13 +119,15 @@ public class DocumentValidator
         DocumentId = documentId;
         TestingRuleId = testingRuleId;
         TestingTechnicalRuleId = testingTechnicalRuleId;
-        
+                
+    }
 
-        var document = InsuranceData.GetDocumentByIdNew(ConfigObjectFull, documentId);//returns 
-        if (document.InstanceId ==0)
-        {
-            IsValidDocument = false;
-            var messg = $"Validation: Document  NOT Found. Document Id: {DocumentId} ";
+    private static DocInstance GetDocumentFromDb(IConfigObject configObject, int documentId)
+    {
+        var document = InsuranceData.GetDocumentByIdNew(configObject, documentId);//returns 
+        if (document.InstanceId == 0)
+        {            
+            var messg = $"Validation: Document  NOT Found. Document Id: {documentId} ";
             Log.Error(messg);
 
             var trans = new TransactionLog()
@@ -114,17 +145,17 @@ public class DocumentValidator
             };
             TransactionLogger.LogTransaction("xx", trans);
 
-            return;
+            return document;
         }
 
         var status = document.Status.Trim();
         var isLockedDocument = status == "P" || document.IsSubmitted;
         if (isLockedDocument)
         {
-            IsValidDocument = false;
+            //IsValidDocument = false;
             var messg = status == "P"
-                ? $"DocumentId: {DocumentId}. Document cannot be validated because it is currently being Processed by another User"
-                : $"DocumentId: {DocumentId}. Document cannot be validated because it has already been submitted";
+                ? $"DocumentId: {documentId}. Document cannot be validated because it is currently being Processed by another User"
+                : $"DocumentId: {documentId}. Document cannot be validated because it has already been submitted";
             Log.Error(messg);
             Console.WriteLine(messg);
             var trans = new TransactionLog()
@@ -142,25 +173,28 @@ public class DocumentValidator
             };
             TransactionLogger.LogTransaction("xxx", trans);
 
-            return;
+            return document;
         }
 
-        DocumentInstance = document;
-        DocumentId = document.InstanceId;
+        return document;
 
-        var module = GetModuleId();
+        
+    }
+    private static MModule GetModule(IConfigObject configObject, int moduleId)
+    {
+        var module = GetModuleId(ConfigmoduleId);
 
         if (module is null)
         {
             IsValidDocument = false;
-            return;
+            return new DocInstance();
         }
         ModuleId = module.ModuleID;
 
         //to prevent anyone else validating when processed
-        UpdateDocumentStatus("P");
-
+        
     }
+
 
     private void CreateAllRules()
     {
@@ -2058,36 +2092,18 @@ public class DocumentValidator
 
 
 
-    private MModule GetModuleId()
+    private static MModule GetModuleId(IConfigObject configObject,int moduleId)
     {
-        using var connectionPension = new SqlConnection(ConfigObjectFull.Data.LocalDatabaseConnectionString);
-        using var connectionEiopa = new SqlConnection(ConfigObjectFull.Data.EiopaDatabaseConnectionString);
+        using var connectionPension = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+        using var connectionEiopa = new SqlConnection(configObject.Data.EiopaDatabaseConnectionString);
 
 
 
         var sqlSelectDoc = @"SELECT mo.ModuleID, moduleCode, mo.ModuleLabel, mo.XBRLSchemaRef FROM mModule mo where mo.ModuleID = @moduleId";
-        var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlSelectDoc, new { DocumentInstance.ModuleId });
-        if (module is null)
-        {
-            var message = $"Validator: Module NOT Valid. Module: {ModuleId} ";
-            Log.Error(message);
-            var trans = new TransactionLog()
-            {
-                PensionFundId = DocumentInstance.PensionFundId,
-                ModuleCode = DocumentInstance.ModuleCode,
-                ApplicableYear = DocumentInstance.ApplicableYear,
-                ApplicableQuarter = DocumentInstance.ApplicableQuarter,
-                Message = message,
-                UserId = 0,
-                ProgramCode = ProgramCode.VA.ToString(),
-                ProgramAction = ProgramAction.INS.ToString(),
-                InstanceId = DocumentId,
-                MessageType = MessageType.ERROR.ToString()
-            };
-            TransactionLogger.LogTransaction("xxx", trans);
+        var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlSelectDoc, new { moduleId });
             return module;
-        }
-        return module;
+        
+        
 
     }
 
