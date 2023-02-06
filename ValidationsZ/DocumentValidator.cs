@@ -78,32 +78,20 @@ public class DocumentValidator
 
         if (module is null)
         {
-            var message = $"Validator: Module NOT Valid. Module: {moduleId} ";
+            var message = $"Validator: Module NOT Valid. Module: {validatorDg.ModuleId} ";
             Log.Error(message);
-            var trans = new TransactionLog()
-            {
-                //PensionFundId = DocumentInstance.PensionFundId,
-                //ModuleCode = DocumentInstance.ModuleCode,
-                //ApplicableYear = DocumentInstance.ApplicableYear,
-                //ApplicableQuarter = DocumentInstance.ApplicableQuarter,
-                //Message = message,
-                //UserId = 0,
-                //ProgramCode = ProgramCode.VA.ToString(),
-                //ProgramAction = ProgramAction.INS.ToString(),
-                //InstanceId = documentId,
-                //MessageType = MessageType.ERROR.ToString()
-            };
-            TransactionLogger.LogTransaction("xxx", trans);
-
-
-            validatorDg.ModuleId = validatorDg.Module.ModuleID;
-
-            validatorDg.UpdateDocumentStatus("P");
-
-            validatorDg.CreateAllRules();
-
-            validatorDg.ValidateRules();
+            Console.WriteLine(message);
+            return;
         }
+
+        validatorDg.ModuleId = module.ModuleID;
+
+        validatorDg.UpdateDocumentStatus("P");
+
+        validatorDg.CreateAllRules();
+
+        validatorDg.ValidateRules();
+
 
     }
     private DocumentValidator(IConfigObject configObject, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 0)
@@ -117,16 +105,17 @@ public class DocumentValidator
         ConfigObjectFull = configObject;
         ConfigData = configObject.Data;
         DocumentId = documentId;
+
         TestingRuleId = testingRuleId;
         TestingTechnicalRuleId = testingTechnicalRuleId;
-                
+
     }
 
     private static DocInstance GetDocumentFromDb(IConfigObject configObject, int documentId)
     {
         var document = InsuranceData.GetDocumentByIdNew(configObject, documentId);//returns 
         if (document.InstanceId == 0)
-        {            
+        {
             var messg = $"Validation: Document  NOT Found. Document Id: {documentId} ";
             Log.Error(messg);
 
@@ -178,23 +167,9 @@ public class DocumentValidator
 
         return document;
 
-        
+
     }
-    private static MModule GetModule(IConfigObject configObject, int moduleId)
-    {
-        var module = GetModuleId(ConfigmoduleId);
-
-        if (module is null)
-        {
-            IsValidDocument = false;
-            return new DocInstance();
-        }
-        ModuleId = module.ModuleID;
-
-        //to prevent anyone else validating when processed
-        
-    }
-
+    
 
     private void CreateAllRules()
     {
@@ -214,7 +189,7 @@ public class DocumentValidator
         //create the rules. First create  the  rules of the module (ars, qrs, etc ..)
         //then, for each module rule create the document rules for each table which have the same tableCode as the rule scope table code.
         Console.WriteLine($"\nCreate Module Rules");
-        var countModuleRules=CreateModuleRules();
+        var countModuleRules = CreateModuleRules();
         Console.WriteLine($"\nModule Rules Created : {countModuleRules}");
 
         //Create DocumentRules out of Module Rules
@@ -1163,7 +1138,7 @@ public class DocumentValidator
         foreach (var validationRule in validationRules)
         {
             //var ruleStructure = new RuleStructure(validationRule);
-            var ruleStructure = new RuleStructure(validationRule.TableBasedFormula, validationRule.Filter, validationRule.Scope, validationRule.ValidationRuleID, validationRule,false,validationRule.Severity);
+            var ruleStructure = new RuleStructure(validationRule.TableBasedFormula, validationRule.Filter, validationRule.Scope, validationRule.ValidationRuleID, validationRule, false, validationRule.Severity);
             Console.Write(".");
             ModuleRules.Add(ruleStructure);
         }
@@ -2092,7 +2067,7 @@ public class DocumentValidator
 
 
 
-    private static MModule GetModuleId(IConfigObject configObject,int moduleId)
+    private static MModule GetModuleId(IConfigObject configObject, int moduleId)
     {
         using var connectionPension = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
         using var connectionEiopa = new SqlConnection(configObject.Data.EiopaDatabaseConnectionString);
@@ -2101,9 +2076,9 @@ public class DocumentValidator
 
         var sqlSelectDoc = @"SELECT mo.ModuleID, moduleCode, mo.ModuleLabel, mo.XBRLSchemaRef FROM mModule mo where mo.ModuleID = @moduleId";
         var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlSelectDoc, new { moduleId });
-            return module;
-        
-        
+        return module;
+
+
 
     }
 
