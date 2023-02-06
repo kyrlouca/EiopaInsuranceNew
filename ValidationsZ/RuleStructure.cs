@@ -11,7 +11,7 @@ using Serilog;
 using ConfigurationNs;
 using EiopaConstants;
 using Z.Expressions;
-
+using Shared.Services;
 namespace Validations
 {
 
@@ -27,7 +27,7 @@ namespace Validations
         //resmm.SymbolFinalFormula.Should().Be("X0=Z0");
         //******************************************************
 
-        public ConfigObject ConfigObject { get; set; }
+        public IConfigObject ConfigObject { get; set; }
         public List<RuleTerm> RuleTerms = new();
         public List<RuleTerm> FilterTerms = new();
 

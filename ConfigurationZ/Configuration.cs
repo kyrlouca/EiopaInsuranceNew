@@ -69,8 +69,8 @@ namespace ConfigurationNs
 
 #if DEBUG
             Console.WriteLine("Mode=Debug from Config");
-            Filename = @"C:\Users\kyrlo\soft\dotnet\insurance-project\EiopaInsurance\ConfigData.json";
-#else            
+            Filename = @"C:\Users\kyrlo\soft\Executables\Insurance\x1\ConfigDataNew.json";
+#else
             Console.WriteLine("Mode=Release from Config");
             try
             {
@@ -86,6 +86,7 @@ namespace ConfigurationNs
             }
 #endif
 
+            
             var jsonDataString = "";
             try
             {
@@ -98,9 +99,17 @@ namespace ConfigurationNs
                 throw;
             }
 
+
+            var options = new JsonSerializerOptions
+            {
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            };
+
             try
             {
-                Data = JsonSerializer.Deserialize<ConfigObject>(jsonDataString);
+                //jsonData = JsonSerializer.Deserialize<JsonDataClass>(jsonDataString, options) ?? new JsonDataClass();
+                Data = JsonSerializer.Deserialize<ConfigObject>(jsonDataString,options);
             }
             catch (Exception e)
             {

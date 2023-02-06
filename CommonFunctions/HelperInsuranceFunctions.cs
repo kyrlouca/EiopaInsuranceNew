@@ -8,6 +8,7 @@ using ConfigurationNs;
 using EntityClassesZ;
 using GeneralUtilsNs;
 using EiopaConstants;
+using Shared.Services;
     
 
 namespace HelperInsuranceFunctions
@@ -88,11 +89,39 @@ namespace HelperInsuranceFunctions
 
 
 
-
-        public static DocInstance GetDocumentById( ConfigObject configObject,  int documentId)
+        public static DocInstance GetDocumentByIdNew(IConfigObject configObject, int documentId)
         {
-            Console.WriteLine($"in GetDocId : {documentId},dbstring: {configObject.LocalDatabaseConnectionString}");
-            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            Console.WriteLine($"in GetDocId : {documentId},dbstring: {configObject.Data.LocalDatabaseConnectionString}");
+            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+            var emptyDocument = new DocInstance();
+            var sqlFund = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
+            DocInstance doc = null;
+            try
+            {
+                doc = connectionInsurance.QueryFirstOrDefault<DocInstance>(sqlFund, new { documentId });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"errrffor :{e.Message}");
+                return emptyDocument;
+            }
+
+            if (doc is null)
+            {
+                Console.WriteLine($"documentId:{documentId} does not exist");
+                return emptyDocument;
+            }
+            Console.WriteLine($"documentId:{documentId} is valid");
+            return doc;
+
+        }
+
+
+
+        public static DocInstance GetDocumentById( IConfigObject configObject,  int documentId)
+        {
+            Console.WriteLine($"in GetDocId : {documentId},dbstring: {configObject.Data.LocalDatabaseConnectionString}");
+            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
             var emptyDocument = new DocInstance();
             var sqlFund = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
             DocInstance doc=null;

@@ -20,6 +20,7 @@
     <ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
     <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
     <ProjectReference Include="..\ValidationsZ\ValidationsZ.csproj" />
   </ItemGroup>
