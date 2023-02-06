@@ -58,7 +58,7 @@ namespace ConfigurationNs
         public static bool IsValidVersion(string version)
         {
 
-            var validValues = new List<string>() { "PP250", "PU250", "IU250", "IU260", "TEST250" };
+            var validValues = new List<string>() {"PU270", "PP250", "PU250", "IU250", "IU260", "TEST250" };
             var isValid = validValues.Contains(version);
             return isValid;
         }
