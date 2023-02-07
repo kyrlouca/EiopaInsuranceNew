@@ -58,7 +58,7 @@ namespace ConfigurationNs
         public static bool IsValidVersion(string version)
         {
 
-            var validValues = new List<string>() {"PU270", "PP250", "PU250", "IU250", "IU260", "TEST250" };
+            var validValues = new List<string>() {"PU270", "PP250", "PU250", "IU250", "IU260", "IU270", "TEST250" };
             var isValid = validValues.Contains(version);
             return isValid;
         }
@@ -137,6 +137,11 @@ namespace ConfigurationNs
                     Data.ExcelTemplateFileGeneral = Data.ExcelTemplateFile250;
                     break;
                 case "IU260"://Insurance Database using Eiopa Unified 260
+                    Data.LocalDatabaseConnectionString = Data.InsuranceDatabaseConnectionString;
+                    Data.EiopaDatabaseConnectionString = Data.EiopaUnified260ConnectionString;
+                    Data.ExcelTemplateFileGeneral = Data.ExcelTemplateFile260;
+                    break;
+                case "IU270"://Insurance Database using Eiopa Unified 270
                     Data.LocalDatabaseConnectionString = Data.InsuranceDatabaseConnectionString;
                     Data.EiopaDatabaseConnectionString = Data.EiopaUnified260ConnectionString;
                     Data.ExcelTemplateFileGeneral = Data.ExcelTemplateFile260;

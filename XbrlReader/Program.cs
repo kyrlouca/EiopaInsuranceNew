@@ -12,17 +12,16 @@ namespace XbrlReader
 #if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");
 
-       
+
 
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl
             //
 
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\ALTIUS INSURANCE LTD Q1 2022.xbrl
-            //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\Cosmos Q2 2022.xbrl");
-            //(var fundIdT, var filePath) = (99, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\crashEthnikiGeneralARS.xbrl");
-            (var fundIdT, var filePath) = (181, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\newVersion\Steamship.xbrl");
+            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl
+            (var fundIdT, var filePath) = (44, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
             //XbrlFileReader.ProcessXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0,filePath);
-            XbrlGenerator.GenerateXbrlFile("IU260", 1, 2, fundIdT, "ars", 2021, 0, filePath);
+            XbrlGenerator.GenerateXbrlFile("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
 
             Console.WriteLine("Finish");
             return 1;
