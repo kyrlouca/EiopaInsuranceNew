@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using HelperInsuranceFunctions;
 using Validations;
 using ConfigurationNs;
+using Shared.Services;
 
 namespace Validations
 {
@@ -16,11 +17,11 @@ namespace Validations
         public string Text { get; internal set; }
         public TermObject CellObject { get; set; }
         public DbValue DbValue { get; internal set; }
-        readonly ConfigObject configObj;
+        readonly IConfigObject configObj;
         readonly int DocId;
 
         CellWithValueDb() { }
-        CellWithValueDb(ConfigObject configObject, int documentId, string text)
+        CellWithValueDb(IConfigObject configObject, int documentId, string text)
         {
             configObj = configObject;
             DocId = documentId;
@@ -31,7 +32,7 @@ namespace Validations
             CellObject = TermObject.Parse(Text);
             DbValue = DocumentValidator.GetCellValueFromDbNew(configObj, DocId, CellObject.TableCode, CellObject.Row, CellObject.Col);
         }
-        public static CellWithValueDb GetValue(ConfigObject configObject, int documentId, string text)
+        public static CellWithValueDb GetValue(IConfigObject configObject, int documentId, string text)
         {
             var obj = new CellWithValueDb(configObject, documentId, text);
             obj.GetTheValue();
