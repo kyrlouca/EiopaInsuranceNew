@@ -52,7 +52,7 @@ namespace XbrlReader
         public int ModuleId { get; private set; }
 
         public MModule Module { get; private set; }
-        public int DocumentId { get; internal set; }
+        public int DocumentId { get; internal set; } = 0;
 
         public List<string> FilingsSubmitted { get; set; } = new();
         public Dictionary<string, string> Units { get; protected set; } = new Dictionary<string, string>();
@@ -94,7 +94,7 @@ namespace XbrlReader
                 return false;
             }
 
-            var xr = new XbrlFileReader(configObjectNew, 1, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            var xr = new XbrlFileReader(configObjectNew, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
 
             var existingDocs = xr.GetExistingDocuments();
 
@@ -141,8 +141,8 @@ namespace XbrlReader
             //*************************************************
             //create the document anyway so we can attach log errors
             //*************************************************
-            var documentId = xr.CreateDocInstanceInDb( currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
-            if (documentId == 0)
+            xr.DocumentId = xr.CreateDocInstanceInDb( currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            if (xr.DocumentId == 0)
             {
                 var message = $"Cannot Create DocInstance for companyId: {fundId} year:{applicableYear} quarter:{applicableQuarter} ";
                 Console.WriteLine(message);
@@ -369,11 +369,10 @@ namespace XbrlReader
 
         }
 
-        private XbrlFileReader(IConfigObject configObject, int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        private XbrlFileReader(IConfigObject configObject, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
-            //Then store document, sheets, and facts in database
-            DocumentId = documentId;
+            //Then store document, sheets, and facts in database            
             SolvencyVersion = solvencyVersion;
             CurrencyBatchId = currencyBatchId;
             UserId = userId;
@@ -794,9 +793,6 @@ VALUES (
                 }
 
 
-
-
-
                 Console.Write(".");
 
                 count++;
@@ -1023,7 +1019,7 @@ VALUES (
                 fileName,
                 currencyBatchId,
                 Status = "P",
-                EiopaVersion = "xx",
+                EiopaVersion = ConfigObjectR.Version,
             };
 
 
