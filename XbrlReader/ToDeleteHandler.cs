@@ -15,7 +15,7 @@ using HelperInsuranceFunctions;
 
 namespace XbrlReader
 {
-    public class XbrlHandler
+    public class ToDeleteXbrlHandler
     {
 
 

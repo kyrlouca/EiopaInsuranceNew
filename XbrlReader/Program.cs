@@ -21,7 +21,7 @@ namespace XbrlReader
             //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl
             (var fundIdT, var filePath) = (44, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
             //XbrlFileReader.ProcessXbrlFileNew("IU270", 1, 2, fundIdT, "ars", 2021, 0,filePath);
-            XbrlHandler.ProcessXbrlFile("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
+            ToDeleteXbrlHandler.ProcessXbrlFile("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
 
             Console.WriteLine("Finish");
             return 1;
@@ -46,7 +46,7 @@ namespace XbrlReader
                 Console.WriteLine($"XbrlReader v1.001: xbrlfile:{xbrlFile}");
                                 
                 //XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
-                XbrlHandler.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicationYear, applicationQuarter, xbrlFile);
+                ToDeleteXbrlHandler.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicationYear, applicationQuarter, xbrlFile);
                 return 0;
             }
             else

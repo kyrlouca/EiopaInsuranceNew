@@ -1,4 +1,4 @@
-﻿using ConfigurationNs;
+﻿
 using Dapper;
 using EntityClasses;
 using GeneralUtilsNs;
@@ -11,6 +11,7 @@ using Serilog;
 using HelperInsuranceFunctions;
 using TransactionLoggerNs;
 using System.ComponentModel;
+using Shared.Services;
 
 namespace XbrlReader
 {
@@ -48,17 +49,15 @@ namespace XbrlReader
         public int ModuleId { get; private set; }
         public string ModuleCode { get; private set; }
         public List<MTable> ModuleTablesFiled { get; private set; } = new List<MTable>();
+        
+        public IConfigObject ConfigObjectR { get; }
 
 
-        public string SolvencyVersion { get; private set; }
-        public ConfigObject ConfigObject { get; }
-
-
-        public static void ProcessFactsAndAssignToSheets(string solvencyVersion, int documentId, List<string> filings)
+        public static void ProcessFactsAndAssignToSheets(IConfigObject configObject, int documentId, List<string> filings)
         {
             //*** A factory method : its is static and will create an instance.
             //** always use this factory method to create the instance and then apply the methods
-            var factsProcessor = new FactsProcessor(solvencyVersion, documentId, filings);
+            var factsProcessor = new FactsProcessor(configObject, documentId, filings);
 
             if (factsProcessor.Document is null)
             {
@@ -79,7 +78,7 @@ namespace XbrlReader
                     InstanceId = documentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(factsProcessor.SolvencyVersion, trans);
+                TransactionLogger.LogTransaction(configObject.Version, trans);
                 return;
             }
             Console.WriteLine($"\n Facts processing Started");
@@ -88,7 +87,7 @@ namespace XbrlReader
             var countFacts = factsProcessor.ProcessModuleTables();
 
             //****Update the foreign Keys of the cells in open tables
-            UpdateCellsForeignRow(factsProcessor.ConfigObject, factsProcessor.DocumentId);
+            UpdateCellsForeignRow(configObject, factsProcessor.DocumentId);
 
 
             factsProcessor.UpdateDocumentStatus("L");
@@ -96,21 +95,14 @@ namespace XbrlReader
         }
 
 
-        private FactsProcessor(string solvencyVersion, int documentId, List<string> filings)
+        private FactsProcessor(IConfigObject configObject, int documentId, List<string> filings)
         {
             //process all the tables (S.01.01.01.01, S.01.01.02.01, etc ) related to the filings (S.01.01)
             //for each cell in each table, create a sheet and associate the mathcing facts (or create new facts if a fact should be in two tables)            
             //for open tables, create  facts for the Y columns in each row based on rowContext
 
-            Console.WriteLine("Starting XbrlDataProcessor");
-            SolvencyVersion = solvencyVersion;
-            ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
-            if (string.IsNullOrEmpty(ConfigObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(ConfigObject.LocalDatabaseConnectionString))
-            {
-                var errorMessage = "Empty ConnectionStrings";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
+            ConfigObjectR = configObject;
+            Console.WriteLine("Starting XbrlDataProcessor");                                    
 
             Filings = filings;
 
@@ -132,7 +124,7 @@ namespace XbrlReader
 
         private void UpdateDocumentStatus(string status)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
@@ -153,7 +145,7 @@ namespace XbrlReader
                     FROM dbo.DocInstance doc
                     WHERE doc.InstanceId = @documentId
                     ";
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
             var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlGetDocument, new { documentId });
             return doc;
         }
@@ -175,8 +167,8 @@ namespace XbrlReader
             //iterate each table. For each table, read its cells, find the matching facts, and assign them rowcols            
             var count = 0;
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
             if (TestingTableId > 0)
             {
@@ -231,8 +223,8 @@ namespace XbrlReader
             // create one sheet for each new Zet found in the table's facts.
 
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
             DeleteMappingSignature(DocumentId);
 
@@ -240,7 +232,7 @@ namespace XbrlReader
 
             var isOpenTable = CreateMappingsSignaturesDb(table);
             table.IsOpenTable = isOpenTable;  //i dont' like this but I didn't like to add an attribute on an eiopa table
-            var pivotZet = GetTablePivotZet(ConfigObject, table);  //the dim for multifact cells                                            
+            var pivotZet = GetTablePivotZet(ConfigObjectR, table);  //the dim for multifact cells                                            
 
 
             var sqlCells = @"SELECT
@@ -292,7 +284,7 @@ namespace XbrlReader
 
                 //var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
 
-                var factListNew = FindFactsFromSignatureWild(ConfigObject, DocumentId, cell.DatapointSignature);
+                var factListNew = FindFactsFromSignatureWild(ConfigObjectR, DocumentId, cell.DatapointSignature);
                 
                 Console.Write($"$");
 
@@ -328,7 +320,7 @@ namespace XbrlReader
                         var factId = connectionInsurance.QueryFirst<int>(sqlInsertAnotherFact, fact);
                         fact.FactId = factId;
 
-                        XbrlFileReader.CreateFactDimsDb(ConfigObject, fact.FactId, fact.DataPointSignature);
+                        XbrlFileReader.CreateFactDimsDb(ConfigObjectR, fact.FactId, fact.DataPointSignature);
 
 
                     }
@@ -374,8 +366,8 @@ namespace XbrlReader
             // Take the Y dims from the table ydimsVal
             // However, we cannot take the zet from the table zdimsVal since some are missing
             // we get the Z from the mappings
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
 
             var yMappings = GetTableYDims(table);
@@ -456,8 +448,8 @@ namespace XbrlReader
             //-- different open values which means multiple sheets of the same tableI
             //-- or different closed valued (completely different table)
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
             realFact.CellID = cell.CellID;
             realFact.TableID = table.TableID;
@@ -562,7 +554,7 @@ namespace XbrlReader
             // --Use the rowNumber of another fact which has a similar openRowSignature
             // --Or use the sheet.openRowCounter to get a new row number
             //add the tableCode in front of the openRowSignature to have different rowSignatures for each Z sheet
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
             var sheetId = sheet.TemplateSheetId;
             var sqlSameRowFact = @" SELECT fact.FactId, fact.Row, fact.InternalRow from TemplateSheetFact fact where fact.TemplateSheetId = @sheetId and fact.OpenRowSignature=@OpenRowSignature ";
             var sameRowFact = connectionInsurance.QueryFirstOrDefault<TemplateSheetFact>(sqlSameRowFact, new { sheetId, fact.OpenRowSignature });
@@ -656,8 +648,8 @@ namespace XbrlReader
 
         private MAPPING FindMappingRowColForTheCell(MTable table, MTableCell cell)
         {
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
             // given the Cell,  Find the rowcol using the MAPPINGS table (plus the y,z on the mTable)
             // A list of MAPPINGS with the same row/col will correspond to the the noOpenDPS siganture of the cell            
             // -- return only the first mapping (it is enough to give you the row/col)
@@ -1127,13 +1119,13 @@ namespace XbrlReader
 
 
 
-        private static string GetTablePivotZet(ConfigObject confg, MTable table)
+        private static string GetTablePivotZet(IConfigObject confg, MTable table)
         {
             //find the in table zet dim which is not in the table zet dims but exists in the mappings as Is_in_table=1
             //for example in table 40, we have multiple facts in the same cell
             //the differenciating dim is not present in table zet dims. (which means is in the same sheet)
             //Assume we can only have one differenciating dim
-            using var connectionEiopa = new SqlConnection(confg.EiopaDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(confg.Data.EiopaDatabaseConnectionString);
             var sqlInsideDims = @"
                 select map.DIM_CODE from MAPPING map where 
                 map.ORIGIN='C'
@@ -1438,9 +1430,9 @@ namespace XbrlReader
         //*******************************
 
 
-        public static void UpdateCellsForeignRow(ConfigObject configObject, int documentId)
+        public static void UpdateCellsForeignRow(IConfigObject configObject, int documentId)
         {
-            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
 
             var sqlSelectSheets = @"select sheet.TemplateSheetId,sheet.TableCode from TemplateSheetInstance sheet where sheet.IsOpenTable=1 and  sheet.InstanceId = @documentId";
             var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { documentId })?.ToList() ?? new();
@@ -1453,7 +1445,7 @@ namespace XbrlReader
 
         }
 
-        static void UpdateSheetFactsWithMasterRow(ConfigObject configObject, int sheetId)
+        static void UpdateSheetFactsWithMasterRow(IConfigObject configObject, int sheetId)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
@@ -1522,7 +1514,7 @@ namespace XbrlReader
             //.... then conduct further filtering for each fact, checking the fact  dims agains the cell dims one by one
             ////var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])||s2c_dim:FC(*)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])";
 
-            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(confObj.Data.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
 
@@ -1702,7 +1694,7 @@ namespace XbrlReader
         }
 
 
-        public static List<TemplateSheetFact> FindFactsFromSignatureWild(ConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindFactsFromSignatureWild(IConfigObject confObj, int documentId, string cellSignature)
         {
             //Select the facts that match the cell signature using two methods
             //if the fact signature has no selections, then use sql with direct signature matching
@@ -1710,7 +1702,7 @@ namespace XbrlReader
             //.... then conduct further filtering for each fact, checking the fact  dims agains the cell dims one by one
             ////var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])||s2c_dim:FC(*)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])";
 
-            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(confObj.Data.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
 

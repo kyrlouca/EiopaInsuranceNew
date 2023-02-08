@@ -1,6 +1,4 @@
-﻿using ConfigurationNs;
-
-using EiopaConstants;
+﻿using EiopaConstants;
 using EntityClasses;
 using EntityClassesZ;
 using GeneralUtilsNs;
@@ -20,6 +18,7 @@ using System.Reflection.PortableExecutable;
 using System.Xml;
 using System.Globalization;
 using System.Security.Policy;
+using Shared.Services;
 
 namespace XbrlReader
 {
@@ -38,7 +37,7 @@ namespace XbrlReader
         public string DefaultCurrency { get; set; } = "EUR";
         public DateTime StartTime { get; } = DateTime.Now;
 
-        public ConfigObject ConfigObject { get; private set; }
+        public IConfigObject ConfigObject { get; private set; }
 
         public XDocument XmlDoc { get; private set; }
         public int UserId { get; private set; }
@@ -49,6 +48,7 @@ namespace XbrlReader
 
 
         public string ModuleCode { get; private set; }
+        public int ModuleId { get; private set; }
 
         public MModule Module { get; private set; }
         public int DocumentId { get; internal set; }
@@ -67,24 +67,102 @@ namespace XbrlReader
         readonly XNamespace findNs = "http://www.eurofiling.info/xbrl/ext/filing-indicators";
 
 
-        public static XbrlFileReader ProcessXbrlFileNew(int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+
+        public static bool StarterStatic(string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
-            var reader = new XbrlFileReader(documentId, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
-            if (reader is null)
+            //Creates the instance and then calls its functions
+
+            if (!Shared.Services.ConfigObject.IsValidVersion(solvencyVersion))
             {
-                Console.WriteLine("Reader did not start");
-                return null;
+                var message = $"Invalid Solvency:{solvencyVersion}";
+                Console.WriteLine(message);
+                return false;
             }
-            var isValidXbrl = reader.CreateXbrlDataInDb();
-            if (!isValidXbrl)
+            var configObjectNew = HostCreator.CreateTheHost(solvencyVersion);
+
+
+            //we need the module to delete the document
+            var module = InsuranceData.GetModuleByCodeNew(configObjectNew, moduleCode);
+
+            if (module.ModuleID == 0)
             {
-                Console.WriteLine("Reader has an invalid file");
-                return null;
+                //cannot create transactionLog because document does not exist
+                var message = $"Invalid module code : {moduleCode}";
+                Console.WriteLine(message);
+                Log.Error(message);
+                return false;
             }
-            return reader;
+
+            var xr = new XbrlFileReader(configObjectNew, 1, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+
+            var existingDocs = xr.GetExistingDocuments();
+
+            var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
+            if (isLockedDocument)
+            {
+                var existingDoc = existingDocs.First();
+                var existingDocId = existingDoc.InstanceId;
+                var status = existingDoc.Status.Trim();
+
+                var message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The document has already been Submitted";
+                if (status == "P")
+                {
+                    message = $"Cannot create Document with Id: {existingDoc.InstanceId}. The Document is currently being processed with status :{existingDoc.Status}";
+                }
+                Log.Error(message);
+                Console.WriteLine(message);
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = fundId,
+                    ModuleCode = moduleCode,
+                    ApplicableYear = applicableYear,
+                    ApplicableQuarter = applicableQuarter,
+                    Message = message,
+                    UserId = userId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = existingDoc.InstanceId,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+
+                TransactionLogger.LogTransaction(solvencyVersion, trans);
+                return false;
+            }
+
+
+            //delete older versions (except from locked or submitted)
+            existingDocs.Where(doc => doc.Status.Trim() != "P" && !doc.IsSubmitted)
+                .ToList()
+                .ForEach(doc => xr.DeleteDocument( doc.InstanceId));
+
+
+            //*************************************************
+            //create the document anyway so we can attach log errors
+            //*************************************************
+            var documentId = xr.CreateDocInstanceInDb( currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
+            if (documentId == 0)
+            {
+                var message = $"Cannot Create DocInstance for companyId: {fundId} year:{applicableYear} quarter:{applicableQuarter} ";
+                Console.WriteLine(message);
+                Log.Error(message);
+                return false;
+
+            }
+
+            
+            FactsProcessor.ProcessFactsAndAssignToSheets(IConfigObject configObject, xr.DocumentId, xr.FilingsSubmitted);
+
+            var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
+            Log.Information($"XbrlFileReader Minutes:{diffminutes}");
+            return true;
 
         }
 
+
+        
+
+        
         private bool CreateXbrlDataInDb()
         {
             WriteProcessStarted();
@@ -284,7 +362,7 @@ namespace XbrlReader
 
         }
 
-        private XbrlFileReader(int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        private XbrlFileReader(IConfigObject configObject, int documentId, string solvencyVersion, int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
             //Read an Xbrl file and store the data in structures (dictionary of units, contexs, facts)
             //Then store document, sheets, and facts in database
@@ -299,13 +377,14 @@ namespace XbrlReader
             FileName = fileName;
 
 
-            ConfigObject = GetConfiguration();
+        
             if (ConfigObject is null)
             {
                 return;
             }
+            ConfigObject = configObject;
 
-            IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
+            //IsValidEiopaVersion = Shared.Services.ConfigObject.IsValidVersion(SolvencyVersion);
 
             Module = GetModule(ModuleCode);
             if (Module.ModuleID == 0)
@@ -315,6 +394,7 @@ namespace XbrlReader
                 Console.WriteLine(message);
                 return;
             }
+            ModuleId = Module.ModuleID;
             ///
 
         }
@@ -788,10 +868,10 @@ VALUES (
 
         }
 
-        internal static int CreateFactDimsDb(ConfigObject config, int factId, string signature)
+        internal static int CreateFactDimsDb(IConfigObject config, int factId, string signature)
         {
 
-            using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(config.Data.LocalDatabaseConnectionString);
 
             var dims = signature.Split("|").ToList();
             if (dims.Count > 0)
@@ -919,6 +999,69 @@ VALUES (
             var leiVal = xDoc.Root.Descendants(metFactNs + xbrlCode).FirstOrDefault()?.Value ?? "";
             return leiVal;
         }
+
+
+        private int CreateDocInstanceInDb(int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        {
+            using var connection = new SqlConnection(ConfigObject.Data.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObject.Data.EiopaDatabaseConnectionString);
+
+
+            //var module = InsuranceData.GetModuleByCodeNew(ConfigObject, moduleCode);
+
+            var sqlInsertDoc = @"
+               INSERT INTO DocInstance
+                   (                                            
+                    [PensionFundId]                   
+                   ,[UserId]                   
+                   ,[ModuleCode]           
+                   ,[ApplicableYear]
+                   ,[ApplicableQuarter]                   
+                   ,[ModuleId]      
+                   ,[FileName]
+                   ,[CurrencyBatchId]
+                   ,[Status]
+                   ,[EiopaVersion]
+                    )
+                VALUES
+                   (                                
+                    @PensionFundId
+                   ,@UserId
+                   ,@ModuleCode                   
+                   ,@ApplicableYear
+                   ,@ApplicableQuarter                   
+                   ,@ModuleId
+                   ,@FileName
+                   ,@CurrencyBatchId
+                   ,@Status
+                   ,@EiopaVersion
+                    ); 
+                SELECT CAST(SCOPE_IDENTITY() as int);
+                ";
+
+
+
+
+            var doc = new
+            {
+                PensionFundId = fundId,
+                userId,
+                moduleCode,
+                applicableYear,
+                applicableQuarter,
+                ModuleId = ModuleId,
+                fileName,
+                currencyBatchId,
+                Status = "P",
+                EiopaVersion = "xx",
+            };
+
+
+            var result = connection.QuerySingleOrDefault<int>(sqlInsertDoc, doc);
+            return result;
+        }
+
+
 
     }
 
