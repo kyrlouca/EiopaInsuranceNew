@@ -51,7 +51,7 @@ namespace XbrlReader
         public List<MTable> ModuleTablesFiled { get; private set; } = new List<MTable>();
         
         public IConfigObject ConfigObjectR { get; }
-
+        public ConfigData ConfigDataR { get; }
 
         public static void ProcessFactsAndAssignToSheets(IConfigObject configObject, int documentId, List<string> filings)
         {
@@ -87,7 +87,7 @@ namespace XbrlReader
             var countFacts = factsProcessor.ProcessModuleTables();
 
             //****Update the foreign Keys of the cells in open tables
-            UpdateCellsForeignRow(configObject, factsProcessor.DocumentId);
+            UpdateCellsForeignRow(configObject.Data, factsProcessor.DocumentId);
 
 
             factsProcessor.UpdateDocumentStatus("L");
@@ -102,6 +102,7 @@ namespace XbrlReader
             //for open tables, create  facts for the Y columns in each row based on rowContext
 
             ConfigObjectR = configObject;
+            ConfigDataR = ConfigObjectR.Data;
             Console.WriteLine("Starting XbrlDataProcessor");                                    
 
             Filings = filings;
@@ -151,10 +152,10 @@ namespace XbrlReader
         }
 
 
-        public static void TestingCode(ConfigObject config)
+        public static void TestingCode(IConfigObject config)
         {
-            using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(config.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(config.Data.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(config.Data.EiopaDatabaseConnectionString);
             var sqlx = "select tab.TableID from mTable tab where tab.TableID =222333";
             var xtab = connectionEiopa.Query<MTable>(sqlx).ToList();
             var list = new List<int>() { 1, 3, 5 };
@@ -284,7 +285,7 @@ namespace XbrlReader
 
                 //var factsList = FindMatchingFactsRegex(ConfigObject, DocumentId, cell.DatapointSignature);
 
-                var factListNew = FindFactsFromSignatureWild(ConfigObjectR, DocumentId, cell.DatapointSignature);
+                var factListNew = FindFactsFromSignatureWild(ConfigDataR, DocumentId, cell.DatapointSignature);
                 
                 Console.Write($"$");
 
@@ -320,7 +321,7 @@ namespace XbrlReader
                         var factId = connectionInsurance.QueryFirst<int>(sqlInsertAnotherFact, fact);
                         fact.FactId = factId;
 
-                        XbrlFileReader.CreateFactDimsDb(ConfigObjectR, fact.FactId, fact.DataPointSignature);
+                        XbrlFileReader.CreateFactDimsDb(ConfigDataR, fact.FactId, fact.DataPointSignature);
 
 
                     }
@@ -530,7 +531,7 @@ namespace XbrlReader
 
         private TemplateSheetInstance GetOrCreateSheet(MTable table, TemplateSheetFact fact)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
             var sheetCode = string.IsNullOrEmpty(fact.ZetValues)
                     ? table.TableCode
@@ -571,7 +572,7 @@ namespace XbrlReader
 
         TemplateSheetInstance CreateSheet(MTable table, string sheetCode)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var SqlInsertTemplateSheet = @"
                          INSERT INTO TemplateSheetInstance
                            (
@@ -696,8 +697,8 @@ namespace XbrlReader
         private List<MTable> GetFiledModuleTables()
         {
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
             var sqlModule = @"select mod.ModuleID from mModule mod where mod.ModuleCode = @moduleCode";
             ModuleId = connectionEiopa.QuerySingleOrDefault<int>(sqlModule, new { ModuleCode });
@@ -772,7 +773,7 @@ namespace XbrlReader
         }
 
 
-        public static List<TemplateSheetFact> FindMatchingFactsRegexOld(ConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindMatchingFactsRegexOld(ConfigData confObj, int documentId, string cellSignature)
         {
             //MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])|s2c_dim:BL(s2c_LB:x9)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])|s2c_dim:RB(*[332;1512;0])|s2c_dim:RM(s2c_TI:x44)|s2c_dim:TB(s2c_LB:x28)|s2c_dim:VG(s2c_AM:x80)
             //find the list of facts that match the dimensions of the cell
@@ -897,7 +898,7 @@ namespace XbrlReader
 
 
 
-        public static bool IsFactSignatureMatchingExpensive(ConfigObject config, string cellSignature, string factSignature)
+        public static bool IsFactSignatureMatchingExpensive(ConfigData config, string cellSignature, string factSignature)
         {
             //check all fact dims against cell dims the expenive way
             //check optional dims for 
@@ -921,7 +922,7 @@ namespace XbrlReader
         }
 
 
-        private static bool IsFactDimMatchingCellExpensive(ConfigObject config, string cellDim, string factDim)
+        private static bool IsFactDimMatchingCellExpensive(ConfigData config, string cellDim, string factDim)
         {
             //            
             //*  "*" allows for any value but brackets constrain the values to the hierechy members
@@ -1007,7 +1008,7 @@ namespace XbrlReader
 
         ///************************
 
-        public static bool IsNewSignatureMatch(ConfigObject confObj, string cellSignature, string factSignature)
+        public static bool IsNewSignatureMatch(ConfigData confObj, string cellSignature, string factSignature)
         {
 
             //check for valid hierarchy members[323;3;3] 
@@ -1061,7 +1062,7 @@ namespace XbrlReader
         }
 
 
-        private static bool IsNewDimMatch(ConfigObject config, DimDom cellDimDom, DimDom factDimDom)
+        private static bool IsNewDimMatch(ConfigData config, DimDom cellDimDom, DimDom factDimDom)
         {
             //            
             // "*" allows for any value but brackets constrain the values to the hierechy members
@@ -1169,8 +1170,8 @@ namespace XbrlReader
 
 
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
 
 
             var sqlSelectSheet = @"select TemplateSheetId, TableCode, SheetCode, TableID from TemplateSheetInstance where TemplateSheetId =@sheetId";
@@ -1340,8 +1341,8 @@ namespace XbrlReader
             //sheetCodes exceet the limit because we add zetDims to the tablecode (create one sheet for each z dim)
             //therefore, build sheetTabName which is the first 25 chars of the sheetcode + serial (resets for every tableCode)
             //if there is no open Z do not add the z in name
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigObjectR.Data.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigObjectR.Data.EiopaDatabaseConnectionString);
 
             var count = 0;
             var sqlSelSheets = @"select TemplateSheetId, SheetCode, TableCode from  TemplateSheetInstance where InstanceId= @documentId and TableCode = @tableCode";
@@ -1420,7 +1421,7 @@ namespace XbrlReader
 
         private void DeleteMappingSignature(int instanceId)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlDeleteSig = @"delete  FROM MappingSignatures  WHERE InstanceId = @InstanceId";
             connectionInsurance.Execute(sqlDeleteSig, new { instanceId });
 
@@ -1430,9 +1431,9 @@ namespace XbrlReader
         //*******************************
 
 
-        public static void UpdateCellsForeignRow(IConfigObject configObject, int documentId)
+        public static void UpdateCellsForeignRow(ConfigData configObject, int documentId)
         {
-            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
 
             var sqlSelectSheets = @"select sheet.TemplateSheetId,sheet.TableCode from TemplateSheetInstance sheet where sheet.IsOpenTable=1 and  sheet.InstanceId = @documentId";
             var sheets = connectionInsurance.Query<TemplateSheetInstance>(sqlSelectSheets, new { documentId })?.ToList() ?? new();
@@ -1445,7 +1446,7 @@ namespace XbrlReader
 
         }
 
-        static void UpdateSheetFactsWithMasterRow(IConfigObject configObject, int sheetId)
+        static void UpdateSheetFactsWithMasterRow(ConfigData configObject, int sheetId)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
@@ -1469,7 +1470,7 @@ namespace XbrlReader
             }
         }
 
-        static int UpdateFactWithMasterRow(ConfigObject configObject, TemplateSheetFact fact, MTableKyrKeys kyrRecord)
+        static int UpdateFactWithMasterRow(ConfigData configObject, TemplateSheetFact fact, MTableKyrKeys kyrRecord)
         {
             //update the RowForeign of the main table with the row of a related table.
             //For example, S.06.02.01.01 has links with S.06.02.01.02 on the "UI" dim. (SEVERAL rows of S.06.02.01.01 may correspond to a row of S.06.02.01.02 ** checked and true)       
@@ -1506,7 +1507,7 @@ namespace XbrlReader
         }
         //*******************************
 
-        public static List<TemplateSheetFact> FindFactsFromSignatureNewxx(ConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindFactsFromSignatureNewxx(ConfigData confObj, int documentId, string cellSignature)
         {
             //Select the facts that match the cell signature using two methods
             //if the fact signature has no selections, then use sql with direct signature matching
@@ -1514,7 +1515,7 @@ namespace XbrlReader
             //.... then conduct further filtering for each fact, checking the fact  dims agains the cell dims one by one
             ////var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])||s2c_dim:FC(*)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])";
 
-            using var connectionInsurance = new SqlConnection(confObj.Data.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
 
@@ -1694,7 +1695,7 @@ namespace XbrlReader
         }
 
 
-        public static List<TemplateSheetFact> FindFactsFromSignatureWild(IConfigObject confObj, int documentId, string cellSignature)
+        public static List<TemplateSheetFact> FindFactsFromSignatureWild(ConfigData confObj, int documentId, string cellSignature)
         {
             //Select the facts that match the cell signature using two methods
             //if the fact signature has no selections, then use sql with direct signature matching
@@ -1702,7 +1703,7 @@ namespace XbrlReader
             //.... then conduct further filtering for each fact, checking the fact  dims agains the cell dims one by one
             ////var test= @"MET(s2md_met:mi87)|s2c_dim:AF(*?[59])|s2c_dim:AX(*[8;1;0])||s2c_dim:FC(*)|s2c_dim:DI(s2c_DI:x5)|s2c_dim:OC(*?[237])";
 
-            using var connectionInsurance = new SqlConnection(confObj.Data.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
             var factList = new List<TemplateSheetFact>();
 
 

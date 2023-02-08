@@ -37,7 +37,8 @@ namespace XbrlReader
         public string DefaultCurrency { get; set; } = "EUR";
         public DateTime StartTime { get; } = DateTime.Now;
 
-        public IConfigObject ConfigObject { get; private set; }
+        public IConfigObject ConfigObjectR { get; private set; }
+        public ConfigData ConfigDataR { get; private set; }
 
         public XDocument XmlDoc { get; private set; }
         public int UserId { get; private set; }
@@ -151,9 +152,10 @@ namespace XbrlReader
             }
 
             
-            FactsProcessor.ProcessFactsAndAssignToSheets(IConfigObject configObject, xr.DocumentId, xr.FilingsSubmitted);
+            FactsProcessor.ProcessFactsAndAssignToSheets(configObjectNew, xr.DocumentId, xr.FilingsSubmitted);
 
-            var diffminutes = DateTime.Now.Subtract(reader.StartTime).TotalMinutes;
+            //var diffminutes = DateTime.Now.Subtract(re.StartTime).TotalMinutes;
+            var diffminutes = 0;
             Log.Information($"XbrlFileReader Minutes:{diffminutes}");
             return true;
 
@@ -189,7 +191,7 @@ namespace XbrlReader
             //* check if the fund in xbrl is the same as fund submited by user  
 
             var fundLei = GetXmlElementFromXbrl(XmlDoc, "si1899");
-            var fundFromDb = GetDbFundByLei(ConfigObject, fundLei);
+            var fundFromDb = GetDbFundByLei(ConfigDataR, fundLei);
 
 
             if (!is_Test_debug)
@@ -232,7 +234,7 @@ namespace XbrlReader
             {
                 var errorMessageDate = "";
                 DateTime xbrlDate;
-                var referenceDateObject = GetSubmissionReferenceDate(ConfigObject, fundCategory, ApplicableYear, ApplicableQuarter);
+                var referenceDateObject = GetSubmissionReferenceDate(ConfigDataR, fundCategory, ApplicableYear, ApplicableQuarter);
                 var xbrlDateStr = GetXmlElementFromXbrl(XmlDoc, "di1043");
 
                 if (!DateTime.TryParseExact(xbrlDateStr, "yyyy-MM-dd", null, DateTimeStyles.None, out xbrlDate))
@@ -281,7 +283,7 @@ namespace XbrlReader
 
             if (!is_Test_debug && UserId != 1)// no check for fund id when testing
             {
-                var SubmissionDateObject = GetSubmissionReferenceDate(ConfigObject, fundCategory, ApplicableYear, ApplicableQuarter);
+                var SubmissionDateObject = GetSubmissionReferenceDate(ConfigDataR, fundCategory, ApplicableYear, ApplicableQuarter);
 
                 var errorMessageG = string.Empty;
                 if (SubmissionDateObject is null)
@@ -378,11 +380,11 @@ namespace XbrlReader
 
 
         
-            if (ConfigObject is null)
+            if (ConfigObjectR is null)
             {
                 return;
             }
-            ConfigObject = configObject;
+            ConfigObjectR = configObject;
 
             //IsValidEiopaVersion = Shared.Services.ConfigObject.IsValidVersion(SolvencyVersion);
 
@@ -399,7 +401,7 @@ namespace XbrlReader
 
         }
 
-        private static TemplateSheetFact GetFactByXbrl(ConfigObject configObject, int documentId, string xbrlCode)
+        private static TemplateSheetFact GetFactByXbrl(ConfigData configObject, int documentId, string xbrlCode)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
             var SqlfactWithLei = "select   fact.TemplateSheetId, fact.Row,fact.Col,fact.TextValue  from TemplateSheetFact fact where fact.InstanceId=@documentId and fact.XBRLCode=@XbrlCode";
@@ -408,7 +410,7 @@ namespace XbrlReader
             return factWithLei;
         }
 
-        private static Fund GetDbFundByLei(ConfigObject configObject, string lei)
+        private static Fund GetDbFundByLei(ConfigData configObject, string lei)
         {
             using var connectionLocal = new SqlConnection(configObject.LocalDatabaseConnectionString);
 
@@ -424,42 +426,6 @@ namespace XbrlReader
         {
             Console.WriteLine("ONLY for testing XbrlData");
             return;
-        }
-
-        private ConfigObject GetConfiguration()
-        {
-
-            if (!Configuration.IsValidVersion(SolvencyVersion))
-            {
-                var errorMessage = $"XbrlFileReader --Invalid Eiopa Version: {SolvencyVersion}";
-                Console.WriteLine(errorMessage);
-                Log.Error(errorMessage);
-                return null;
-            }
-
-            var configObject = Configuration.GetInstance(SolvencyVersion).Data;
-            if (string.IsNullOrEmpty(configObject.LoggerXbrlFile))
-            {
-                var errorMessage = "LoggerXbrlFile is not defined in ConfigData.json";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-            Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.File(configObject.LoggerXbrlReaderFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-
-            if (string.IsNullOrEmpty(configObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(configObject.LocalDatabaseConnectionString))
-            {
-                var errorMessage = "Empty ConnectionStrings";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-
-            return configObject;
         }
 
         private XDocument ParseXmlFile()
@@ -577,7 +543,7 @@ namespace XbrlReader
 
         private void DeleteContexts()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             connectionInsurance.Execute("Delete from Context where InstanceId= @DocumentId", new { DocumentId });
         }
 
@@ -611,7 +577,7 @@ namespace XbrlReader
 
         private void AddContexts()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
 
 
@@ -680,8 +646,8 @@ namespace XbrlReader
 
         private void AddFacts()
         {
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
             //Read the facts
             //<s2md_met:ei1643 contextRef="c">s2c_CN:x12</s2md_met:ei1643>
@@ -813,7 +779,7 @@ VALUES (
                 try
                 {
                     newFact.FactId = connectionInsurance.QuerySingleOrDefault<int>(sqlInsFact, newFact);
-                    CreateFactDimsDb(ConfigObject, newFact.FactId, newFact.DataPointSignature);
+                    CreateFactDimsDb(ConfigDataR, newFact.FactId, newFact.DataPointSignature);
                 }
                 catch (Exception e)
                 {
@@ -854,7 +820,7 @@ VALUES (
             MMetric FindFactMetricId(string xbrlCode)
             {
                 //xbrl code is actually the metric of a fact
-                using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+                using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
 
                 var sqlMetric = @"
                 SELECT met.MetricID, met.CorrespondingMemberID, met.DataType
@@ -868,10 +834,10 @@ VALUES (
 
         }
 
-        internal static int CreateFactDimsDb(IConfigObject config, int factId, string signature)
+        internal static int CreateFactDimsDb(ConfigData config, int factId, string signature)
         {
 
-            using var connectionInsurance = new SqlConnection(config.Data.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(config.LocalDatabaseConnectionString);
 
             var dims = signature.Split("|").ToList();
             if (dims.Count > 0)
@@ -905,7 +871,7 @@ VALUES (
 
         private List<DocInstance> GetExistingDocuments()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlExists = @"
                     select doc.InstanceId, doc.Status, doc.IsSubmitted, EiopaVersion from DocInstance doc  where  
                     PensionFundId= @FundId and ModuleId=@moduleId
@@ -920,7 +886,7 @@ VALUES (
 
         private int DeleteDocument(int documentId)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlDeleteDoc = @"delete from DocInstance where InstanceId= @documentId";
             var rows = connectionInsurance.Execute(sqlDeleteDoc, new { documentId });
 
@@ -932,8 +898,8 @@ VALUES (
 
         private MModule GetModule(string moduleCode)
         {
-            using var connectionPension = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionPension = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
 
             //module code : {ari, qri, ara, ...}
             var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
@@ -956,14 +922,14 @@ VALUES (
 
         private void UpdateDocumentStatus(string status)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlUpdate = @"update DocInstance  set status= @status where  InstanceId= @documentId;";
             var doc = connectionInsurance.Execute(sqlUpdate, new { DocumentId, status });
         }
 
 
 
-        static SubmissionReferenceDate GetSubmissionReferenceDate(ConfigObject confObject, int category,  int referenceYear, int quarter)
+        static SubmissionReferenceDate GetSubmissionReferenceDate(ConfigData confObject, int category,  int referenceYear, int quarter)
         {
             using var connectionInsurance = new SqlConnection(confObject.LocalDatabaseConnectionString);
             
@@ -1003,8 +969,8 @@ VALUES (
 
         private int CreateDocInstanceInDb(int currencyBatchId, int userId, int fundId, string moduleCode, int applicableYear, int applicableQuarter, string fileName)
         {
-            using var connection = new SqlConnection(ConfigObject.Data.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(ConfigObject.Data.EiopaDatabaseConnectionString);
+            using var connection = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
 
 
             //var module = InsuranceData.GetModuleByCodeNew(ConfigObject, moduleCode);
