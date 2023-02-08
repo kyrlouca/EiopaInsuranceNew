@@ -73,7 +73,7 @@ namespace XbrlReader
         {
             //Creates the instance and then calls its functions
 
-            if (!Shared.Services.ConfigObject.IsValidVersion(solvencyVersion))
+            if (!ConfigObject.IsValidVersion(solvencyVersion))
             {
                 var message = $"Invalid Solvency:{solvencyVersion}";
                 Console.WriteLine(message);
@@ -151,7 +151,12 @@ namespace XbrlReader
 
             }
 
-            
+            //*************************************************
+            //create sheets and loose facts in Db
+            xr.CreateXbrlDataInDb();
+
+            //*************************************************
+            //map facts and assign theme to sheets
             FactsProcessor.ProcessFactsAndAssignToSheets(configObjectNew, xr.DocumentId, xr.FilingsSubmitted);
 
             //var diffminutes = DateTime.Now.Subtract(re.StartTime).TotalMinutes;
