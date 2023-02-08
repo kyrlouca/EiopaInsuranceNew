@@ -1,5 +1,4 @@
-﻿using ConfigurationNs;
-using Dapper;
+﻿using Dapper;
 using EiopaConstants;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
@@ -18,6 +17,7 @@ using System.Collections;
 using NPOI.Util;
 using NPOI.HSSF.Record;
 using System.Reflection.Emit;
+using Shared.Services;
 
 namespace ExcelCreatorV
 {
@@ -55,7 +55,7 @@ namespace ExcelCreatorV
 
     internal static class SpecialTemplates
     {
-        
+
         public static List<SpecialHorizontalTemplate> Records { get; }
         static SpecialTemplates()
         {
@@ -71,12 +71,12 @@ namespace ExcelCreatorV
                     new string[] { "S.19.01.01.19" },
                     new string[] { "S.19.01.01.20" },
                     new string[] { "S.19.01.01.21" },
-                }),                                
+                }),
                 new SpecialHorizontalTemplate("S.19.01.21", "S.19.01.21", new[] { new string[] { "S.19.01.21.01", "S.19.01.21.02" , "S.19.01.21.03" , "S.19.01.21.04" } }),
-                new SpecialHorizontalTemplate("S.22.06.01", "S.22.06.01", new[] 
-                    { 
-                        new string[] { "S.22.06.01.01", "S.22.06.01.01" }, 
-                        new string[] { "S.22.06.01.03", "S.22.06.01.04" } 
+                new SpecialHorizontalTemplate("S.22.06.01", "S.22.06.01", new[]
+                    {
+                        new string[] { "S.22.06.01.01", "S.22.06.01.01" },
+                        new string[] { "S.22.06.01.03", "S.22.06.01.04" }
                 })
             };
         }
@@ -106,10 +106,11 @@ namespace ExcelCreatorV
 
     public class ExcelFileCreator
     {
+        public IConfigObject ConfigObjectR { get; private set; }
+        public ConfigData ConfigDataR { get => ConfigObjectR.Data; }
+
         //public string DebugTableCode { get; set; } = "S.29.04.01.01";
         public string DebugTableCode { get; set; } = "";
-
-        public ConfigObject ConfigObject { get; private set; }
 
 
         public bool IsFileValid { get; internal set; } = true;
@@ -137,37 +138,49 @@ namespace ExcelCreatorV
         public int Status { get; internal set; }
         public int TablesScanned { get; internal set; } = 0;
         public string[]? FilesScanned { get; internal set; }
-        public string SolvencyVersion { get; internal set; }
+        
 
 
-
-        public static void CreateTheExcelFile(string solvencyVersion, int userId, int documentId, string excelOutputFile)
+        public static int StaticStartCreateTheExcelFile(string solvencyVersion, int userId, int documentId, string excelOutputFile)
         {
-            var excelCreator = new ExcelFileCreator(solvencyVersion, userId, documentId, excelOutputFile);
+            var result = 0;
+            if (!ConfigObject.IsValidVersion(solvencyVersion))
+            {
+                var message = $"Invalid Solvency:{solvencyVersion}";
+                Console.WriteLine(message);
+                return result;
+            }
+            var configObjectNew = HostCreator.CreateTheHost(solvencyVersion);
+
+            var excelCreator = new ExcelFileCreator(configObjectNew, userId, documentId, excelOutputFile);
             excelCreator.CreateExcelFile();
+
+
+            result = 1;
+            return result;
 
         }
 
-        private ExcelFileCreator(string solvencyVersion, int userId, int documentId, string excelOutputFile)
+
+        private ExcelFileCreator(IConfigObject configObject, int userId, int documentId, string excelOutputFile)
         {
             Console.WriteLine($"***&&& Creator");
-            SolvencyVersion = solvencyVersion;
+            ConfigObjectR = configObject;
             DocumentIdInput = documentId;
             UserId = userId;
-            IsValidEiopaVersion = Configuration.IsValidVersion(SolvencyVersion);
-
+            
             ExcelOutputFile = excelOutputFile;
-            ConfigObject = GetConfiguration();
+            
 
             WorkbookStyles = new WorkbookStyles(DestExcelBook);
-            IndexSheetList = new IndexSheetList(ConfigObject, DestExcelBook, WorkbookStyles, "List", "List of Templates");
+            IndexSheetList = new IndexSheetList(ConfigObjectR, DestExcelBook, WorkbookStyles, "List", "List of Templates");
         }
 
 
         private bool CreateExcelFile()
         {
             Console.WriteLine($"in Create Excel file");
-            if (ConfigObject is null)
+            if (ConfigObjectR is null)
             {
                 var errMessage = $"Cannot create ConfigObject";
                 Console.WriteLine(errMessage);
@@ -203,7 +216,7 @@ namespace ExcelCreatorV
                     InstanceId = Document.InstanceId,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                TransactionLogger.LogTransaction(ConfigDataR, trans);
 
                 return false;
             }
@@ -292,7 +305,7 @@ namespace ExcelCreatorV
                     continue;//Empty sheets should NOT be reported. If there were empty sheets in the xbrl (and the db) Do NOT create excel sheets for them anyway
                 }
                 //********************************************************
-                var newSheet = new SingleExcelSheet(SolvencyVersion, ExcelTemplateBook, WorkbookStyles, DestExcelBook, sheet);
+                var newSheet = new SingleExcelSheet(ConfigObjectR, ExcelTemplateBook, WorkbookStyles, DestExcelBook, sheet);
                 var rowsInserted = newSheet.FillSingleExcelSheet();
                 singleExcelSheets.Add(newSheet);
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
@@ -303,7 +316,7 @@ namespace ExcelCreatorV
             //---------------------------------------------------------------
             //Create a sheet which combines S0.06.02.01.01 with S0.06.02.01.02
             var sheetS06Name = "S.06.02.01 Combined";
-            var sheetS06Combined = new SheetS0601Combined(ConfigObject, DestExcelBook, sheetS06Name, WorkbookStyles);
+            var sheetS06Combined = new SheetS0601Combined(ConfigObjectR, DestExcelBook, sheetS06Name, WorkbookStyles);
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {
@@ -387,45 +400,9 @@ namespace ExcelCreatorV
             return destSheet;
         }
 
-        private ConfigObject GetConfiguration()
-        {
-
-            var configObject = Configuration.GetInstance(SolvencyVersion).Data;
-            if (string.IsNullOrEmpty(configObject.LoggerExcelWriterFile))
-            {
-                var errorMessage = "LoggerExcelWriter is not defined in ConfigData.json";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-            Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.File(configObject.LoggerExcelWriterFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
-                .CreateLogger();
-
-
-            if (!Configuration.IsValidVersion(SolvencyVersion))
-            {
-                var errorMessage = $"Excel Writer --Invalid Eiopa Version: {SolvencyVersion}";
-                Console.WriteLine(errorMessage);
-                Log.Error(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-            //the connection strings depend on the Solvency Version
-            if (string.IsNullOrEmpty(configObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(configObject.LocalDatabaseConnectionString))
-            {
-                var errorMessage = "Empty ConnectionStrings in ConfigData.json file";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-            return configObject;
-        }
-
         private void WriteProcessStarted()
         {
-            var message = $"Excel Writer Started -- Document:{DocumentId} Fund:{PensionFundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{SolvencyVersion}";
+            var message = $"Excel Writer Started -- Document:{DocumentId} Fund:{PensionFundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{ConfigObjectR.Version}";
             Console.WriteLine(message);
             Log.Information(message);
 
@@ -443,13 +420,13 @@ namespace ExcelCreatorV
                 InstanceId = DocumentId,
                 MessageType = MessageType.INFO.ToString()
             };
-            TransactionLogger.LogTransaction(SolvencyVersion, trans);
+            TransactionLogger.LogTransaction(ConfigDataR, trans);
         }
 
         private bool OpenExcelTemplate()
         {
             // ** open the excel as filestream
-            ExcelTemplateFile = ConfigObject.ExcelTemplateFileGeneral;
+            ExcelTemplateFile = ConfigDataR.ExcelTemplateFileGeneral;
 
             Console.WriteLine($"using template -- : {ExcelTemplateFile}");
 
@@ -473,7 +450,7 @@ namespace ExcelCreatorV
                     MessageType = MessageType.ERROR.ToString(),
                     FileName = ExcelTemplateFile
                 };
-                TransactionLogger.LogTransaction(SolvencyVersion, xtrans);
+                TransactionLogger.LogTransaction(ConfigDataR, xtrans);
                 return false;
             }
             //open Excel from Filestream
@@ -521,9 +498,9 @@ namespace ExcelCreatorV
 
         public DocInstance GetDocumentById(int documentId)
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
-            Console.WriteLine($" a2 fuck in GetDocId : {documentId}, conf:{ConfigObject.LocalDatabaseConnectionString}");
+            Console.WriteLine($" a2 fuck in GetDocId : {documentId}, conf:{ConfigDataR.LocalDatabaseConnectionString}");
             var emptyDocument = new DocInstance();
             //var sqlFundx = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
 
@@ -554,7 +531,7 @@ namespace ExcelCreatorV
             //Merge sheets for each templeate Code (3 digit code) based on dimension .(line of business BL and currency OC)
             //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
             //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
-            var templates = CreateTemplateTableBundlesForModule(ConfigObject, ModuleId);
+            var templates = CreateTemplateTableBundlesForModule(ConfigDataR, ModuleId);
             //templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
 
             foreach (var template in templates)
@@ -566,8 +543,8 @@ namespace ExcelCreatorV
         private void MergeOneTemplate(TemplateBundle templateTableBundle)
         {
             //One template may have many Zet dimensions(for business line or currency)
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             //currency is can be CD,CR,OC but for s.19 is oc
 
             var sqlZet = @"
@@ -607,10 +584,10 @@ namespace ExcelCreatorV
         }
         private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetBLValue)
         {
-            
 
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
             var mergedTabName = string.IsNullOrEmpty(zetBLValue)
                 ? templateBundle.TemplateCode
@@ -637,7 +614,7 @@ namespace ExcelCreatorV
                 // "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06"                 
                 foreach (var horizontalDbList in specialTemplate.TableCodes)
                 {
-                    var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetBLValue).FirstOrDefault()).ToList();
+                    var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue).FirstOrDefault()).ToList();
                     dbSheets.Add(horizontalDbTables);
                 }
             }
@@ -645,7 +622,7 @@ namespace ExcelCreatorV
             {
                 //We can have more than one sheet for the same Business line, Currency , if the table has dimensions
                 //Need to merge also
-                dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigObject, DocumentId, tableCode, zetBLValue)).ToList();
+                dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue)).ToList();
             }
 
             var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1).ToList();
@@ -680,15 +657,15 @@ namespace ExcelCreatorV
 
 
             ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
-            {                
+            {
 
                 var sheetTabName = dbSheet.SheetTabName.Trim();
                 if (dbSheet.TableID == -1)
                 {
 
                     var sqlTbl = @"SELECT TemplateOrTableLabel FROM mTemplateOrTable tt where tt.TemplateOrTableCode= @tableCode and tt.TemplateOrTableType='BusinessTable'";
-                    var tableDescription = connectionEiopa.QueryFirstOrDefault<string>(sqlTbl, new { tableCode= dbSheet.TableCode } )??"";
-                    var newSheet = DestExcelBook.CreateSheet(sheetTabName);                    
+                    var tableDescription = connectionEiopa.QueryFirstOrDefault<string>(sqlTbl, new { tableCode = dbSheet.TableCode }) ?? "";
+                    var newSheet = DestExcelBook.CreateSheet(sheetTabName);
                     newSheet.CreateRow(0).CreateCell(0).SetCellValue($"{dbSheet.TableCode} - Empty Table");
                     newSheet.CreateRow(1).CreateCell(0).SetCellValue(templateBundle.TemplateDescription);
                     newSheet.CreateRow(2).CreateCell(0).SetCellValue(tableDescription);
@@ -701,7 +678,7 @@ namespace ExcelCreatorV
 
                 return sheet;
             }
-            static List<TemplateSheetInstance> getOrCreateDbSheet(ConfigObject confObj, int documentId, string? tableCode, string zetValue)
+            static List<TemplateSheetInstance> getOrCreateDbSheet(ConfigData confObj, int documentId, string? tableCode, string zetValue)
             {
                 using var connectionEiopa = new SqlConnection(confObj.EiopaDatabaseConnectionString);
                 using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
@@ -745,7 +722,7 @@ namespace ExcelCreatorV
 
         }
 
-        private static List<TemplateBundle> CreateTemplateTableBundlesForModule(ConfigObject ConfObject, int moduleId)
+        private static List<TemplateBundle> CreateTemplateTableBundlesForModule(ConfigData ConfObject, int moduleId)
         {
             using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
             using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);

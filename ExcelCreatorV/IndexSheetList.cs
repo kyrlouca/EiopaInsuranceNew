@@ -10,6 +10,8 @@ using ConfigurationNs;
 using EntityClasses;
 using Microsoft.Data.SqlClient;
 using Dapper;
+using Shared.Services;
+
 
 namespace ExcelCreatorV
 {
@@ -26,7 +28,8 @@ namespace ExcelCreatorV
     }
     internal class IndexSheetList
     {
-        ConfigObject? ConfObject { get; set; }
+        IConfigObject ConfObjectR { get; set; }
+        ConfigData ConfDataR { get=> ConfObjectR.Data; }
         XSSFWorkbook ExcelBook { get; set; }
         WorkbookStyles WorkbookStyles { get; set; } 
         public ISheet IndexSheet { get; internal set; }
@@ -34,9 +37,9 @@ namespace ExcelCreatorV
         public string SheetDescription { get; init; }
         List<IndexSheetListItem> SheetRecords { get; set; } = new List<IndexSheetListItem>();
         //public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles, List<TemplateSheetInstance> dBsheets, string sheetName, string sheetDescription)
-            public IndexSheetList(ConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles,  string sheetName, string sheetDescription)
+            public IndexSheetList(IConfigObject confObject, XSSFWorkbook excelBook, WorkbookStyles workbookStyles,  string sheetName, string sheetDescription)
         {
-            ConfObject = confObject;
+            ConfObjectR = confObject;
             ExcelBook = excelBook;
             WorkbookStyles = workbookStyles;
             SheetName= sheetName;
@@ -52,7 +55,7 @@ namespace ExcelCreatorV
         {
 
             var list = new List<IndexSheetListItem>();
-            using var connectionEiopa = new SqlConnection(ConfObject?.EiopaDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfDataR.EiopaDatabaseConnectionString);
 
             foreach (var dbSsheet in dbSheets)
             {

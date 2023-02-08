@@ -24,6 +24,7 @@
     <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
     <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
   </ItemGroup>
 

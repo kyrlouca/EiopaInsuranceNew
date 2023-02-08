@@ -7,7 +7,7 @@ Console.WriteLine("Hello, ExcelV!");
 Console.WriteLine("Excel in debug2");
 var (solvencyD, userD, serialD, fileD) = ("IU260", 99, 12957, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\newVersion\atlantic2021.xlsx");
 
-ExcelFileCreator.CreateTheExcelFile(solvencyD, userD, serialD, fileD);
+ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, userD, serialD, fileD);
 return 0;
 #endif
 
@@ -23,7 +23,7 @@ if (args.Length == 4)
     var fileName = args[3].Trim();
 
     Console.WriteLine($"Started ExcelCreator=> Solvency:{solvencyVersion}  userId:{userId} docId:{documentId} fileName:{fileName}");
-    ExcelFileCreator.CreateTheExcelFile(solvencyVersion, userId, documentId, fileName);
+    ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyVersion, userId, documentId, fileName);
 
     return 1;
 }

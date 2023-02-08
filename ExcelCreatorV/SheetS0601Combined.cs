@@ -7,7 +7,7 @@ using Microsoft.Data.SqlClient;
 using NPOI.SS.UserModel;
 using NPOI.SS.Util;
 using NPOI.XSSF.UserModel;
-using ConfigurationNs;
+using Shared.Services;
 
 namespace ExcelCreatorV
 {
@@ -16,7 +16,7 @@ namespace ExcelCreatorV
     {
 
         public XSSFWorkbook WorkingExcelWorkbook { get; private set; }
-        public ConfigObject ConfigObject { get; private set; }
+        public ConfigData ConfigDataR { get; private set; }
         public string SheetS63Name { get; }
         public WorkbookStyles WorkbookStyles;
 
@@ -26,9 +26,9 @@ namespace ExcelCreatorV
         public bool IsEmpty { get; internal set; } = false;
 
 
-        public SheetS0601Combined(ConfigObject configObject, XSSFWorkbook workingExcelWorkbook, string sheetName, WorkbookStyles workbookStyles)
+        public SheetS0601Combined(ConfigData configObject, XSSFWorkbook workingExcelWorkbook, string sheetName, WorkbookStyles workbookStyles)
         {
-            ConfigObject = configObject;
+            ConfigDataR = configObject;
             SheetS63Name = sheetName;
             WorkingExcelWorkbook = workingExcelWorkbook;
             WorkbookStyles = workbookStyles;

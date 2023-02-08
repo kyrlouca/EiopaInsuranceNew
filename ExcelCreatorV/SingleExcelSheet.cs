@@ -1,4 +1,4 @@
-﻿using ConfigurationNs;
+﻿
 using Dapper;
 using EntityClasses;
 using GeneralUtilsNs;
@@ -12,18 +12,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HelperInsuranceFunctions;
+using Shared.Services;
 
 namespace ExcelCreatorV
 {
     public class SingleExcelSheet
     {
+
         public const int DestDataRowPositionShort = 13;
         public const int DestDataRowPositionLong = 16;
+
+        public IConfigObject ConfigObjectR { get; private set; }
+        public ConfigData ConfigDataR { get => ConfigObjectR.Data; }
 
         public TemplateSheetInstance SheetDb { get; private set; }
         public XSSFWorkbook ExcelTemplateBook { get; private set; }
         public XSSFWorkbook DestExcelBook { get; private set; }
-        public ConfigObject ConfigObject { get; private set; }
+        
 
         public ISheet? DestSheet { get; set; }
         public ISheet OriginSheet { get; set; }
@@ -47,15 +52,16 @@ namespace ExcelCreatorV
         //static int MaxLabelSize { get; } = 17000;
         public bool isTesting = false;
 
-        public SingleExcelSheet(string solvencyVersion, XSSFWorkbook excelTemplateBook, WorkbookStyles workbookStyles, XSSFWorkbook destExcelBook, TemplateSheetInstance sheetDb)
+        public SingleExcelSheet(IConfigObject configObject, XSSFWorkbook excelTemplateBook, WorkbookStyles workbookStyles, XSSFWorkbook destExcelBook, TemplateSheetInstance sheetDb)
         {
+            ConfigObjectR = configObject;
             ExcelTemplateBook = excelTemplateBook;
             //Styles = styles;
             WorkbookStyles = workbookStyles;
             DestExcelBook = destExcelBook;
 
             SheetDb = sheetDb;
-            ConfigObject = Configuration.GetInstance(solvencyVersion).Data;
+            
             var originSheetName = SheetDb.TableCode.Split(".").ToList().GetRange(0, 4); //excel sheet tabs have only tηe  first 4 parts of the sheet code
             var filingSheetCode = string.Join(".", originSheetName).Trim();
 
@@ -352,8 +358,8 @@ namespace ExcelCreatorV
             //-- write the sheetcode,  titles
             //-- write all the Z values of the sheet  
             // the shift function shifts also the starting row
-            var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
-            var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+            var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
             //******************************************************
             //the first row of the datarange should be always fixed
@@ -527,7 +533,7 @@ namespace ExcelCreatorV
 
         private List<string> GetFactPivotZets()
         {
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlZetValues = @"select distinct fact.Zet from TemplateSheetFact fact where fact.TemplateSheetId = @sheetId order by fact.Zet";
             var pivotZets = connectionInsurance.Query<string>(sqlZetValues, new { sheetId = SheetDb.TemplateSheetId }).ToList() ?? new List<string>();
             return pivotZets;
@@ -694,7 +700,7 @@ namespace ExcelCreatorV
             var rowWithcolumnLabels = OriginSheet.GetRow(OrgDataRange.FirstRow - 1);
             var firstColumnIndex = FindFirstColumnOpenTable(rowWithcolumnLabels, OrgDataRange.LastColumn);
 
-            using var connectionInsurance = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var sqlRows = @"select  distinct fact.Row from TemplateSheetFact fact  where  fact.TemplateSheetId= @sheetId order by fact.Row";
             var rowLabels = connectionInsurance.Query<string>(sqlRows, new { sheetId = SheetDb.TemplateSheetId }).ToList();
 
@@ -788,7 +794,7 @@ namespace ExcelCreatorV
         private ΜTemplateOrTable GetTableOrTemplate(TemplateSheetInstance sheet)
         {
             var sqlTemplate = @"select top 1 TC,TD from mTemplateOrTable temp where temp.TemplateOrTableCode = @tableCode";
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
             var template = connectionEiopa.QuerySingleOrDefault<ΜTemplateOrTable>(sqlTemplate, new { tableCode = sheet.TableCode });
             return template;
 
@@ -837,7 +843,7 @@ namespace ExcelCreatorV
                 AND fact.Col = @col                
                     ";
 
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionLocalDb = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var facts = connectionLocalDb.Query<TemplateSheetFact>(sqlFact, new { sheetId = sheet.TemplateSheetId, row, col })?.ToList() ?? new List<TemplateSheetFact>();
             return facts;
         }
@@ -869,14 +875,14 @@ namespace ExcelCreatorV
                 AND fact.Zet = @zet                
                     ";
 
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionLocalDb = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             var fact = connectionLocalDb.QueryFirstOrDefault<TemplateSheetFact>(sqlFact, new { sheetId = sheet.TemplateSheetId, row, col, zet });
             return fact;
         }
 
         private void UpdateExcelCellWithValue(TemplateSheetFact fact, ICell cell)
         {
-            using var connectionEiopaDb = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionEiopaDb = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
             if (cell is null) return;
             if (fact is null) return;
 
@@ -938,7 +944,7 @@ namespace ExcelCreatorV
 
         private string GetDomainLabel(string domainString)
         {
-            using var connectionEiopa = new SqlConnection(ConfigObject.EiopaDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
             var xbrlCode = DimDom.GetParts(domainString).DomAndValRaw;
             var sqlMem = @"select mem.MemberLabel from mMember mem where MemberXBRLCode = @xbrlCode";
             var val = connectionEiopa.QuerySingleOrDefault<string>(sqlMem, new { xbrlCode });
