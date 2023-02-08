@@ -54,8 +54,10 @@ public class ConfigObject : IConfigObject
 
 #if DEBUG
 		Console.WriteLine("Mode=Debug");
-		
-		_filename = @"C:\Users\kyrlo\soft\dotnet\pension-project\Pension_dev_NEW\ConfigDataNd.json";
+        //
+        //_filename = @"C:\Users\kyrlo\soft\dotnet\pension-project\Pension_dev_NEW\ConfigDataNd.json";
+        
+        _filename = @"C:\Users\kyrlo\soft\Executables\Insurance\x1\ConfigDataNew.json";
 #else
             Console.WriteLine("Mode=Release from Config");
             try
@@ -72,7 +74,7 @@ public class ConfigObject : IConfigObject
             }
 #endif
 
-		var jsonDataString = string.Empty;
+        var jsonDataString = string.Empty;
 		try
 		{
 			jsonDataString = File.ReadAllText(_filename);

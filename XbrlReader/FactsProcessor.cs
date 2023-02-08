@@ -78,7 +78,7 @@ namespace XbrlReader
                     InstanceId = documentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(configObject.Version, trans);
+                TransactionLogger.LogTransaction(configObject.Data, trans);
                 return;
             }
             Console.WriteLine($"\n Facts processing Started");

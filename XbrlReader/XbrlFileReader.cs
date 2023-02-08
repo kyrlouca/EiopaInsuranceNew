@@ -38,7 +38,7 @@ namespace XbrlReader
         public DateTime StartTime { get; } = DateTime.Now;
 
         public IConfigObject ConfigObjectR { get; private set; }
-        public ConfigData ConfigDataR { get; private set; }
+        public ConfigData ConfigDataR { get=>ConfigObjectR.Data;}
 
         public XDocument XmlDoc { get; private set; }
         public int UserId { get; private set; }
@@ -127,7 +127,7 @@ namespace XbrlReader
                     MessageType = MessageType.ERROR.ToString()
                 };
 
-                TransactionLogger.LogTransaction(solvencyVersion, trans);
+                TransactionLogger.LogTransaction(configObjectNew.Data, trans);
                 return false;
             }
 
@@ -225,7 +225,7 @@ namespace XbrlReader
                         InstanceId = DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    TransactionLogger.LogTransaction(ConfigDataR, trans);
                     return false;
                 }
             }
@@ -276,7 +276,7 @@ namespace XbrlReader
                         InstanceId = DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    TransactionLogger.LogTransaction(ConfigDataR, trans);
                     return false;
                 }
 
@@ -322,7 +322,7 @@ namespace XbrlReader
                         InstanceId = DocumentId,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    TransactionLogger.LogTransaction(ConfigDataR, trans);
                     return false;
                 }
             }
@@ -354,7 +354,7 @@ namespace XbrlReader
                     InstanceId = DocumentId,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                TransactionLogger.LogTransaction(ConfigDataR, trans);
 
                 return false;
             }
@@ -384,16 +384,15 @@ namespace XbrlReader
             FileName = fileName;
 
 
-        
+            ConfigObjectR = configObject;
             if (ConfigObjectR is null)
             {
                 return;
             }
-            ConfigObjectR = configObject;
-
+            
             //IsValidEiopaVersion = Shared.Services.ConfigObject.IsValidVersion(SolvencyVersion);
 
-            Module = GetModule(ModuleCode);
+            Module = InsuranceData.GetModuleByCodeNew(ConfigObjectR, ModuleCode);
             if (Module.ModuleID == 0)
             {
                 var message = $"Invalid Module code {ModuleCode}";
@@ -459,7 +458,7 @@ namespace XbrlReader
                     InstanceId = 3,
                     MessageType = MessageType.ERROR.ToString()
                 };
-                TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                TransactionLogger.LogTransaction(ConfigDataR, trans);
 
 
                 return null;
@@ -494,7 +493,7 @@ namespace XbrlReader
                         InstanceId = 3,
                         MessageType = MessageType.ERROR.ToString()
                     };
-                    TransactionLogger.LogTransaction(SolvencyVersion, trans);
+                    TransactionLogger.LogTransaction(ConfigDataR, trans);
 
                     return null;
                 }
@@ -901,7 +900,7 @@ VALUES (
             return rows;
         }
 
-        private MModule GetModule(string moduleCode)
+        private MModule GetModuleToDelete(string moduleCode)
         {
             using var connectionPension = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
             using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);

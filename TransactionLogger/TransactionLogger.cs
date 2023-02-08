@@ -4,7 +4,8 @@ using System.Text;
 
 using Dapper;
 using Microsoft.Data.SqlClient;
-using ConfigurationNs;
+using Shared;
+using Shared.Services;
 
 namespace TransactionLoggerNs
 {
@@ -31,9 +32,9 @@ namespace TransactionLoggerNs
 
     public class TransactionLogger
     {
-        public static void LogTransaction(string solvencyVer, TransactionLog tl)
+        public static void LogTransaction(ConfigData configObject, TransactionLog tl)
         {
-            var configObject = Configuration.GetInstance(solvencyVer).Data;
+            //var configObject = Configuration.GetInstance(solvencyVer).Data;
             using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
             var sqlInsert = @"
                 INSERT INTO TransactionLog(PensionFundId, ModuleCode, ApplicableYear, ApplicableQuarter, Message, UserId, ProgramCode, ProgramAction,InstanceId,MessageType,FileName)
