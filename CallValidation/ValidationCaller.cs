@@ -16,7 +16,7 @@ namespace ValidationCaller
         public static bool CallValidator(string solvencyVersion,int documentId)
         {
 
-            var  configObjectNew = HostCreator.CreateTheHost("PU270");
+            var  configObjectNew = HostCreator.CreateTheHost(solvencyVersion);
 
             //var configObject = GetConfiguration(solvencyVersion);
             DocumentValidator.ValidateDocument(configObjectNew, documentId,0);  // parses and checks each rule 

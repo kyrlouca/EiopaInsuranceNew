@@ -145,6 +145,21 @@ namespace HelperInsuranceFunctions
 
         }
 
+        public static  MModule GetModuleByCodeNew(IConfigObject configObject, string moduleCode)
+        {
+            using var connectionPension = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObject.Data.EiopaDatabaseConnectionString);
+
+            //module code : {ari, qri, ara, ...}
+            var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
+            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode = moduleCode.ToLower().Trim() });
+            if (module is null)
+            {
+                return new MModule();
+            }
+            return module;
+
+        }
 
         public static MModule GetModuleByCode(string moduleCode)
         {

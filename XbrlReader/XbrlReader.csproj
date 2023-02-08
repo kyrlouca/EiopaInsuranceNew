@@ -25,9 +25,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
-    <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
     <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
   </ItemGroup>
 

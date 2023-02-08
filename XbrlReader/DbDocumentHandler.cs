@@ -1,5 +1,4 @@
-﻿using ConfigurationNs;
-using Serilog;
+﻿using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,31 +7,34 @@ using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using TransactionLoggerNs;
-using ConfigurationNs;
-using EntityClasses;
 
+using EntityClasses;
+using Shared.Services;
+using HelperInsuranceFunctions;
 
 
 namespace XbrlReader
 {
-    public class XbrlGenerator
+    public class XbrlHandler
     {
 
 
 
-        public static bool GenerateXbrlFile( string solvencyVersion, int currencyBatchId, int userId, int fundId,string moduleCode, int applicableYear, int applicableQuarter, string fileName)
-        {            
-            var isValidEiopaVersion = Configuration.IsValidVersion(solvencyVersion);
-            if (!isValidEiopaVersion)
+        public static bool ProcessXbrlFile( string solvencyVersion, int currencyBatchId, int userId, int fundId,string moduleCode, int applicableYear, int applicableQuarter, string fileName)
+        {
+            
+            
+            if (!ConfigObject.IsValidVersion(solvencyVersion))
             {
                 var message = $"Invalid Solvency:{solvencyVersion}";
                 Console.WriteLine(message);
                     return false;
             }
-            var configObject = GetConfiguration(solvencyVersion);
+            var configObjectNew = HostCreator.CreateTheHost(solvencyVersion);
+            
 
             //we need the module to delete the document
-            var module = GetModule(configObject, moduleCode);
+            var module = InsuranceData.GetModuleByCodeNew(configObjectNew, moduleCode);
 
             if (module.ModuleID == 0)
             {
@@ -44,7 +46,7 @@ namespace XbrlReader
             }
 
 
-            var existingDocs = GetExistingDocuments(configObject,fundId,module.ModuleID,applicableYear,applicableQuarter);
+            var existingDocs = GetExistingDocuments(configObjectNew,fundId,module.ModuleID,applicableYear,applicableQuarter);
 
             var isLockedDocument = existingDocs.Any(doc => doc.Status.Trim() == "P" || doc.IsSubmitted);
             if (isLockedDocument)
@@ -83,13 +85,13 @@ namespace XbrlReader
             //delete older versions (except from locked or submitted)
             existingDocs.Where(doc => doc.Status.Trim() != "P" && !doc.IsSubmitted)
                 .ToList()
-                .ForEach(doc => DeleteDocument(configObject, doc.InstanceId));
+                .ForEach(doc => DeleteDocument(configObjectNew, doc.InstanceId));
 
 
             //*************************************************
             //create the document anyway so we can attach log errors
             //*************************************************
-            var documentId = CreateDocInstanceInDb(configObject,currencyBatchId,userId,fundId,moduleCode,applicableYear,applicableQuarter,fileName,solvencyVersion);
+            var documentId = CreateDocInstanceInDb(configObjectNew,currencyBatchId,userId,fundId,moduleCode,applicableYear,applicableQuarter,fileName,solvencyVersion);
             if (documentId == 0)
             {
                 var message = $"Cannot Create DocInstance for companyId: {fundId} year:{applicableYear} quarter:{applicableQuarter} ";
@@ -115,46 +117,11 @@ namespace XbrlReader
         }
 
 
-        private static ConfigObject GetConfiguration(string solvencyVersion)
+
+
+        static private  List<DocInstance> GetExistingDocuments(IConfigObject configObject,int fundId,int moduleId,int applicableYear,int applicableQuarter)
         {
-
-            if (!Configuration.IsValidVersion(solvencyVersion))
-            {
-                var errorMessage = $"XbrlFileReader --Invalid Eiopa Version: {solvencyVersion}";
-                Console.WriteLine(errorMessage);
-                Log.Error(errorMessage);
-                return null;
-            }
-
-            var configObject = Configuration.GetInstance(solvencyVersion).Data;
-            if (string.IsNullOrEmpty(configObject.LoggerXbrlFile))
-            {
-                var errorMessage = "LoggerXbrlFile is not defined in ConfigData.json";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-            Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.File(configObject.LoggerXbrlReaderFile, rollOnFileSizeLimit: true, shared: true, rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-
-            if (string.IsNullOrEmpty(configObject.EiopaDatabaseConnectionString) || string.IsNullOrEmpty(configObject.LocalDatabaseConnectionString))
-            {
-                var errorMessage = "Empty ConnectionStrings";
-                Console.WriteLine(errorMessage);
-                throw new SystemException(errorMessage);
-            }
-
-
-            return configObject;
-        }
-
-
-        static private  List<DocInstance> GetExistingDocuments(ConfigObject configObject,int fundId,int moduleId,int applicableYear,int applicableQuarter)
-        {
-            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
             var sqlExists = @"
                     select doc.InstanceId, doc.Status, doc.IsSubmitted, EiopaVersion from DocInstance doc  where  
                     PensionFundId= @FundId and ModuleId=@moduleId
@@ -167,9 +134,9 @@ namespace XbrlReader
 
         }
 
-        static private int DeleteDocument(ConfigObject configObject, int documentId)
+        static private int DeleteDocument(IConfigObject configObject, int documentId)
         {
-            using var connectionInsurance = new SqlConnection(configObject.LocalDatabaseConnectionString);
+            using var connectionInsurance = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
             var sqlDeleteDoc = @"delete from DocInstance where InstanceId= @documentId";
             var rows = connectionInsurance.Execute(sqlDeleteDoc, new { documentId });
 
@@ -180,30 +147,18 @@ namespace XbrlReader
         }
 
 
-        static private MModule GetModule(ConfigObject configObject, string moduleCode)
+
+
+
+
+
+        static private int CreateDocInstanceInDb(IConfigObject configObject,int currencyBatchId, int userId, int fundId, string  moduleCode, int applicableYear, int applicableQuarter, string fileName, string solvencyVersion)
         {
-            using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
-
-            //module code : {ari, qri, ara, ...}
-            var sqlModule = "select ModuleCode, ModuleId, ModuleLabel from mModule mm where mm.ModuleCode = @ModuleCode";
-            var module = connectionEiopa.QuerySingleOrDefault<MModule>(sqlModule, new { moduleCode = moduleCode.ToLower().Trim() });
-            if (module is null)
-            {
-                return new MModule();
-            }
-            return module;
-
-        }
+            using var connection = new SqlConnection(configObject.Data.LocalDatabaseConnectionString);
+            using var connectionEiopa = new SqlConnection(configObject.Data.EiopaDatabaseConnectionString);
 
 
-        static private int CreateDocInstanceInDb(ConfigObject configObject,int currencyBatchId, int userId, int fundId, string  moduleCode, int applicableYear, int applicableQuarter, string fileName, string solvencyVersion)
-        {
-            using var connection = new SqlConnection(configObject.LocalDatabaseConnectionString);
-            using var connectionEiopa = new SqlConnection(configObject.EiopaDatabaseConnectionString);
-
-
-            var module = GetModule(configObject, moduleCode);
+            var module = InsuranceData.GetModuleByCodeNew(configObject, moduleCode);
 
             var sqlInsertDoc = @"
                INSERT INTO DocInstance
