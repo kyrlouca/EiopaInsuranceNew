@@ -261,7 +261,7 @@ namespace ExcelCreatorV
             if (ExcelTemplateBook is null)
                 return;
 
-            using var connectionLocalDb = new SqlConnection(ConfigObject.LocalDatabaseConnectionString);
+            using var connectionLocalDb = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
 
             var sqlSheets = @"
@@ -316,7 +316,7 @@ namespace ExcelCreatorV
             //---------------------------------------------------------------
             //Create a sheet which combines S0.06.02.01.01 with S0.06.02.01.02
             var sheetS06Name = "S.06.02.01 Combined";
-            var sheetS06Combined = new SheetS0601Combined(ConfigObjectR, DestExcelBook, sheetS06Name, WorkbookStyles);
+            var sheetS06Combined = new SheetS0601Combined(ConfigDataR, DestExcelBook, sheetS06Name, WorkbookStyles);
             sheetS06Combined.CreateS06CombinedSheet();
             if (!sheetS06Combined.IsEmpty)
             {

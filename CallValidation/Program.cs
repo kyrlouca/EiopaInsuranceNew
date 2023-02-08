@@ -55,7 +55,7 @@ if (1 == 1)
         throw new Exception(licenseErrorMessage);
     }
 
-    ValidationCaller.ValidationCaller.CallValidator("IU260", 12963);//4920 /56
+    ValidationCaller.ValidationCaller.CallValidator("IU270", 12972);//4920 /56
     //DocumentValidator.ValidateDocument("IU260", 12905, 0, 0);//4920 /56
     return 1;
 }

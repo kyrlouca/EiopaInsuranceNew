@@ -68,7 +68,7 @@ public class DocumentValidator
     public static void ValidateDocument(IConfigObject configObject, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
     {
         var validatorDg = new DocumentValidator(configObject, documentId, testingRuleId, testingTechnicalRuleId);
-        validatorDg.DocumentInstance = GetDocumentFromDb(configObject, documentId);
+        validatorDg.DocumentInstance = GetDocumentFromDb(configObject.Data, documentId);
         if (!validatorDg.IsValidDocument)
         {
             return;
@@ -111,9 +111,9 @@ public class DocumentValidator
 
     }
 
-    private static DocInstance GetDocumentFromDb(IConfigObject configObject, int documentId)
+    private static DocInstance GetDocumentFromDb(ConfigData configData, int documentId)
     {
-        var document = InsuranceData.GetDocumentByIdNew(configObject, documentId);//returns 
+        var document = InsuranceData.GetDocumentByIdNew(configData, documentId);//returns 
         if (document.InstanceId == 0)
         {
             var messg = $"Validation: Document  NOT Found. Document Id: {documentId} ";
@@ -132,7 +132,7 @@ public class DocumentValidator
                 InstanceId = document.InstanceId,
                 MessageType = MessageType.ERROR.ToString()
             };
-            TransactionLogger.LogTransaction("xx", trans);
+            TransactionLogger.LogTransaction(configData, trans);
 
             return document;
         }
@@ -160,7 +160,7 @@ public class DocumentValidator
                 InstanceId = document.InstanceId,
                 MessageType = MessageType.ERROR.ToString()
             };
-            TransactionLogger.LogTransaction("xxx", trans);
+            TransactionLogger.LogTransaction(configData, trans);
 
             return document;
         }
