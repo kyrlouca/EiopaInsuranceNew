@@ -74,7 +74,7 @@ public class DocumentValidator
             return;
         }
 
-        var module = GetModuleId(configObject, validatorDg.ModuleId);
+         var module = GetModuleId(configObject, validatorDg.ModuleId);
 
         if (module is null)
         {
