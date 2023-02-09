@@ -13,14 +13,15 @@ return 0;
 
 Console.WriteLine("ExcelV outside debug");
 if (args.Length == 4)
-{    
-
+{
+    //.\ExcelCreator.exe "IU270" 99 12972 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\universal22.xlsx"                
     var solvencyVersion = args[0].Trim();
     var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
     //var documentId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
     int.TryParse(args[2], out var documentId);
     var fileName = args[3].Trim();
 
+    
     Console.WriteLine($"Started ExcelCreator=> Solvency:{solvencyVersion}  userId:{userId} docId:{documentId} fileName:{fileName}");
     ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyVersion, userId, documentId, fileName);
 

@@ -56,7 +56,7 @@ if (1 == 1)
 #endif
 if (args.Length == 2)
 {
-    //.\ValidationCaller.exe "IU260" 8691
+    //.\ValidationCaller.exe "IU270" 12972
     var solvencyVersion = args[0].Trim();
     var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;
     DocumentValidator.StaticStartValidateDocument(solvencyVersion, docIdx);//4920 /56        

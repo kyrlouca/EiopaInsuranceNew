@@ -33,8 +33,8 @@ namespace XbrlReader
             {
                 //user =1 does not check for validation dates
 
-                //C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Universal Life Insurance Public Company Limited Q3 2021.xbrl
-                //.\XbrlReader.exe "IU260" 1 1 1 "qrs" 2021 0 "C:\Users\kyrlo\soft\dotnet\insurance-project\testing-250\Altius Insurance - Annual 2020.xbrl"                
+                //
+                //.\XbrlReader.exe "IU270" 1 1 42 "qrs" 2022 3 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl"                
                 var solvencyVersion = args[0].Trim();
                 var currencyBatchId = int.TryParse(args[1], out var arg1) ? arg1 : 0;
                 var userId = int.TryParse(args[2], out var arg2) ? arg2 : 0;
@@ -45,8 +45,7 @@ namespace XbrlReader
                 var xbrlFile = args[7];
                 Console.WriteLine($"XbrlReader v1.001: xbrlfile:{xbrlFile}");
                                 
-                //XbrlFileReader.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);
-                //ToDeleteXbrlHandler.ProcessXbrlFile(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicationYear, applicationQuarter, xbrlFile);
+                XbrlFileReader.StarterStatic(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);                
                 return 0;
             }
             else
