@@ -65,8 +65,10 @@ public class DocumentValidator
 
 
 
-    public static void ValidateDocument(IConfigObject configObject, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
+    public static void StaticStartValidateDocument(string solvencyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
     {
+        var configObject = HostCreator.CreateTheHost(solvencyVersion);
+       
         var validatorDg = new DocumentValidator(configObject, documentId, testingRuleId, testingTechnicalRuleId);
         validatorDg.DocumentInstance = GetDocumentFromDb(configObject.Data, documentId);
         if (!validatorDg.IsValidDocument)
@@ -74,9 +76,10 @@ public class DocumentValidator
             return;
         }
 
-         var module = GetModuleId(configObject, validatorDg.ModuleId);
+        validatorDg.ModuleId = validatorDg.DocumentInstance.ModuleId;
+        validatorDg.Module = GetModuleId(configObject, validatorDg.ModuleId);
 
-        if (module is null)
+        if (validatorDg.Module is null)
         {
             var message = $"Validator: Module NOT Valid. Module: {validatorDg.ModuleId} ";
             Log.Error(message);
@@ -84,8 +87,7 @@ public class DocumentValidator
             return;
         }
 
-        validatorDg.ModuleId = module.ModuleID;
-
+        
         validatorDg.UpdateDocumentStatus("P");
 
         validatorDg.CreateAllRules();

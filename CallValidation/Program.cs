@@ -55,8 +55,7 @@ if (1 == 1)
         throw new Exception(licenseErrorMessage);
     }
 
-    ValidationCaller.ValidationCaller.CallValidator("IU270", 12972);//4920 /56
-    //DocumentValidator.ValidateDocument("IU260", 12905, 0, 0);//4920 /56
+    DocumentValidator.StaticStartValidateDocument("IU270", 12972);    
     return 1;
 }
 #endif
@@ -64,9 +63,8 @@ if (args.Length == 2)
 {
     //.\ValidationCaller.exe "IU260" 8691
     var solvencyVersion = args[0].Trim();
-    var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;    
-    ValidationCaller.ValidationCaller.CallValidator(solvencyVersion, docIdx);//4920 /56
-    //DocumentValidator.ValidateDocument(solvencyVersion,docIdx,0);  // parses and checks each rule 
+    var docIdx = int.TryParse(args[1], out var arg1) ? arg1 : 0;
+    DocumentValidator.StaticStartValidateDocument(solvencyVersion, docIdx);//4920 /56        
     return 1;
 }
 else
