@@ -107,7 +107,7 @@ namespace ExcelCreatorV
     public class ExcelFileCreator
     {
         public IConfigObject ConfigObjectR { get; private set; }
-        public ConfigData ConfigDataR { get => ConfigObjectR.Data; }
+        public ConfigData ConfigDataR => ConfigObjectR.Data;
 
         //public string DebugTableCode { get; set; } = "S.29.04.01.01";
         public string DebugTableCode { get; set; } = "";

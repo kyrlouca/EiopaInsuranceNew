@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
-    <ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
     <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
     <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
