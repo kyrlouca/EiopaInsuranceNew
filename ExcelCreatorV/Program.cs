@@ -13,8 +13,7 @@ return 0;
 
 Console.WriteLine("ExcelV outside debug");
 if (args.Length == 4)
-{
-    //.\ExcelCreator "IU260" 99 12886 "C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\crashxx.xlsx"
+{    
 
     var solvencyVersion = args[0].Trim();
     var userId = int.TryParse(args[1], out var arg1) ? arg1 : 0;

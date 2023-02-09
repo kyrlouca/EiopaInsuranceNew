@@ -68,7 +68,7 @@ public class DocumentValidator
     public static void StaticStartValidateDocument(string solvencyVersion, int documentId, int testingRuleId = 0, int testingTechnicalRuleId = 2)
     {
         var configObject = HostCreator.CreateTheHost(solvencyVersion);
-       
+
         var validatorDg = new DocumentValidator(configObject, documentId, testingRuleId, testingTechnicalRuleId);
         validatorDg.DocumentInstance = GetDocumentFromDb(configObject.Data, documentId);
         if (!validatorDg.IsValidDocument)
@@ -87,7 +87,7 @@ public class DocumentValidator
             return;
         }
 
-        
+
         validatorDg.UpdateDocumentStatus("P");
 
         validatorDg.CreateAllRules();
@@ -171,7 +171,7 @@ public class DocumentValidator
 
 
     }
-    
+
 
     private void CreateAllRules()
     {
@@ -1227,6 +1227,7 @@ public class DocumentValidator
             Console.Write("s");
             //Create a new rule for each rowCol (can be either a row or col. for open tables one rule for each row unless they have a sum term)
             //the axis is taken from the scope unless it is an open table which is row 
+            //foreach (var rowCol in rowCols.Skip(1).Take(1))
             foreach (var rowCol in rowCols)
             {
                 CreateOneDocumentRule(rule, scopeDetails, sheet, rowCol);

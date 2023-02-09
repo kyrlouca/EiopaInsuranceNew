@@ -42,12 +42,7 @@ if (1 == 1)
     docId = 11833;
 
     Console.WriteLine($"{docId}");
-    //var validatorDg = new DocumentValidator       
-    //DocumentValidator.ValidateDocument("IU260", 11839, 121222, 0);//
-
-    //ConfigObject = Configuration.GetInstance(SolvencyVersion).Data;
-
-
+   
     string licenseErrorMessage;
     if (!Z.Expressions.EvalManager.ValidateLicense(out licenseErrorMessage))
     {
@@ -55,7 +50,7 @@ if (1 == 1)
         throw new Exception(licenseErrorMessage);
     }
 
-    DocumentValidator.StaticStartValidateDocument("IU270", 12972);    
+    DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
     return 1;
 }
 #endif
