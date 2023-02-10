@@ -10,17 +10,18 @@ using GeneralUtilsNs;
 //using HelperInsuranceFunctions;
 using Validations;
 
+string licenseErrorMessage;
+if (!Z.Expressions.EvalManager.ValidateLicense(out licenseErrorMessage))
+{
+    //****************check for z licencnce
+    throw new Exception(licenseErrorMessage);
+}
+
 #if (DEBUG)
 if (1 == 1)
 {
 
-    //var solvencyVer = "IU260";
-    //var configObject = Configuration.GetInstance(solvencyVer).Data;
-    //using var connectionPension = new SqlConnection(configObject.LocalDatabaseConnectionString);
-    //var sqlLatestDoc = "select top 1 doc.InstanceId, PensionFundId from DocInstance doc order by doc.InstanceId desc";
-
-    //(var docId, var fundIdDg) = connectionPension.QuerySingleOrDefault<(int, int)>(sqlLatestDoc, new { });
-
+   
     //var validator = new DocumentValidator(fundId, docId, 0);  //the third argument to test a specific rule
     //1005 empty
     //4382 simple with filter
@@ -43,13 +44,7 @@ if (1 == 1)
 
     Console.WriteLine($"{docId}");
    
-    string licenseErrorMessage;
-    if (!Z.Expressions.EvalManager.ValidateLicense(out licenseErrorMessage))
-    {
-        //****************check for z licencnce
-        throw new Exception(licenseErrorMessage);
-    }
-
+   
     DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
     return 1;
 }
@@ -62,11 +57,7 @@ if (args.Length == 2)
     DocumentValidator.StaticStartValidateDocument(solvencyVersion, docIdx);//4920 /56        
     return 1;
 }
-else
-{
-    var message = @".\ValidationCaller solvencyVersion DocumentId";
-    Console.WriteLine(message);
-    return 0;
-}
 
-return 1;
+var message = @".\ValidationCaller solvencyVersion DocumentId";
+Console.WriteLine(message);
+return 0;

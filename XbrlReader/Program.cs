@@ -11,17 +11,11 @@ namespace XbrlReader
         {
 #if DEBUG
             Console.WriteLine("XbrlReader in DEBUG MODE");
-
-
-
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\London P and I Annual 2021 v1.xbrl
-            //
-
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl260\final\ALTIUS INSURANCE LTD Q1 2022.xbrl
-            //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl
-            (var fundIdT, var filePath) = (44, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
-            //XbrlFileReader.ProcessXbrlFileNew("IU270", 1, 2, fundIdT, "ars", 2021, 0,filePath);
-            XbrlFileReader.StarterStatic ("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
+                       
+             (var fundIdT, var filePath) = (42, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
+            //(var fundIdT, var filePath) = (177, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD.xbrl");
+            //XbrlFileReader.ProcessXbrlFileNew("IU270", 1, 2, fund IdT, "qrs", 2022, 3,filePath);
+            XbrlFileReader.StarterStatic("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
 
             Console.WriteLine("Finish");
             return 1;
