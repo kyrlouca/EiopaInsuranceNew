@@ -17,8 +17,16 @@ if (!Z.Expressions.EvalManager.ValidateLicense(out licenseErrorMessage))
     throw new Exception(licenseErrorMessage);
 }
 
-#if (DEBUG)
-if (1 == 1)
+string solvency = "";
+int documentID = 0;
+var isDebug = false;
+
+
+#if DEBUG
+    isDebug=true; 
+#endif
+
+if (isDebug)
 {
 
    
@@ -44,11 +52,11 @@ if (1 == 1)
 
     Console.WriteLine($"{docId}");
    
-   
-    DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
+   DocumentValidator.StaticStartValidateDocument("PU270", 4917,4876);    
+    //DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
     return 1;
 }
-#endif
+
 if (args.Length == 2)
 {
     //.\ValidationCaller.exe "IU270" 12972
@@ -58,6 +66,6 @@ if (args.Length == 2)
     return 1;
 }
 
-var message = @".\ValidationCaller solvencyVersion DocumentId";
+var message = @"Incorrect Arguments,Correct Usage: .\ValidationCaller solvencyVersion DocumentId";
 Console.WriteLine(message);
 return 0;

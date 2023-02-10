@@ -20,7 +20,8 @@ namespace Validations
     public class Program
     {
         //do NOT call Validations directly because it is used by TWO solutions (pension and insurance)
-        //use its own ValidationCall in each Solution
+        //it is compliled as a DLL 
+        //Probably could it be compiled as exe and used in both apps
 
 
     }

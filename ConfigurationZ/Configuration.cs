@@ -8,7 +8,10 @@ using System.Text.Json;
 
 namespace ConfigurationNs
 {
-
+    //**********************************************************************************************
+    //this is not used anymore. It is actually a flexible solution because it creates a singleton.
+    //however, it is complex and it can NOT read the new format of json file.
+    //use the host to create a singleton instead
     public class ConfigObject
     {
 
