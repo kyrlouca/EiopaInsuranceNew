@@ -9,18 +9,26 @@ namespace XbrlReader
     {
         static int Main(string[] args)
         {
+            var debug = false;
 #if DEBUG
-            Console.WriteLine("XbrlReader in DEBUG MODE");
-                       
-             (var fundIdT, var filePath) = (42, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
-            //(var fundIdT, var filePath) = (177, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD.xbrl");
-            //XbrlFileReader.ProcessXbrlFileNew("IU270", 1, 2, fund IdT, "qrs", 2022, 3,filePath);
-            XbrlFileReader.StarterStatic("IU270", 1, 2, fundIdT, "qrs", 2022, 4, filePath);
-
-            Console.WriteLine("Finish");
-            return 1;
-
+            debug = true;
 #endif
+            if (debug)
+            {
+                Console.WriteLine("XbrlReader in DEBUG MODE");
+
+                //C:\Users\kyrlo\soft\dotnet\pension-project\Pension_dev_NEW\Testing\Testing270\xbrlFiles\xbrl1.xbrl
+                //(var fundIdT, var filePath) = (42, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
+                //(var fundIdT, var filePath) = (177, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD.xbrl");
+
+
+                (var fundIdT, var filePath) = (42, @"C:\Users\kyrlo\soft\dotnet\pension-project\Pension_dev_NEW\Testing\Testing270\xbrlFiles\xbrl1.xbrl");
+                XbrlFileReader.StarterStatic("PU270", 1, 2, fundIdT, "qri", 2022, 4, filePath);
+
+                Console.WriteLine("Finish");
+                return 1;
+            }
+
 
 
             if (args.Length == 8)
@@ -38,8 +46,8 @@ namespace XbrlReader
                 var applicationQuarter = int.TryParse(args[6], out var arg6) ? arg6 : 0;
                 var xbrlFile = args[7];
                 Console.WriteLine($"XbrlReader v1.001: xbrlfile:{xbrlFile}");
-                                
-                XbrlFileReader.StarterStatic(solvencyVersion, currencyBatchId, userId, fundId,moduleCode, applicationYear, applicationQuarter, xbrlFile);                
+
+                XbrlFileReader.StarterStatic(solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicationYear, applicationQuarter, xbrlFile);
                 return 0;
             }
             else
