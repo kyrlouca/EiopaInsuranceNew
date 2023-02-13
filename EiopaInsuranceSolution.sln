@@ -24,17 +24,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XbrlReader", "XbrlReader\XbrlReader.csproj", "{436E0A41-50A7-4F63-A90A-47D7A6E4474E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ValidationCaller", "CallValidation\ValidationCaller.csproj", "{4643197E-80A8-4203-A32E-DC7909E814A1}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionLoggerZ", "TransactionLogger\TransactionLoggerZ.csproj", "{98214B3E-C746-4E29-A682-AD13660F0CF6}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdhocTesting", "AdhocTesting\AdhocTesting.csproj", "{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CurrencyRates", "CurrencyRates\CurrencyRates.csproj", "{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExcelCreator", "ExcelCreatorV\ExcelCreator.csproj", "{097457C5-7063-4EDD-B530-2C514006BDC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{486FCD87-F951-4CBB-B156-81FC9F9E1026}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "Shared\Shared.csproj", "{486FCD87-F951-4CBB-B156-81FC9F9E1026}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,18 +70,10 @@ Global
 		{436E0A41-50A7-4F63-A90A-47D7A6E4474E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{436E0A41-50A7-4F63-A90A-47D7A6E4474E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{436E0A41-50A7-4F63-A90A-47D7A6E4474E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4643197E-80A8-4203-A32E-DC7909E814A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4643197E-80A8-4203-A32E-DC7909E814A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4643197E-80A8-4203-A32E-DC7909E814A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4643197E-80A8-4203-A32E-DC7909E814A1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{98214B3E-C746-4E29-A682-AD13660F0CF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{98214B3E-C746-4E29-A682-AD13660F0CF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98214B3E-C746-4E29-A682-AD13660F0CF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98214B3E-C746-4E29-A682-AD13660F0CF6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{58D72183-CB5C-4E0B-8C9B-89AD6F73FCD1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0AA8CF2-EDEF-462A-A45D-6BAA239999EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
