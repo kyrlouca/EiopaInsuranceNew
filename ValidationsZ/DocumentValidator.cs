@@ -1118,7 +1118,7 @@ public class DocumentValidator
             WHERE 1=1
 				and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInKYR'
                 and Coalesce(ex.ExpressionType,'OK') <> 'NotImplementedInXBRL'				 				                
-                and  ValidationCode  like 'BV%' 
+                and  ValidationCode  like '%BV%' 
 	            and vrs.ModuleID = @ModuleId
             ORDER BY  vr.ValidationRuleID
             ";
