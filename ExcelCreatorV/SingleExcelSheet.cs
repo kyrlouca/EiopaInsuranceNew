@@ -274,7 +274,8 @@ namespace ExcelCreatorV
                         {
                             //destCellD.SetCellValue("diaal");
                             destCellD.CellStyle = WorkbookStyles.ShadedStyle;
-                            destCellD.SetCellValue("@");
+                            //destCellD.SetCellValue("@");
+                            destCellD.SetBlank();
                         }
                         else
                         {
@@ -588,12 +589,20 @@ namespace ExcelCreatorV
                             //for rows which have ONLY titles and NO fact cells, continue
                             continue;
                         }
-
-                        if (destCellNew.StringCellValue == "@")
-                        {
+                   
+                        if(destCellNew.ToString() == "@") {
                             destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
-                            destCellNew.SetCellValue("");
+                            //destCellNew.SetCellValue("");
+                            destCellNew.SetBlank();
+
                         }
+
+
+                        //if (destCellNew.StringCellValue == "@")
+                        //{
+                        //    destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
+                        //    destCellNew.SetCellValue("");
+                        //}
 
 
                         var zetValue = factZetList[zIdx];

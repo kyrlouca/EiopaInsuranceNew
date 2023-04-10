@@ -239,7 +239,7 @@ namespace ExcelCreatorV
         static public void SaveWorkbook(IWorkbook workbook, string path)
         {
             using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
-            workbook.Write(fileStream);
+            workbook.Write(fileStream,false);
         }
 
 

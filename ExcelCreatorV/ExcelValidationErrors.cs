@@ -121,7 +121,7 @@ namespace ExcelCreatorV
             using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
             try
             {
-                workbook.Write(fileStream);
+                workbook.Write(fileStream,false);
             }
             catch (Exception ex)
             {
