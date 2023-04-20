@@ -28,7 +28,7 @@ namespace ExcelCreatorV
         public TemplateSheetInstance SheetDb { get; private set; }
         public XSSFWorkbook ExcelTemplateBook { get; private set; }
         public XSSFWorkbook DestExcelBook { get; private set; }
-        
+
 
         public ISheet? DestSheet { get; set; }
         public ISheet OriginSheet { get; set; }
@@ -61,11 +61,11 @@ namespace ExcelCreatorV
             DestExcelBook = destExcelBook;
 
             SheetDb = sheetDb;
-            
+
             var originSheetName = SheetDb.TableCode.Split(".").ToList().GetRange(0, 4); //excel sheet tabs have only tηe  first 4 parts of the sheet code
             var filingSheetCode = string.Join(".", originSheetName).Trim();
 
-            OriginSheet = ExcelTemplateBook.GetSheet(filingSheetCode);            
+            OriginSheet = ExcelTemplateBook.GetSheet(filingSheetCode);
 
         }
 
@@ -82,7 +82,7 @@ namespace ExcelCreatorV
             //sheetCodePosition is shifted to the top left corner ( row= and col=0 col) in the destination excel sheet.
             //All the rows copied from the origin to the dest will be shifted 
 
-            (OffsetRow, OffsetCol) = FindSheetCodePosition(SheetDb, OriginSheet);            
+            (OffsetRow, OffsetCol) = FindSheetCodePosition(SheetDb, OriginSheet);
 
             var templateOrTable = GetTableOrTemplate(SheetDb);
 
@@ -134,7 +134,7 @@ namespace ExcelCreatorV
             //**********************************
             // do NOT copy any merges after data range.
             var lastRowToMerge = OrgDataRange.FirstRow;
-            
+
 
             //**********************************
             //inserting titles must be last because it insert rows and messes up the offsetrow
@@ -198,10 +198,10 @@ namespace ExcelCreatorV
                 return errorMessage;
             }
 
-            void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum,bool copyStyle =false)
+            void CopyUpperRow(IRow originRow, int originRowNum, int destRowNum, bool copyStyle = false)
             {
                 var destRow = DestSheet.CreateRow(destRowNum);
-                var debugdest=ExcelHelperFunctions.ShowRowContents(originRow);                
+                var debugdest = ExcelHelperFunctions.ShowRowContents(originRow);
 
                 for (var x = OrgExtendedRange.FirstColumn; x <= OrgDataRange.LastColumn; x++) //no need to go beyond 
                 {
@@ -211,12 +211,20 @@ namespace ExcelCreatorV
                         var destColNum = x - OffsetCol;
                         var destCell = destRow.CreateCell(destColNum);
 
+
                         if (copyStyle)
                         {
-                            var originStyle = originCell.CellStyle;
-                            var destStyle = DestExcelBook.CreateCellStyle();
-                            destStyle.CloneStyleFrom(originStyle);
-                            destCell.CellStyle = destStyle;
+                            if (DestExcelBook.NumCellStyles < 63999)
+                            {
+                                var originStyle = originCell.CellStyle;
+                                var destStyle = DestExcelBook.CreateCellStyle();
+                                destStyle.CloneStyleFrom(originStyle);
+                                destCell.CellStyle = destStyle;
+                            }
+                            else
+                            {
+                                var xxxx = 1;
+                            }
                         }
                         CopyCellTypedValue(originCell, destCell);
                     }
@@ -227,7 +235,7 @@ namespace ExcelCreatorV
             void CopyDataRow(IRow originRow, int originRowNum, int destRowNum)
             {
                 var destRow = DestSheet.CreateRow(destRowNum);
-                var debugdest = ExcelHelperFunctions.ShowRowContents(destRow);                
+                var debugdest = ExcelHelperFunctions.ShowRowContents(destRow);
 
                 for (var x = OrgExtendedRange.FirstColumn; x <= OrgExtendedRange.LastColumn; x++)
                 {
@@ -310,7 +318,7 @@ namespace ExcelCreatorV
                     {
                         var xx = ExcelHelperFunctions.ShowRowContents(originRow);
                         var isCopyStyle = destRowNum > 4;
-                        CopyUpperRow(originRow, y, destRowNum,isCopyStyle);
+                        CopyUpperRow(originRow, y, destRowNum, isCopyStyle);
                     }
                     else
                     {
@@ -350,7 +358,7 @@ namespace ExcelCreatorV
 
         int WriteSheetTopTitlesAndZetNew()
         {
-            if(DestSheet is null)
+            if (DestSheet is null)
             {
                 return 0;
             }
@@ -589,8 +597,9 @@ namespace ExcelCreatorV
                             //for rows which have ONLY titles and NO fact cells, continue
                             continue;
                         }
-                   
-                        if(destCellNew.ToString() == "@") {
+
+                        if (destCellNew.ToString() == "@")
+                        {
                             destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
                             //destCellNew.SetCellValue("");
                             destCellNew.SetBlank();

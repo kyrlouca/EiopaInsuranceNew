@@ -7,7 +7,7 @@ Console.WriteLine("Hello, ExcelV!");
 Console.WriteLine("Excel in debug2");
 var fl = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx";
 //var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12977, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx");
-var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12978, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Cosmos Annual 2022.xlsx");
+var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12981, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Trust 2022.xlsx");
 ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, userD, serialD, fileD);
 return 0;
 #endif

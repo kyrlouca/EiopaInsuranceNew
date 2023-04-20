@@ -104,10 +104,12 @@ namespace ExcelCreatorV
             if (cell?.CellStyle is not null)
             {
                 var originStyle = originCell.CellStyle;
-                var destStyle = destBook.CreateCellStyle();
-
-                destStyle.CloneStyleFrom(originStyle);
-                destCell.CellStyle = destStyle;
+                if (destBook.NumCellStyles < 63999)
+                {
+                    var destStyle = destBook.CreateCellStyle();
+                    destStyle.CloneStyleFrom(originStyle);
+                    destCell.CellStyle = destStyle;
+                }
             }
 
             return cell;
