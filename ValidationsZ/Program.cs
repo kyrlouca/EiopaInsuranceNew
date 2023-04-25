@@ -51,9 +51,10 @@ if (isDebug)
     docId = 11833;
 
     Console.WriteLine($"{docId}");
-   
-    DocumentValidator.StaticStartValidateDocument("IU270", 12978,4758,55);
+
     //DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
+    //DocumentValidator.StaticStartValidateDocument("IU270", 12978,4758,55);
+    DocumentValidator.StaticStartValidateDocument("PU270", 4933,0,0);
     return 1;
 }
 

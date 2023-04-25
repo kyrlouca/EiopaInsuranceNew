@@ -17,6 +17,7 @@ using TransactionLoggerNs;
 using Shared.Services;
 using System.Reflection.Metadata;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace Validations;
 
@@ -1323,7 +1324,27 @@ public class DocumentValidator
                 FROM dbo.mTableKyrKeys tk
                 WHERE tk.TableCode = @tableCode
                 ";
-        var rel = connectionEiopa.QuerySingle<MTableKyrKeys>(sqlSelect, new { tableCode });
+        var rel = connectionEiopa.QuerySingleOrDefault<MTableKyrKeys>(sqlSelect, new { tableCode });
+        if (rel is null)
+        {
+            var message = $"Cannot find entry in table -mTableKyrKeys- for table code={tableCode}";
+            Console.WriteLine(message);
+            var trans = new TransactionLog()
+            {
+                PensionFundId = DocumentInstance.PensionFundId,
+                ModuleCode = DocumentInstance.ModuleCode,
+                ApplicableYear = DocumentInstance.ApplicableYear,
+                ApplicableQuarter = DocumentInstance.ApplicableQuarter,
+                Message = message,
+                UserId = 0,
+                ProgramCode = ProgramCode.VA.ToString(),
+                ProgramAction = ProgramAction.INS.ToString(),
+                InstanceId = DocumentInstance.InstanceId,
+                MessageType = MessageType.ERROR.ToString()
+            };
+            TransactionLogger.LogTransaction(ConfigData, trans);
+            throw new Exception(message);
+        }
         return rel;
     }
 

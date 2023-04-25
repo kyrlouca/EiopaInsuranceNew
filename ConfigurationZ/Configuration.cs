@@ -134,6 +134,11 @@ namespace ConfigurationNs
                     Data.EiopaDatabaseConnectionString = Data.EiopaUnified250ConnectionString;
                     Data.ExcelTemplateFileGeneral = Data.ExcelPensionFile250;
                     break;
+                case "PU270"://Pension Database using Eiopa Unified 270
+                    Data.LocalDatabaseConnectionString = Data.PensionDatabaseConnectionString;
+                    Data.EiopaDatabaseConnectionString = Data.EiopaUnified250ConnectionString;
+                    Data.ExcelTemplateFileGeneral = Data.ExcelPensionFile250;
+                    break;
                 case "IU250"://Insurance Database using Eiopa Unified 250
                     Data.LocalDatabaseConnectionString = Data.InsuranceDatabaseConnectionString;
                     Data.EiopaDatabaseConnectionString = Data.EiopaUnified250ConnectionString;
