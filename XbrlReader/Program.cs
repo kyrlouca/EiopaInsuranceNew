@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace XbrlReader
 {
+
     internal class Program
     {
         static int Main(string[] args)
@@ -20,9 +21,11 @@ namespace XbrlReader
                 //C:\Users\kyrlo\soft\dotnet\pension-project\Pension_dev_NEW\Testing\Testing270\xbrlFiles\xbrl1.xbrl
                 //(var fundIdT, var filePath) = (42, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Universal.xbrl");
                 //(var fundIdT, var filePath) = (177, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xbrl");
+                //
 
-                (var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Cosmos Annual 2022 rev.xbrl");
-                XbrlFileReader.StarterStatic("IU270", 1, 2, fundIdT, "ars", 2022, 0, filePath);
+                //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Cosmos Annual 2022 rev.xbrl");
+                (var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\xbrlcyta49.xbrl");
+                XbrlFileReader.StarterStatic("IU270", 1, 2, fundIdT, "qri", 2022, 4, filePath);
 
                 Console.WriteLine("Finish");
                 return 1;

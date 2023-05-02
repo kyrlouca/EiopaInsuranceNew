@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net6.0-windows</TargetFramework>
+		<PublishSingleFile>true</PublishSingleFile>
+		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+		<ApplicationIcon />
+		<StartupObject />
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Dapper" Version="2.0.123" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.0" />
+		<PackageReference Include="Serilog" Version="2.12.0" />
+		<PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="7.0.0" />
+		<PackageReference Include="Z.Expressions.Eval" Version="5.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CommonFunctions\HelperInsuranceFunctions.csproj" />
+		<ProjectReference Include="..\ConfigurationZ\ConfigurationZ.csproj" />
+		<ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
+		<ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
+		<ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
+		<ProjectReference Include="..\Shared\Shared.csproj" />
+		<ProjectReference Include="..\TransactionLogger\TransactionLoggerZ.csproj" />
+	</ItemGroup>
+
+</Project>

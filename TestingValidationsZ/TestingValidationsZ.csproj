@@ -32,7 +32,7 @@
     <ProjectReference Include="..\EiopaConstantsZ\EiopaConstantsZ.csproj" />
     <ProjectReference Include="..\EntityClassesZ\EntityClassesZ.csproj" />
     <ProjectReference Include="..\GeneralUtilsZ\GeneralUtilsZ.csproj" />
-    <ProjectReference Include="..\ValidationsZ\ValidationsZ.csproj" />
+    <ProjectReference Include="..\ValidationsZ\EiopaValidations.csproj" />
     <ProjectReference Include="..\XbrlReader\XbrlReader.csproj" />
   </ItemGroup>
 

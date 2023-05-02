@@ -54,7 +54,7 @@ if (isDebug)
 
     //DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
     //DocumentValidator.StaticStartValidateDocument("IU270", 12978,4758,55);
-    DocumentValidator.StaticStartValidateDocument("PU270", 4937,0,0);
+    DocumentValidator.StaticStartValidateDocument("PU270", 4944,0,0);
     return 1;
 }
 
@@ -67,6 +67,6 @@ if (args.Length == 2)
     return 1;
 }
 
-var message = @"Incorrect Arguments,Correct Usage: .\ValidationCaller solvencyVersion DocumentId";
+var message = @"Incorrect Arguments,Correct Usage: .\EiopaValidations solvencyVersion DocumentId";
 Console.WriteLine(message);
 return 0;

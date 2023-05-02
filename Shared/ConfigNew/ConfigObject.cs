@@ -67,7 +67,7 @@ public class ConfigObject : IConfigObject
             }
             catch (Exception e)
             {
-                var message = $"Error reading ConfigData.json from current directory ";
+                var message = $"Error reading ConfigDataNew.json from current directory ";
                 Console.WriteLine(message);
                 Console.WriteLine(e);
                 throw new Exception(message);

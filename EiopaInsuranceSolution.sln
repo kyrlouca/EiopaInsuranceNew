@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EntityClassesZ", "EntityCla
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeneralUtilsZ", "GeneralUtilsZ\GeneralUtilsZ.csproj", "{C348B1C1-1D05-4010-8AF3-F7C379B0E707}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ValidationsZ", "ValidationsZ\ValidationsZ.csproj", "{538A6B11-872C-42B1-B9DA-7CFE056A6B5D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EiopaValidations", "ValidationsZ\EiopaValidations.csproj", "{538A6B11-872C-42B1-B9DA-7CFE056A6B5D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestingValidationsZ", "TestingValidationsZ\TestingValidationsZ.csproj", "{6E6C07B4-907F-4589-BAFE-568A0380AC70}"
 EndProject
