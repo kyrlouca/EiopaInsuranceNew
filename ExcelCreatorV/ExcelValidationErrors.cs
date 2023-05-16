@@ -94,7 +94,7 @@ namespace ExcelCreatorV
                     var errorFieldType = errorField.GetValue(error)?.GetType();
                     if (errorFieldType is null)
                     {
-                        cell.SetCellValue("");
+                        cell.SetBlank();
                     }
                     else if (errorFieldType == typeof(int) || errorFieldType == typeof(bool))
                     {

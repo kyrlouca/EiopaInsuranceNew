@@ -1,5 +1,6 @@
 ﻿using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
+using System.Drawing.Drawing2D;
 
 namespace ExcelCreatorV
 {
@@ -59,10 +60,9 @@ namespace ExcelCreatorV
 
         private ICellStyle SetEmptyCellStyle()
         {
-            var basicBorderStyle = DestExcelTemplateBook.CreateCellStyle();
-            basicBorderStyle.BorderBottom = BorderStyle.Thin;
-            basicBorderStyle.BorderRight = BorderStyle.Thin;
-            return basicBorderStyle;
+            var emptyStyle = DestExcelTemplateBook.CreateCellStyle();
+            emptyStyle.CloneStyleFrom(BasicBorderStyle);            
+            return emptyStyle;
         }
 
 

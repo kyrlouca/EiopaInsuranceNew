@@ -146,10 +146,15 @@ namespace ExcelCreatorV
             var finalRowOffset = OffsetRow - addedLines;
             ExcelHelperFunctions.MergeRegions(OriginSheet, DestSheet, lastRowToMerge, -finalRowOffset, -OffsetCol);
 
+            
+
             DestSheet.SetZoom(80);
 
             ExcelHelperFunctions.CreateHyperLink(DestSheet, WorkbookStyles);
             var yx = DestExcelBook.NumCellStyles;
+            
+            
+
 
             return lines;
 
@@ -188,6 +193,7 @@ namespace ExcelCreatorV
                             break;
                         }
                     case CellType.Blank:
+                        destCell.SetBlank();
                         break;
                     default:
                         destCell.SetCellValue("Error");
@@ -254,7 +260,7 @@ namespace ExcelCreatorV
                         }
                         else
                         {
-                            destCellL.SetCellValue("$");
+                            //destCellL.SetCellValue("$");
                         }
 
                         if (x == OrgDataRange.FirstColumn - 1)//rows
@@ -605,7 +611,7 @@ namespace ExcelCreatorV
                         if (destCellNew.ToString() == "@")
                         {
                             destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
-                            destCellNew.SetCellValue("$");
+                            //destCellNew.SetCellValue("$");
                             //destCellNew.SetBlank();                            
                         }
                         
@@ -618,10 +624,16 @@ namespace ExcelCreatorV
                         }
                         else
                         {
+
+                            //destCellNew.SetCellType(CellType.Numeric);
+                            //destCellNew.SetCellValue("");
+                            //destCellNew.SetCellValue(0);
+                            //destCellNew.SetCellType(CellType.Blank);
                             destCellNew.SetBlank();
-                            //destCellNew.CellStyle = WorkbookStyles.EmptyStyle;
+                            var xx = destCellNew.CellType;
+
                         }
-                        
+
 
                     }
                 }

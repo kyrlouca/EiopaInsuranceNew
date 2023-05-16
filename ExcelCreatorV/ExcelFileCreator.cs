@@ -18,6 +18,8 @@ using NPOI.Util;
 using NPOI.HSSF.Record;
 using System.Reflection.Emit;
 using Shared.Services;
+using NPOI.SS.Formula.Functions;
+using Log = Serilog.Log;
 
 namespace ExcelCreatorV
 {
@@ -138,7 +140,7 @@ namespace ExcelCreatorV
         public int Status { get; internal set; }
         public int TablesScanned { get; internal set; } = 0;
         public string[]? FilesScanned { get; internal set; }
-        
+
 
 
         public static int StaticStartCreateTheExcelFile(string solvencyVersion, int userId, int documentId, string excelOutputFile)
@@ -168,9 +170,9 @@ namespace ExcelCreatorV
             ConfigObjectR = configObject;
             DocumentIdInput = documentId;
             UserId = userId;
-            
+
             ExcelOutputFile = excelOutputFile;
-            
+
 
             WorkbookStyles = new WorkbookStyles(DestExcelBook);
             IndexSheetList = new IndexSheetList(ConfigObjectR, DestExcelBook, WorkbookStyles, "List", "List of Templates");
@@ -194,7 +196,7 @@ namespace ExcelCreatorV
             {
                 var errMessage = $"Invalid Document Id:{DocumentIdInput}";
                 Console.WriteLine(errMessage);
-                Log.Error(errMessage);
+                //SLog.Error(errMessage);
                 return false;
             }
             Console.WriteLine("after getDocId:");
@@ -308,6 +310,9 @@ namespace ExcelCreatorV
                 var newSheet = new SingleExcelSheet(ConfigObjectR, ExcelTemplateBook, WorkbookStyles, DestExcelBook, sheet);
                 var rowsInserted = newSheet.FillSingleExcelSheet();
                 singleExcelSheets.Add(newSheet);
+
+
+
                 Console.WriteLine($"\n{sheet.SheetCode} rows:{rowsInserted}");
             }
 
@@ -326,7 +331,10 @@ namespace ExcelCreatorV
             //*****************************************************************
             //*****  Create Merged Sheets
             MergeTemplateSheetsUniversal();
+            foreach (var sheet in sheets)
+            {
 
+            }
 
             //*******************************************
             IndexSheetList.SortSheetRecords();
@@ -340,171 +348,205 @@ namespace ExcelCreatorV
 
 
 
+        private void MakeBlancCells(ISheet? sheet)
+        {
+            if (sheet == null) return;
+            var firstRowNum = sheet.FirstRowNum;
+            var lastRowNum = sheet.LastRowNum;
+            var lastRow = sheet.GetRow(lastRowNum);
+
+            for (var i = firstRowNum; i < lastRowNum; i++)
+            {
+                var row = sheet.GetRow(i);
+                var rowConts = ExcelHelperFunctions.ShowRowContents(row);
+                if (row is null) continue;
+                var firstCell = row.FirstCellNum;
+                var lastCell = row.LastCellNum;
+                for (var j = firstCell; j < lastCell; j++)
+                {
+                    var cell = row.GetCell(j);
+                    if (cell is null) continue;
+                    var tp = cell.CellType;
+                    if (cell.CellType == CellType.String && string.IsNullOrEmpty(cell.StringCellValue))
+                    {
+                        cell.SetBlank();
+                        var x = 3;
+                    }
+
+
+    }
+}
+
+
+
+        }
+
+
 
         private ISheet CreateMergedSheet(List<List<ISheet>> sheetsToMerge, string destSheetName)
+{
+
+    //Each iteration of the outer List will add VERTICALLY a list of HORIZONTAL sheets
+
+    var destSheetIdx = DestExcelBook.GetSheetIndex(destSheetName);
+    var destSheet = destSheetIdx == -1 ? DestExcelBook.CreateSheet(destSheetName) : DestExcelBook.GetSheetAt(destSheetIdx);
+    var rowGap = 4;
+
+    //write horizontally a list of sheets
+    var rowOffset = 0;
+    foreach (var sheetList in sheetsToMerge)
+    {
+        AppendHorizontalSheets(sheetList, destSheet, rowOffset, 1);
+        rowOffset = destSheet.LastRowNum + rowGap;
+    }
+
+    //set columns width            
+    var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
+
+
+    for (int i = 0; i < 70; i++)
+    {
+        var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
+    }
+    //**Fucking a
+    if (1 == 1)
+    {
+        destSheet.SetColumnWidth(0, 12000);
+        destSheet.SetColumnWidth(1, 2000);
+        for (var j = 2; j < firstRow?.Cells.Count; j++)
         {
+            destSheet.SetColumnWidth(j, 5000);
+        }
+    }
+    //*************
+    return destSheet;
+}
 
-            //Each iteration of the outer List will add VERTICALLY a list of HORIZONTAL sheets
-
-            var destSheetIdx = DestExcelBook.GetSheetIndex(destSheetName);
-            var destSheet = destSheetIdx == -1 ? DestExcelBook.CreateSheet(destSheetName) : DestExcelBook.GetSheetAt(destSheetIdx);
-            var rowGap = 4;
-
-            //write horizontally a list of sheets
-            var rowOffset = 0;
-            foreach (var sheetList in sheetsToMerge)
-            {
-                AppendHorizontalSheets(sheetList, destSheet, rowOffset, 1);
-                rowOffset = destSheet.LastRowNum + rowGap;
-            }
-
-            //set columns width            
-            var firstRow = destSheet.GetRow(0) ?? destSheet.CreateRow(0);
-
-
-            for (int i = 0; i < 70; i++)
-            {
-                var cell = firstRow?.GetCell(i) ?? firstRow?.CreateCell(i);
-            }
-            //**Fucking a
-            if (1 == 1)
-            {
-                destSheet.SetColumnWidth(0, 12000);
-                destSheet.SetColumnWidth(1, 2000);
-                for (var j = 2; j < firstRow?.Cells.Count; j++)
-                {
-                    destSheet.SetColumnWidth(j, 5000);
-                }
-            }
-            //*************
-            return destSheet;
+private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset, int colGap)
+{
+    //add each sheet in the list  HORIZONTALLY one after the other
+    //var colGap = 2;
+    var totalColOffset = 0;
+    foreach (var childSheet in sheetsToMerge)
+    {
+        if (childSheet is null)
+        {
+            continue;
         }
 
-        private static ISheet AppendHorizontalSheets(List<ISheet> sheetsToMerge, ISheet destSheet, int rowOffset, int colGap)
+        ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, destSheet, childSheet.FirstRowNum, childSheet.LastRowNum, true, rowOffset, totalColOffset);
+        var childColOffset = ExcelHelperFunctions.GetMaxNumberOfColumns(childSheet, childSheet.FirstRowNum, childSheet.LastRowNum);
+        totalColOffset += childColOffset + colGap;
+
+    }
+    return destSheet;
+}
+
+private void WriteProcessStarted()
+{
+    var message = $"Excel Writer Started -- Document:{DocumentId} Fund:{PensionFundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{ConfigObjectR.Version}";
+    Console.WriteLine(message);
+    Log.Information(message);
+
+    TransactionLog trans;
+    trans = new TransactionLog()
+    {
+        PensionFundId = PensionFundId,
+        ModuleCode = ModuleCode,
+        ApplicableYear = ApplicableYear,
+        ApplicableQuarter = ApplicableQuarter,
+        Message = message,
+        UserId = UserId,
+        ProgramCode = ProgramCode.CX.ToString(),
+        ProgramAction = ProgramAction.INS.ToString(),
+        InstanceId = DocumentId,
+        MessageType = MessageType.INFO.ToString()
+    };
+    TransactionLogger.LogTransaction(ConfigDataR, trans);
+}
+
+private bool OpenExcelTemplate()
+{
+    // ** open the excel as filestream
+    ExcelTemplateFile = ConfigDataR.ExcelTemplateFileGeneral;
+
+    Console.WriteLine($"using template -- : {ExcelTemplateFile}");
+
+    if (!File.Exists(ExcelTemplateFile))
+    {
+        var messagef = $"File does NOT exist: {ExcelTemplateFile}";
+
+        Log.Error(messagef);
+        IsFileValid = false;
+        var xtrans = new TransactionLog()
         {
-            //add each sheet in the list  HORIZONTALLY one after the other
-            //var colGap = 2;
-            var totalColOffset = 0;
-            foreach (var childSheet in sheetsToMerge)
-            {
-                if (childSheet is null)
-                {
-                    continue;
-                }
+            PensionFundId = PensionFundId,
+            ModuleCode = ModuleCode,
+            ApplicableYear = ApplicableYear,
+            ApplicableQuarter = ApplicableQuarter,
+            Message = messagef,
+            UserId = UserId,
+            ProgramCode = ProgramCode.CX.ToString(),
+            ProgramAction = ProgramAction.INS.ToString(),
+            InstanceId = DocumentId,
+            MessageType = MessageType.ERROR.ToString(),
+            FileName = ExcelTemplateFile
+        };
+        TransactionLogger.LogTransaction(ConfigDataR, xtrans);
+        return false;
+    }
+    //open Excel from Filestream
+    try
+    {
+        //ICreationHelper helper = DestExcelTemplateBook.GetCreationHelper();
+        Console.WriteLine($"opening$$$");
+        using var FS = new FileStream(ExcelTemplateFile, FileMode.Open, FileAccess.Read);
+        ExcelTemplateBook = (XSSFWorkbook)WorkbookFactory.Create(FS);
+    }
+    catch (Exception ex)
+    {
+        var messagef = $"---------- Can NOT Open Excel Template File :{ExcelTemplateFile} --{ex.Message} ";
+        Console.WriteLine(messagef);
+        Log.Error(messagef);
+        return false;
+    }
+    return true;
+}
 
-                ExcelHelperFunctions.CopyManyRowsSameBook(childSheet, destSheet, childSheet.FirstRowNum, childSheet.LastRowNum, true, rowOffset, totalColOffset);
-                var childColOffset = ExcelHelperFunctions.GetMaxNumberOfColumns(childSheet, childSheet.FirstRowNum, childSheet.LastRowNum);
-                totalColOffset += childColOffset + colGap;
+private bool SaveDestExcelFile()
+{
+    try
+    {
 
-            }
-            return destSheet;
-        }
+        var fs = File.Create(ExcelOutputFile);
+        //var outStream = new FileStream(outFile, FileMode.Create, FileAccess.Write);
 
-        private void WriteProcessStarted()
-        {
-            var message = $"Excel Writer Started -- Document:{DocumentId} Fund:{PensionFundId} ModuleId:{ModuleCode} Year:{ApplicableYear} Quarter:{ApplicableQuarter} Solvency:{ConfigObjectR.Version}";
-            Console.WriteLine(message);
-            Log.Information(message);
+        var xmlProps = DestExcelBook.GetProperties();
+        var coreProps = xmlProps.CoreProperties;
+        coreProps.Creator = "Novum International ICSS XBRL";
 
-            TransactionLog trans;
-            trans = new TransactionLog()
-            {
-                PensionFundId = PensionFundId,
-                ModuleCode = ModuleCode,
-                ApplicableYear = ApplicableYear,
-                ApplicableQuarter = ApplicableQuarter,
-                Message = message,
-                UserId = UserId,
-                ProgramCode = ProgramCode.CX.ToString(),
-                ProgramAction = ProgramAction.INS.ToString(),
-                InstanceId = DocumentId,
-                MessageType = MessageType.INFO.ToString()
-            };
-            TransactionLogger.LogTransaction(ConfigDataR, trans);
-        }
+        DestExcelBook.Write(fs);
 
-        private bool OpenExcelTemplate()
-        {
-            // ** open the excel as filestream
-            ExcelTemplateFile = ConfigDataR.ExcelTemplateFileGeneral;
-
-            Console.WriteLine($"using template -- : {ExcelTemplateFile}");
-
-            if (!File.Exists(ExcelTemplateFile))
-            {
-                var messagef = $"File does NOT exist: {ExcelTemplateFile}";
-
-                Log.Error(messagef);
-                IsFileValid = false;
-                var xtrans = new TransactionLog()
-                {
-                    PensionFundId = PensionFundId,
-                    ModuleCode = ModuleCode,
-                    ApplicableYear = ApplicableYear,
-                    ApplicableQuarter = ApplicableQuarter,
-                    Message = messagef,
-                    UserId = UserId,
-                    ProgramCode = ProgramCode.CX.ToString(),
-                    ProgramAction = ProgramAction.INS.ToString(),
-                    InstanceId = DocumentId,
-                    MessageType = MessageType.ERROR.ToString(),
-                    FileName = ExcelTemplateFile
-                };
-                TransactionLogger.LogTransaction(ConfigDataR, xtrans);
-                return false;
-            }
-            //open Excel from Filestream
-            try
-            {
-                //ICreationHelper helper = DestExcelTemplateBook.GetCreationHelper();
-                Console.WriteLine($"opening$$$");
-                using var FS = new FileStream(ExcelTemplateFile, FileMode.Open, FileAccess.Read);
-                ExcelTemplateBook = (XSSFWorkbook)WorkbookFactory.Create(FS);
-            }
-            catch (Exception ex)
-            {
-                var messagef = $"---------- Can NOT Open Excel Template File :{ExcelTemplateFile} --{ex.Message} ";
-                Console.WriteLine(messagef);
-                Log.Error(messagef);
-                return false;
-            }
-            return true;
-        }
-
-        private bool SaveDestExcelFile()
-        {
-            try
-            {
-
-                var fs = File.Create(ExcelOutputFile);
-                //var outStream = new FileStream(outFile, FileMode.Create, FileAccess.Write);
-
-                var xmlProps = DestExcelBook.GetProperties();
-                var coreProps = xmlProps.CoreProperties;
-                coreProps.Creator = "Novum International ICSS XBRL";
-
-                DestExcelBook.Write(fs);
-
-            }
-            catch (Exception e)
-            {
-                var messages = $"File Reader Cannot Create file {ExcelOutputFile}";
-                Log.Error($"{messages} --EXCEPTION {e.Message}");
-                return false;
-            }
-            return true;
-        }
+    }
+    catch (Exception e)
+    {
+        var messages = $"File Reader Cannot Create file {ExcelOutputFile}";
+        Log.Error($"{messages} --EXCEPTION {e.Message}");
+        return false;
+    }
+    return true;
+}
 
 
-        public DocInstance GetDocumentById(int documentId)
-        {
-            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+public DocInstance GetDocumentById(int documentId)
+{
+    using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
 
-            Console.WriteLine($" a2 fuck in GetDocId : {documentId}, conf:{ConfigDataR.LocalDatabaseConnectionString}");
-            var emptyDocument = new DocInstance();
-            //var sqlFundx = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
+    Console.WriteLine($" a2 fuck in GetDocId : {documentId}, conf:{ConfigDataR.LocalDatabaseConnectionString}");
+    var emptyDocument = new DocInstance();
+    //var sqlFundx = "select doc.InstanceId, doc.Status,doc.IsSubmitted, doc.ApplicableYear,doc.ApplicableQuarter, doc.ModuleCode,doc.ModuleId, doc.PensionFundId,doc.UserId from DocInstance doc where doc.InstanceId=@documentId";
 
-            var sqlFund2 = @"
+    var sqlFund2 = @"
                 SELECT
                   doc.InstanceId
                  ,doc.ModuleId            
@@ -514,40 +556,40 @@ namespace ExcelCreatorV
                 ";
 
 
-            var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlFund2, new { documentId });
-            if (doc is null)
-            {
-                Console.WriteLine($"documentId:{documentId} does not exist");
-                return emptyDocument;
-            }
-            Console.WriteLine($"documentId:{documentId} is valid");
-            return doc;
+    var doc = connectionInsurance.QuerySingleOrDefault<DocInstance>(sqlFund2, new { documentId });
+    if (doc is null)
+    {
+        Console.WriteLine($"documentId:{documentId} does not exist");
+        return emptyDocument;
+    }
+    Console.WriteLine($"documentId:{documentId} is valid");
+    return doc;
 
-        }
+}
 
 
-        public void MergeTemplateSheetsUniversal()
-        {
-            //Merge sheets for each templeate Code (3 digit code) based on dimension .(line of business BL and currency OC)
-            //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
-            //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
-            var templates = CreateTemplateTableBundlesForModule(ConfigDataR, ModuleId);
-            //templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
+public void MergeTemplateSheetsUniversal()
+{
+    //Merge sheets for each templeate Code (3 digit code) based on dimension .(line of business BL and currency OC)
+    //If there is a TemplateBundel, the Merged sheet can merge horizontally and vertically.
+    //A bundle contains the template code and a list of horizontal tableCodes lists like {S.19.01.01, {S.19.01.01.01,19.01.01.02,etc},{19.01.01.08}}
+    var templates = CreateTemplateTableBundlesForModule(ConfigDataR, ModuleId);
+    //templates = templates.Where(bundle => (bundle.TemplateCode == "S.05.02.01" || bundle.TemplateCode == "S.19.01.01")).ToList();
 
-            foreach (var template in templates)
-            {
-                MergeOneTemplate(template);
-            }
-        }
+    foreach (var template in templates)
+    {
+        MergeOneTemplate(template);
+    }
+}
 
-        private void MergeOneTemplate(TemplateBundle templateTableBundle)
-        {
-            //One template may have many Zet dimensions(for business line or currency)
-            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
-            //currency is can be CD,CR,OC but for s.19 is oc
+private void MergeOneTemplate(TemplateBundle templateTableBundle)
+{
+    //One template may have many Zet dimensions(for business line or currency)
+    using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+    using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+    //currency is can be CD,CR,OC but for s.19 is oc
 
-            var sqlZet = @"
+    var sqlZet = @"
                     SELECT zet.value
                     FROM TemplateSheetInstance sheet
                     JOIN SheetZetValue zet ON zet.TemplateSheetId = sheet.TemplateSheetId
@@ -556,141 +598,142 @@ namespace ExcelCreatorV
                         AND zet.Dim IN ('BL','OC','CR')
                     GROUP BY zet.Value
             ";
-            var templateCode = $"{templateTableBundle.TemplateCode}%";
-            var zetBLList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
+    var templateCode = $"{templateTableBundle.TemplateCode}%";
+    var zetBLList = connectionInsurance.Query<string>(sqlZet, new { DocumentId, templateCode }).ToList();
 
 
-            if (!zetBLList.Any())
-            {
-                zetBLList.Add("");
-            }
-            foreach (var zetBlValue in zetBLList)
-            {
-                var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetBlValue);
-                if (!mergedRecord.IsValid)
-                {
-                    //null when there are no tables OR when there is just one
-                    continue;
-                }
-
-
-                mergedRecord.TabSheet?.SetZoom(80);
-                ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
-                var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
-                IndexSheetList.RemoveSheets(sheetsToRemove);
-                IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
-
-            }
+    if (!zetBLList.Any())
+    {
+        zetBLList.Add("");
+    }
+    foreach (var zetBlValue in zetBLList)
+    {
+        var mergedRecord = MergeOneZetTemplate(templateTableBundle, zetBlValue);
+        if (!mergedRecord.IsValid)
+        {
+            //null when there are no tables OR when there is just one
+            continue;
         }
-        private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetBLValue)
+
+        MakeBlancCells(mergedRecord.TabSheet);
+
+        mergedRecord.TabSheet?.SetZoom(80);
+        ExcelHelperFunctions.CreateHyperLink(mergedRecord.TabSheet, WorkbookStyles);
+        var sheetsToRemove = mergedRecord.ChildrenSheetInstances.Select(sheet => sheet.SheetTabName.Trim()).ToList();
+        IndexSheetList.RemoveSheets(sheetsToRemove);
+        IndexSheetList.AddSheetRecord(new IndexSheetListItem(mergedRecord.TabSheet.SheetName, mergedRecord.SheetDescription));
+
+    }
+}
+private MergedSheetRecord MergeOneZetTemplate(TemplateBundle templateBundle, string zetBLValue)
+{
+
+
+    using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
+    using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+
+    var mergedTabName = string.IsNullOrEmpty(zetBLValue)
+        ? templateBundle.TemplateCode
+        : templateBundle.TemplateCode + " # " + zetBLValue;
+    mergedTabName = mergedTabName.Replace(":", "_");
+
+    var sqlZet = @" SELECT mem.MemberLabel  FROM mMember mem where MemberXBRLCode= @zetValue";
+    var zetLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlZet, new { zetValue = zetBLValue });
+    var templateDesciption = string.IsNullOrEmpty(zetLabel)
+        ? $"{templateBundle.TemplateDescription.Trim()}"
+        : $"{templateBundle.TemplateDescription.Trim()} # {zetLabel}";
+
+    // each tableCode may have several dbSheets because of Zets other than business line and currency            
+    List<List<TemplateSheetInstance>> dbSheets = new();
+    var tableCodes = templateBundle.TableCodes;
+
+    //A specialTemplate has horizontal tables in the same sheet.
+    var specialTemplate = SpecialTemplates.Records.FirstOrDefault(special => special.TemplateCode == templateBundle.TemplateCode);
+
+    if (specialTemplate is not null)
+    {
+        //the specialTemplate example here two horizontal lists with 3 tables each in this case
+        // "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" , 
+        // "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06"                 
+        foreach (var horizontalDbList in specialTemplate.TableCodes)
+        {
+            var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue).FirstOrDefault()).ToList();
+            dbSheets.Add(horizontalDbTables);
+        }
+    }
+    else
+    {
+        //We can have more than one sheet for the same Business line, Currency , if the table has dimensions
+        //Need to merge also
+        dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue)).ToList();
+    }
+
+    var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1).ToList();
+    var countReal = dbRealSheets.Count;
+    if (countReal == 0)
+    {
+        //If All the sheets in this template where created artificially OR just one table 
+        return new MergedSheetRecord(null, mergedTabName, dbRealSheets, false);
+    }
+    else if (countReal == 1)
+    {
+        //If just one sheet,  do not merge but copy the same sheet as merged
+        var realSheet = GetSheetFromBook(dbRealSheets[0]);
+        var newSheet = realSheet.CopySheet(mergedTabName);
+        var allSheets = dbSheets.SelectMany(dbSheet => dbSheet).ToList();
+        return new MergedSheetRecord(newSheet, templateDesciption, allSheets, true);
+    }
+
+    //iSheets is a list of lists. Each inner list has the sheets which lay horizontally
+    var iSheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
+
+
+    ///**************************************************************************
+    ///**** Create the Merged Sheet 
+    var mergedSheet = CreateMergedSheet(iSheets, mergedTabName);
+
+    ExcelHelperFunctions.CreateHyperLink(mergedSheet, WorkbookStyles);
+
+    var dbSheetFlatList = dbSheets.SelectMany(sheet => sheet).AsList();
+
+    return new MergedSheetRecord(mergedSheet, templateDesciption, dbSheetFlatList, true);
+
+
+    ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
+    {
+
+        var sheetTabName = dbSheet.SheetTabName.Trim();
+        if (dbSheet.TableID == -1)
         {
 
+            var sqlTbl = @"SELECT TemplateOrTableLabel FROM mTemplateOrTable tt where tt.TemplateOrTableCode= @tableCode and tt.TemplateOrTableType='BusinessTable'";
+            var tableDescription = connectionEiopa.QueryFirstOrDefault<string>(sqlTbl, new { tableCode = dbSheet.TableCode }) ?? "";
+            var newSheet = DestExcelBook.CreateSheet(sheetTabName);
+            newSheet.CreateRow(0).CreateCell(0).SetCellValue($"{dbSheet.TableCode} - Empty Table");
+            newSheet.CreateRow(1).CreateCell(0).SetCellValue(templateBundle.TemplateDescription);
+            newSheet.CreateRow(2).CreateCell(0).SetCellValue(tableDescription);
 
-            using var connectionEiopa = new SqlConnection(ConfigDataR.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+            ExcelHelperFunctions.CreateHyperLink(newSheet, WorkbookStyles);
+            return newSheet;
+        }
 
-            var mergedTabName = string.IsNullOrEmpty(zetBLValue)
-                ? templateBundle.TemplateCode
-                : templateBundle.TemplateCode + " # " + zetBLValue;
-            mergedTabName = mergedTabName.Replace(":", "_");
+        var sheet = DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim());
 
-            var sqlZet = @" SELECT mem.MemberLabel  FROM mMember mem where MemberXBRLCode= @zetValue";
-            var zetLabel = connectionEiopa.QuerySingleOrDefault<string>(sqlZet, new { zetValue = zetBLValue });
-            var templateDesciption = string.IsNullOrEmpty(zetLabel)
-                ? $"{templateBundle.TemplateDescription.Trim()}"
-                : $"{templateBundle.TemplateDescription.Trim()} # {zetLabel}";
+        return sheet;
+    }
+    static List<TemplateSheetInstance> getOrCreateDbSheet(ConfigData confObj, int documentId, string? tableCode, string zetValue)
+    {
+        using var connectionEiopa = new SqlConnection(confObj.EiopaDatabaseConnectionString);
+        using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
 
-            // each tableCode may have several dbSheets because of Zets other than business line and currency            
-            List<List<TemplateSheetInstance>> dbSheets = new();
-            var tableCodes = templateBundle.TableCodes;
-
-            //A specialTemplate has horizontal tables in the same sheet.
-            var specialTemplate = SpecialTemplates.Records.FirstOrDefault(special => special.TemplateCode == templateBundle.TemplateCode);
-
-            if (specialTemplate is not null)
-            {
-                //the specialTemplate example here two horizontal lists with 3 tables each in this case
-                // "S.05.02.01.01", "S.05.02.01.02", "S.05.02.01.03" , 
-                // "S.05.02.01.04", "S.05.02.01.05", "S.05.02.01.06"                 
-                foreach (var horizontalDbList in specialTemplate.TableCodes)
-                {
-                    var horizontalDbTables = horizontalDbList.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue).FirstOrDefault()).ToList();
-                    dbSheets.Add(horizontalDbTables);
-                }
-            }
-            else
-            {
-                //We can have more than one sheet for the same Business line, Currency , if the table has dimensions
-                //Need to merge also
-                dbSheets = tableCodes.Select(tableCode => getOrCreateDbSheet(ConfigDataR, DocumentId, tableCode, zetBLValue)).ToList();
-            }
-
-            var dbRealSheets = dbSheets.SelectMany(sheet => sheet).Where(sheet => sheet.TableID != -1).ToList();
-            var countReal = dbRealSheets.Count;
-            if (countReal == 0)
-            {
-                //If All the sheets in this template where created artificially OR just one table 
-                return new MergedSheetRecord(null, mergedTabName, dbRealSheets, false);
-            }
-            else if (countReal == 1)
-            {
-                //If just one sheet,  do not merge but copy the same sheet as merged
-                var realSheet = GetSheetFromBook(dbRealSheets[0]);
-                var newSheet = realSheet.CopySheet(mergedTabName);
-                var allSheets = dbSheets.SelectMany(dbSheet => dbSheet).ToList();
-                return new MergedSheetRecord(newSheet, templateDesciption, allSheets, true);
-            }
-
-            //iSheets is a list of lists. Each inner list has the sheets which lay horizontally
-            var iSheets = dbSheets.Select(tableCodeSheets => tableCodeSheets.Select(dbSheet => GetSheetFromBook(dbSheet)).ToList()).ToList();
-
-
-            ///**************************************************************************
-            ///**** Create the Merged Sheet 
-            var mergedSheet = CreateMergedSheet(iSheets, mergedTabName);
-
-            ExcelHelperFunctions.CreateHyperLink(mergedSheet, WorkbookStyles);
-
-            var dbSheetFlatList = dbSheets.SelectMany(sheet => sheet).AsList();
-
-            return new MergedSheetRecord(mergedSheet, templateDesciption, dbSheetFlatList, true);
-
-
-            ISheet GetSheetFromBook(TemplateSheetInstance dbSheet)
-            {
-
-                var sheetTabName = dbSheet.SheetTabName.Trim();
-                if (dbSheet.TableID == -1)
-                {
-
-                    var sqlTbl = @"SELECT TemplateOrTableLabel FROM mTemplateOrTable tt where tt.TemplateOrTableCode= @tableCode and tt.TemplateOrTableType='BusinessTable'";
-                    var tableDescription = connectionEiopa.QueryFirstOrDefault<string>(sqlTbl, new { tableCode = dbSheet.TableCode }) ?? "";
-                    var newSheet = DestExcelBook.CreateSheet(sheetTabName);
-                    newSheet.CreateRow(0).CreateCell(0).SetCellValue($"{dbSheet.TableCode} - Empty Table");
-                    newSheet.CreateRow(1).CreateCell(0).SetCellValue(templateBundle.TemplateDescription);
-                    newSheet.CreateRow(2).CreateCell(0).SetCellValue(tableDescription);
-
-                    ExcelHelperFunctions.CreateHyperLink(newSheet, WorkbookStyles);
-                    return newSheet;
-                }
-
-                var sheet = DestExcelBook.GetSheet(dbSheet.SheetTabName.Trim());
-
-                return sheet;
-            }
-            static List<TemplateSheetInstance> getOrCreateDbSheet(ConfigData confObj, int documentId, string? tableCode, string zetValue)
-            {
-                using var connectionEiopa = new SqlConnection(confObj.EiopaDatabaseConnectionString);
-                using var connectionInsurance = new SqlConnection(confObj.LocalDatabaseConnectionString);
-
-                var sqlSheetWithoutZet = @"
+        var sqlSheetWithoutZet = @"
                     SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode,sheet.SheetTabName
                     FROM TemplateSheetInstance sheet
                     WHERE sheet.InstanceId = @documentId
                      AND sheet.TableCode= @tableCode                     
                 ";
 
-                var sqlSheetWithZet = @"
+        var sqlSheetWithZet = @"
                     SELECT sheet.TemplateSheetId, sheet.SheetCode, sheet.TableCode,sheet.SheetTabName
                     FROM TemplateSheetInstance sheet
                     left outer join   SheetZetValue zet on zet.TemplateSheetId= sheet.TemplateSheetId
@@ -701,35 +744,35 @@ namespace ExcelCreatorV
                 ";
 
 
-                var sqlSheets = string.IsNullOrEmpty(zetValue) ? sqlSheetWithoutZet : sqlSheetWithZet;
-                var result = connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId, tableCode, zetValue }).ToList();
-                if (result.Count == 0)
-                {
-                    var new_sheetName = "new_" + tableCode.Trim() + "_" + zetValue.Trim();
-                    new_sheetName = new_sheetName.Replace(":", "_");
-                    var sheetInstance = new TemplateSheetInstance()
-                    {
-                        TableCode = tableCode,
-                        SheetTabName = new_sheetName,
-                        TableID = -1
-                    };
-                    var newList = new List<TemplateSheetInstance>() { sheetInstance };
-                    return newList;
-                }
-
-                return result;
-            }
-
+        var sqlSheets = string.IsNullOrEmpty(zetValue) ? sqlSheetWithoutZet : sqlSheetWithZet;
+        var result = connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId, tableCode, zetValue }).ToList();
+        if (result.Count == 0)
+        {
+            var new_sheetName = "new_" + tableCode.Trim() + "_" + zetValue.Trim();
+            new_sheetName = new_sheetName.Replace(":", "_");
+            var sheetInstance = new TemplateSheetInstance()
+            {
+                TableCode = tableCode,
+                SheetTabName = new_sheetName,
+                TableID = -1
+            };
+            var newList = new List<TemplateSheetInstance>() { sheetInstance };
+            return newList;
         }
 
-        private static List<TemplateBundle> CreateTemplateTableBundlesForModule(ConfigData ConfObject, int moduleId)
-        {
-            using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
-            using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);
+        return result;
+    }
 
-            var templateTableBundles = new List<TemplateBundle>();
+}
 
-            var sqlTables = @"
+private static List<TemplateBundle> CreateTemplateTableBundlesForModule(ConfigData ConfObject, int moduleId)
+{
+    using var connectionEiopa = new SqlConnection(ConfObject.EiopaDatabaseConnectionString);
+    using var connectionInsurance = new SqlConnection(ConfObject.LocalDatabaseConnectionString);
+
+    var templateTableBundles = new List<TemplateBundle>();
+
+    var sqlTables = @"
                 SELECT va.TemplateOrTableCode,va.TemplateOrTableLabel
                 FROM mModuleBusinessTemplate mbt
                 LEFT OUTER JOIN mTemplateOrTable va ON va.TemplateOrTableID = mbt.BusinessTemplateID
@@ -739,14 +782,14 @@ namespace ExcelCreatorV
                     AND mod.ModuleID = @moduleId
                 ORDER BY mod.ModuleID
                 ";
-            //todo make it empty list if null
-            var templates = connectionEiopa.Query<mTemplateOrTable>(sqlTables, new { moduleId });
+    //todo make it empty list if null
+    var templates = connectionEiopa.Query<mTemplateOrTable>(sqlTables, new { moduleId });
 
 
 
-            foreach (var template in templates)
-            {
-                var sqlTableCodes = @"
+    foreach (var template in templates)
+    {
+        var sqlTableCodes = @"
                 SELECT  tab.TableCode
                 FROM mTemplateOrTable va
                 LEFT OUTER JOIN mTemplateOrTable bu ON bu.ParentTemplateOrTableID = va.TemplateOrTableID
@@ -758,18 +801,18 @@ namespace ExcelCreatorV
                 ORDER BY tab.TableCode
 
                 ";
-                var tableCodes = connectionEiopa.Query<string>(sqlTableCodes, new { templateCode = template.TemplateOrTableCode })?.ToList() ?? new List<string>();
-                templateTableBundles.Add(new TemplateBundle(template.TemplateOrTableCode, template.TemplateOrTableLabel, tableCodes));
+        var tableCodes = connectionEiopa.Query<string>(sqlTableCodes, new { templateCode = template.TemplateOrTableCode })?.ToList() ?? new List<string>();
+        templateTableBundles.Add(new TemplateBundle(template.TemplateOrTableCode, template.TemplateOrTableLabel, tableCodes));
 
-                //var sheets= connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId,bCode }).ToList()?? new List<TemplateSheetInstance>();
-                //TemplateCodes.Add(new BusinessTableBundle(tableCode, sheets));                
+        //var sheets= connectionInsurance.Query<TemplateSheetInstance>(sqlSheets, new { documentId,bCode }).ToList()?? new List<TemplateSheetInstance>();
+        //TemplateCodes.Add(new BusinessTableBundle(tableCode, sheets));                
 
 
 
-            }
-            return templateTableBundles;
+    }
+    return templateTableBundles;
 
-        }
+}
 
     }
 }
