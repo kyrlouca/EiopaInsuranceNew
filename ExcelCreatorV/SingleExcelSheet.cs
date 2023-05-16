@@ -184,7 +184,7 @@ namespace ExcelCreatorV
                     case CellType.Formula:
                         {
                             var genVal = originCell?.CellFormula ?? "";
-                            destCell.SetCellValue("");
+                            destCell.SetBlank();
                             break;
                         }
                     case CellType.Blank:
@@ -254,7 +254,7 @@ namespace ExcelCreatorV
                         }
                         else
                         {
-                            destCellL.SetCellValue("");
+                            destCellL.SetCellValue("$");
                         }
 
                         if (x == OrgDataRange.FirstColumn - 1)//rows
@@ -282,8 +282,8 @@ namespace ExcelCreatorV
                         {
                             //destCellD.SetCellValue("diaal");
                             destCellD.CellStyle = WorkbookStyles.ShadedStyle;
-                            //destCellD.SetCellValue("@");
                             destCellD.SetBlank();
+                            
                         }
                         else
                         {
@@ -464,7 +464,7 @@ namespace ExcelCreatorV
             {
                 var rowLine = DestSheet.GetRow(row) ?? DestSheet.CreateRow(row);
                 var cell = rowLine.GetCell(col) ?? rowLine.CreateCell(col);
-                cell.SetCellValue($"{val}");
+                cell.SetCellValue($"{val.Trim()}");
                 return cell;
             }
 
@@ -590,7 +590,11 @@ namespace ExcelCreatorV
                     {
                         var destCellColIdx = x - OffsetCol + zIdx;
                         var destCellNew = destRow.GetCell(destCellColIdx);
-                        destCellNew ??= destRow.CreateCell(destCellColIdx);
+                            if (destCellNew is null)
+                        {
+                            destCellNew = destRow.CreateCell(destCellColIdx);                            
+                        }
+                                                
 
                         if (string.IsNullOrEmpty(rowLabel))
                         {
@@ -601,18 +605,10 @@ namespace ExcelCreatorV
                         if (destCellNew.ToString() == "@")
                         {
                             destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
-                            //destCellNew.SetCellValue("");
-                            destCellNew.SetBlank();
-
+                            destCellNew.SetCellValue("$");
+                            //destCellNew.SetBlank();                            
                         }
-
-
-                        //if (destCellNew.StringCellValue == "@")
-                        //{
-                        //    destCellNew.CellStyle = WorkbookStyles.ShadedStyle;
-                        //    destCellNew.SetCellValue("");
-                        //}
-
+                        
 
                         var zetValue = factZetList[zIdx];
                         var fact = FindFactFromRowColZet(SheetDb, rowLabel, colLabel, zetValue);
@@ -620,6 +616,12 @@ namespace ExcelCreatorV
                         {
                             UpdateExcelCellWithValue(fact, destCellNew);
                         }
+                        else
+                        {
+                            destCellNew.SetBlank();
+                            //destCellNew.CellStyle = WorkbookStyles.EmptyStyle;
+                        }
+                        
 
                     }
                 }
@@ -698,6 +700,10 @@ namespace ExcelCreatorV
                     {
                         UpdateExcelCellWithValue(fact, destCellNew);
                     }
+                    else
+                    {
+
+                    }
 
                 }
             }
@@ -742,7 +748,7 @@ namespace ExcelCreatorV
                     if (destCell is null)
                     {
                         destCell = destRow?.CreateCell(colIndex);
-                        destCell?.SetCellValue("");
+                        destCell?.SetBlank();
                         destCell.CellStyle = WorkbookStyles.BasicBorderStyle;
                     }
 
@@ -933,7 +939,7 @@ namespace ExcelCreatorV
                     cell.CellStyle = WorkbookStyles.PercentStyle;
                     break;
                 case "S": //String
-                    cell.SetCellValue(fact.TextValue);
+                    cell.SetCellValue(fact.TextValue.Trim());
                     cell.CellStyle = WorkbookStyles.TextStyle;
                     break;
                 case "E": // Enumeration/Code"

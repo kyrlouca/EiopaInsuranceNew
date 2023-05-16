@@ -7,6 +7,7 @@ namespace ExcelCreatorV
     {
         public XSSFWorkbook DestExcelTemplateBook { get; }
         public ICellStyle BasicBorderStyle { get; }
+        public ICellStyle EmptyStyle { get; }
         public ICellStyle FullBorderStyle { get; }
         public ICellStyle RowLabelStyle { get; }
         public ICellStyle TitleH2Style { get; }
@@ -29,6 +30,7 @@ namespace ExcelCreatorV
         {
             DestExcelTemplateBook = workBook;
             BasicBorderStyle = SetBasicBorderStyle();
+            EmptyStyle = SetEmptyCellStyle();
             FullBorderStyle = SetFullBorderStyle();
             RowLabelStyle = SetRowLabelStyle();
             TitleH2Style = SetTitleH2Style();
@@ -48,6 +50,14 @@ namespace ExcelCreatorV
         }
 
         private ICellStyle SetBasicBorderStyle()
+        {
+            var basicBorderStyle = DestExcelTemplateBook.CreateCellStyle();
+            basicBorderStyle.BorderBottom = BorderStyle.Thin;
+            basicBorderStyle.BorderRight = BorderStyle.Thin;
+            return basicBorderStyle;
+        }
+
+        private ICellStyle SetEmptyCellStyle()
         {
             var basicBorderStyle = DestExcelTemplateBook.CreateCellStyle();
             basicBorderStyle.BorderBottom = BorderStyle.Thin;

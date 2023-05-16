@@ -2,15 +2,21 @@
 using ExcelCreatorV;
 
 Console.WriteLine("Hello, ExcelV!");
+var isDebug = false;
 #if DEBUG
-
-Console.WriteLine("Excel in debug2");
-var fl = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx";
-//var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12977, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx");
-var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12981, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Trust 2022.xlsx");
-ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, userD, serialD, fileD);
-return 0;
+isDebug = true;
 #endif
+
+if (isDebug)
+{
+    Console.WriteLine("Excel in debug2");
+    var fl = @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx";
+    //var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12977, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx");
+    var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12987, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\xxxx.xlsx");
+    ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, userD, serialD, fileD);
+    return 0;
+}
+
 
 Console.WriteLine("ExcelV outside debug");
 if (args.Length == 4)
@@ -22,7 +28,7 @@ if (args.Length == 4)
     int.TryParse(args[2], out var documentId);
     var fileName = args[3].Trim();
 
-    
+
     Console.WriteLine($"Started ExcelCreator=> Solvency:{solvencyVersion}  userId:{userId} docId:{documentId} fileName:{fileName}");
     ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyVersion, userId, documentId, fileName);
 

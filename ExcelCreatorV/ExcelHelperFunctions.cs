@@ -126,7 +126,7 @@ namespace ExcelCreatorV
             {
                 case CellType.String:
                     {
-                        var strVal = originCell?.StringCellValue ?? "";
+                        var strVal = originCell?.StringCellValue.Trim() ?? "";
                         destCell.SetCellValue(strVal);
                         break;
                     }
@@ -155,7 +155,7 @@ namespace ExcelCreatorV
                     destCell.SetCellErrorValue(originCell.ErrorCellValue);
                     break;
                 default:
-                    destCell.SetCellValue(originCell.StringCellValue);
+                    destCell.SetCellValue(originCell.StringCellValue.Trim());
                     break;
             }
             return destCell;
