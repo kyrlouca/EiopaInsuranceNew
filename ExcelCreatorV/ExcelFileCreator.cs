@@ -163,6 +163,77 @@ namespace ExcelCreatorV
 
         }
 
+        public static int StaticStartCreateTheExcelFile(string solvencyVersion,  int fundId, string moduleCode, int applicationYear, int applicationQuarter, string excelOutputFile)
+        {
+            //New new 
+            var result = 0;
+            if (!ConfigObject.IsValidVersion(solvencyVersion))
+            {
+                var message = $"Invalid Solvency:{solvencyVersion}";
+                Console.WriteLine(message);
+                return result;
+            }
+            var configObjectNew = HostCreator.CreateTheHost(solvencyVersion);
+
+            var excelCreator = new ExcelFileCreator(configObjectNew,  fundId,moduleCode, applicationYear,  applicationQuarter, excelOutputFile);
+            excelCreator.CreateExcelFile();
+
+            result = 1;
+            return result;
+
+        }
+
+
+        private ExcelFileCreator(IConfigObject configObject, int fundId,string moduleCode, int applicationYear,int applicationQuarter, string excelOutputFile)
+        {
+
+            //using year and month
+            Console.WriteLine($"***&&& New creator");
+            ConfigObjectR = configObject;
+            ExcelOutputFile = excelOutputFile;
+
+            using var connectionInsurance = new SqlConnection(ConfigDataR.LocalDatabaseConnectionString);
+            var sqlSelectDoc = @"
+                select * from DocInstance doc
+                where 1=1
+                and doc.PensionFundId= @fundId
+                and doc.ModuleCode= @ModuleCode
+                and doc.ApplicableYear= @applicationYear
+                and doc.ApplicableQuarter= @applicationQuarter
+                and doc.Status not in ('P')
+                ";
+            var doc= connectionInsurance.QueryFirstOrDefault<DocInstance>(sqlSelectDoc, new {fundId,moduleCode,applicationYear,applicationQuarter});
+
+                if (doc is null)
+                {
+                    var messg = $"DocumentId: {DocumentId}. Document for fund:{fundId} module:{moduleCode} year:{applicationYear} quarter:{applicationQuarter} NOT found";
+                    Log.Error(messg);
+                    var trans = new TransactionLog()
+                    {
+                        PensionFundId = fundId,
+                        ModuleCode = moduleCode,
+                        ApplicableYear =applicationYear,
+                        ApplicableQuarter = applicationQuarter,
+                        Message = messg,
+                        UserId = 0,
+                        ProgramCode = ProgramCode.CX.ToString(),
+                        ProgramAction = ProgramAction.INS.ToString(),
+                        InstanceId = 0,
+                        MessageType = MessageType.ERROR.ToString()
+                    };
+                    TransactionLogger.LogTransaction(ConfigDataR, trans);
+                    return ;
+                }
+
+            
+            DocumentIdInput = doc.InstanceId;
+            UserId = doc.UserId;            
+
+
+            WorkbookStyles = new WorkbookStyles(DestExcelBook);
+            IndexSheetList = new IndexSheetList(ConfigObjectR, DestExcelBook, WorkbookStyles, "List", "List of Templates");
+        }
+
 
         private ExcelFileCreator(IConfigObject configObject, int userId, int documentId, string excelOutputFile)
         {
@@ -201,6 +272,7 @@ namespace ExcelCreatorV
             }
             Console.WriteLine("after getDocId:");
             var isLockedDocument = Document.Status.Trim() == "P";
+
             if (isLockedDocument)
             {
                 var messg = $"DocumentId: {DocumentId}. Document currently being Processed by another User";
