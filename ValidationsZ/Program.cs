@@ -53,8 +53,9 @@ if (isDebug)
     Console.WriteLine($"{docId}");
 
     //DocumentValidator.StaticStartValidateDocument("IU270", 12972,4876);    
-    //DocumentValidator.StaticStartValidateDocument("IU270", 12978,4758,55);
-    DocumentValidator.StaticStartValidateDocument("PU270", 4954,7057,99);
+
+    //DocumentValidator.StaticStartValidateDocument("PU270", 4954, 7057, 99);
+    DocumentValidator.StaticStartValidateDocument("PU270", 4951, 0, 0);
     return 1;
 }
 

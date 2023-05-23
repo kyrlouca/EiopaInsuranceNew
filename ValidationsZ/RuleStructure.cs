@@ -570,7 +570,9 @@ namespace Validations
             //It can return either a boolean value OR an object which represents a numeric value or string  or date
             //1. fix  the expression to make it ready for Eval 
             //2. If the expression is if() then(), evaluate the "if" and the "then" separately to allow for decimals
+            //fix expression works with LOWER CASE.I should make them all uppercase
 
+           
             var fixedSymbolExpression = FixExpression(symbolExpression);
 
             if (string.IsNullOrWhiteSpace(fixedSymbolExpression))
