@@ -424,8 +424,6 @@ namespace Validations
             //Check the filter ONLY if it does NOT contain a sum and it does NOT have empty filter terms
 
 
-
-
             if (!string.IsNullOrWhiteSpace(rule.SymbolFilterFormula) && !rule.TableBaseFormula.ToUpper().Contains("SNN"))
             {
 
