@@ -14,7 +14,7 @@ if (isDebug)
     //var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12977, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\HD Annual 2022.xlsx");
     var (solvencyD, userD, serialD, fileD) = ("IU270", 99, 12987, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\xxxx.xlsx");
     //ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, userD, serialD, fileD);
-    ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, 172, "qrs", 2023,1, fileD);
+    ExcelFileCreator.StaticStartCreateTheExcelFile(solvencyD, 181, "qrs", 2023,1, fileD);
     return 0;
 }
 

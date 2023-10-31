@@ -26,8 +26,11 @@ namespace XbrlReader
                 //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\Cosmos Annual 2022 rev.xbrl");
                 //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\ALTIUS INSURANCE LTD Q1 2023.xbrl
                 //(var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\xbrlcyta49.xbrl");
-                (var fundIdT, var filePath) = (71, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\ALTIUS INSURANCE LTD Q1 2023.xbrl");
-                XbrlFileReader.StarterStatic("IU270", 1, 117, fundIdT, "qrs", 2023, 1, filePath);
+
+
+                //C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\STEAMSHIP MUTUAL UNDERWRITING ASSOCIATION (EUROPE) LIMITED.xbrl
+                (var fundIdT, var filePath) = (181, @"C:\Users\kyrlo\soft\dotnet\insurance-project\TestingXbrl270\STEAMSHIP MUTUAL UNDERWRITING ASSOCIATION (EUROPE) LIMITED.xbrl");
+                XbrlFileReader.StarterStatic("IU270", 1, 117, fundIdT, "qrs", 2022, 4, filePath);
 
                 Console.WriteLine("Finish");
                 return 1;

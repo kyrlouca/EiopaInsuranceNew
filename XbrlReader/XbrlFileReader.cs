@@ -94,6 +94,35 @@ namespace XbrlReader
                 return false;
             }
 
+            if (!File.Exists(fileName))
+            {
+                var message = $"Document specified not FOUND : {fileName}";
+                Console.WriteLine($"**** {message}");
+                Log.Error(message);
+
+                               
+
+                var trans = new TransactionLog()
+                {
+                    PensionFundId = fundId,
+                    ModuleCode = moduleCode,
+                    ApplicableYear = applicableYear,
+                    ApplicableQuarter = applicableQuarter,
+                    Message = message,
+                    UserId = userId,
+                    ProgramCode = ProgramCode.RX.ToString(),
+                    ProgramAction = ProgramAction.INS.ToString(),
+                    InstanceId = 3,
+                    MessageType = MessageType.ERROR.ToString()
+                };
+                TransactionLogger.LogTransaction(configObjectNew.Data, trans);
+
+
+                return false;
+            }
+
+
+
             var xr = new XbrlFileReader(configObjectNew, solvencyVersion, currencyBatchId, userId, fundId, moduleCode, applicableYear, applicableQuarter, fileName);
 
             var existingDocs = xr.GetExistingDocuments();
